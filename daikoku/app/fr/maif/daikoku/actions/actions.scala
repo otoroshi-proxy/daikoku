@@ -5,18 +5,15 @@ import com.auth0.jwt.JWT
 import com.google.common.base.Charsets
 import fr.maif.daikoku.controllers.CmsApiActionContext
 import fr.maif.daikoku.domain.TeamPermission.{Administrator, ApiEditor}
-import fr.maif.daikoku.domain._
-import fr.maif.daikoku.env.{
-  Env,
-  LocalCmsApiConfig,
-  OtoroshiCmsApiConfig
-}
+import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.env.{Env, LocalCmsApiConfig, OtoroshiCmsApiConfig}
 import fr.maif.daikoku.login.{IdentityAttrs, TenantHelper}
 import fr.maif.daikoku.utils.Errors
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import play.api.Logger
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
+import play.api.mvc.Results.Redirect
 
 import java.util.Base64
 import scala.collection.concurrent.TrieMap
@@ -422,10 +419,35 @@ class DaikokuActionMaybeWithoutUser(
     ) match {
       case (Some(tenant), _, _, maybeUser, isTenantAdmin)
           if !tenantSecurity.isDefaultMode(tenant, maybeUser, isTenantAdmin) =>
-        Errors.craftResponseResultF(
-          s"${tenant.tenantMode.get.toString} mode enabled",
-          Results.ServiceUnavailable
-        )
+        maybeUser match {
+          case Some(user) =>
+            if (user.isDaikokuAdmin) {
+              FastFuture.successful(
+                Results.Redirect(
+                  s"/auth/${tenant.authProvider.name}/login?redirect=${request.path}"
+                )
+              )
+            } else {
+              FastFuture.successful(
+                Results.Redirect(
+                  s"/auth/${tenant.authProvider.name}/maintenance"
+                )
+              )
+            }
+          case None =>
+            FastFuture.successful(
+              Results.Redirect(
+                s"/auth/${tenant.authProvider.name}/maintenance"
+              )
+            )
+        }
+      // todo: redirect to login page if  no user
+      // todo: redirect to "under construction" or "mainteannce" if user is not admin
+      // todo: if admin it's ok
+//        Errors.craftResponseResultF(
+//          s"${tenant.tenantMode.get.toString} mode enabled",
+//          Results.ServiceUnavailable
+
       case (
             Some(tenant),
             Some(session),

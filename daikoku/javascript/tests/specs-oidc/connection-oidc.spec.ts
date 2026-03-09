@@ -92,6 +92,31 @@ test('Se connecter avec un user inconnu', async ({ page }) => {
   await page.goto(ACCUEIL);
   await loginOidcAs(TOBY, page);
 
-  
+
   await expect(page.getByText('Error Invalid username or')).toBeVisible();
+});
+
+
+test('Health check', async ({ page }) => {
+  const resultHealth = await (fetch(`http://localhost:${exposedPort}/health`, {
+    method: 'GET',
+    headers: {
+      "content-type": "application/json",
+      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
+    }
+  }).then(r => r.json()))
+
+  expect(resultHealth).toEqual(
+    {
+      datastore: 'UP',
+      'Dunder Mifflin': {
+        tenantMode: 'Default',
+        status: { mailer: 'UP', S3: 'ABSENT', otoroshi: 'UP' }
+      }
+    }
+  )
+
+  await page.goto(ACCUEIL);
+  await loginOidcAs(MICHAEL, page);
+
 });

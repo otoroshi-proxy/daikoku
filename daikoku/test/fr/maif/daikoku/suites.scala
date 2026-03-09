@@ -889,6 +889,16 @@ object testUtils {
       "metadata" -> Json.obj()
     )
 
+    def cleanMailerServer(
+        mailerPort: Int
+    ) = {
+      daikokuComponents.env.wsClient
+        .url(s"http://localhost:$mailerPort/api/emails")
+        .withRequestTimeout(10.seconds)
+        .withMethod("DELETE")
+        .execute()
+    }
+
     def cleanOtoroshiServer(
         otoroshiPort: Int,
         apks: Seq[JsValue] = Seq(parentApkAsJson, parent2ApkAsJson)

@@ -3,26 +3,31 @@ package fr.maif.daikoku.controllers
 import cats.implicits.catsSyntaxOptionId
 import controllers.Assets
 import fr.maif.daikoku.BuildInfo
-import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionMaybeWithGuest, DaikokuActionMaybeWithoutUser, DaikokuActionMaybeWithoutUserContext}
+import fr.maif.daikoku.actions.{
+  DaikokuAction,
+  DaikokuActionMaybeWithGuest,
+  DaikokuActionMaybeWithoutUser,
+  DaikokuActionMaybeWithoutUserContext
+}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.async.TenantAdminOnly
-import fr.maif.daikoku.domain._
+import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.json.CmsRequestRenderingFormat
 import fr.maif.daikoku.env.Env
-import fr.maif.daikoku.utils.Errors
+import fr.maif.daikoku.utils.{Errors, OtoroshiClient, S3Configuration}
 import fr.maif.daikoku.utils.future.EnhancedObject
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.libs
-import play.api.libs.json._
-import play.api.mvc._
+import play.api.{libs}
+import play.api.libs.json.*
+import play.api.mvc.*
 import fr.maif.daikoku.services.{CmsPage, CmsRequestRendering}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.matching.Regex
-
-import fr.maif.daikoku.controllers.{routes => daikokuRoutes}
+import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
+import org.apache.pekko.stream.connectors.s3.BucketAccess
 
 class HomeController(
     DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
@@ -107,24 +112,101 @@ class HomeController(
       }
     }
 
-  def health() =
-    DaikokuActionMaybeWithGuest.async { ctx =>
-      ctx.request.headers.get("Otoroshi-Health-Check-Logic-Test") match {
-        // todo: better health check
-        case Some(value) =>
-          Ok.withHeaders(
-            "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString
-          ).future
-        case None =>
-          Ok(
-            Json.obj(
-              "tenantMode" -> ctx.tenant.tenantMode
-                .getOrElse(TenantMode.Default)
-                .name
-            )
-          ).future
+  def health() = {
+    // Souci sur les Daikoku action, si l'on est pas connecté, je ne peux faire aucun appel
+    // Il nous faut une Daikoku Action qui fonctionne par qui que ce soit
+    Action.async { ctx =>
+      val datastoreHealth: Future[String] = env.dataStore match {
+        case dataStore: PostgresDataStore =>
+          dataStore
+            .checkDatabase()
+            .map(_ => "UP")
+            .recover { case _ => "ECHEC" }
       }
+      env.dataStore.tenantRepo
+        .findAll()
+        .flatMap(tenantList =>
+          datastoreHealth
+            .zip(
+              Future.sequence(
+                tenantList.map { (tenant: Tenant) =>
+                  tenant.tenantMode match {
+                    case Some(tenantMatch) =>
+                      tenantMatch match {
+                        case TenantMode.Maintenance =>
+                          for {
+                            mailerHealth: String <- tenant.mailer
+                              .testConnection(tenant) map (b =>
+                              if (b) "UP" else "ECHEC"
+                            )
+
+                            s3HealthFuture: Future[String] =
+                              tenant.bucketSettings match {
+                                // TODO  : est ce que DK en a besoin, ou il est juste absent
+                                case None =>
+                                  Future.successful("ABSENT")
+                                case Some(cfg: S3Configuration) =>
+                                  env.assetsStore.checkBucket()(cfg).map {
+                                    case BucketAccess.AccessDenied  => "DOWN"
+                                    case BucketAccess.AccessGranted => "OK"
+                                    case BucketAccess.NotExists     => "ABSENT"
+                                  }
+                              }
+                            s3Health: String <- s3HealthFuture
+
+                            otoroshiHealth: String <- {
+                              val checks: Set[Future[String]] =
+                                tenant.otoroshiSettings.map { otoSettings =>
+                                  OtoroshiClient(env)
+                                    .getServices()(otoroshiSettings =
+                                      otoSettings
+                                    )
+                                    .map { _ =>
+                                      "UP"
+                                    }
+                                    .recover { case _ => "DOWN" }
+                                }
+                              Future.sequence(checks).map { results =>
+                                if (results.forall(_ == "UP")) "UP"
+                                else
+                                  s"DOWN (${results.count(_ != "UP")}/${results.size} en échec)"
+                              }
+                            }
+
+                          } yield Json.obj(
+                            "tenantName" -> tenant.name,
+                            "tenantMode" -> tenantMatch.name,
+                            "status" -> Json.obj(
+                              "mailer" -> mailerHealth,
+                              "S3" -> s3Health,
+                              "otoroshi" -> otoroshiHealth
+                            )
+                          )
+                        case _ =>
+                          Future.successful(
+                            Json.obj(
+                              "tenantName" -> tenant.name,
+                              "tenantMode" -> tenantMatch.name
+                            )
+                          )
+                      }
+                    case None =>
+                      Future.successful(Json.obj("mode" -> "no tenant mode"))
+                  }
+                }
+              )
+            )
+            .map { case (datastore, results) =>
+              val resultObj = results.foldLeft(Json.obj()) { (acc, item) =>
+                val tenantName = (item \ "tenantName").as[String]
+                val withoutNom = item.as[JsObject] - "tenantName"
+                acc + (tenantName -> withoutNom)
+              }
+              Ok(Json.obj("datastore" -> datastore) ++ resultObj)
+            }
+        )
     }
+  }
 
   def getDaikokuVersion() =
     DaikokuActionMaybeWithoutUser.async { ctx =>

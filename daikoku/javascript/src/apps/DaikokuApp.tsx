@@ -47,6 +47,7 @@ import { I18nContext } from '../contexts/i18n-context';
 import { MessagesEvents } from '../services/messages';
 import { ITenant } from '../types';
 import { ResetPassword, ResetPasswordEnd, TwoFactorAuthentication } from './DaikokuHomeApp';
+import {Maintenance} from "../components/utils/Maintenance";
 
 const RouteWithFooterLayout = () => (
   <>
@@ -206,6 +207,12 @@ export const DaikokuApp = () => {
                     path="/auth/:provider/login"
                     element={
                       <LoginPage />
+                    }
+                  />
+                  <Route
+                    path="/maintenance"
+                    element={
+                      <Maintenance />
                     }
                   />
                   <Route

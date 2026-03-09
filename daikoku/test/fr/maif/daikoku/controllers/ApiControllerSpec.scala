@@ -57,6 +57,7 @@ class ApiControllerSpec()
 
   before {
     Await.result(cleanOtoroshiServer(container.mappedPort(8080)), 5.seconds)
+    Await.result(cleanOtoroshiServer(container.mappedPort(8080)), 5.seconds)
   }
 
   "a tenant administrator" can {
