@@ -3,26 +3,20 @@ package fr.maif.daikoku.services
 import cats.Monad
 import cats.data.{EitherT, OptionT}
 import cats.implicits.catsSyntaxOptionId
-import fr.maif.daikoku.actions.ApiActionContext
-import fr.maif.daikoku.controllers.AppError.*
-import fr.maif.daikoku.controllers.{AppError, PaymentClient}
-import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.TeamPermission.Administrator
-import fr.maif.daikoku.domain.UsagePlanVisibility.Admin
-import fr.maif.daikoku.domain.json.SeqApiFormat
-import fr.maif.daikoku.env.Env
-import fr.maif.daikoku.jobs
-import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiVerifierJob}
-import fr.maif.daikoku.logger.AppLogger
-import fr.maif.daikoku.utils.Cypher.{decrypt, encrypt}
-import fr.maif.daikoku.utils.StringImplicits.BetterString
-import fr.maif.daikoku.utils.future.EnhancedObject
-import fr.maif.daikoku.utils.{
-  IdGenerator,
-  JsonOperationsHelper,
-  OtoroshiClient,
-  Translator
-}
+import controllers.AppError
+import controllers.AppError._
+import fr.maif.otoroshi.daikoku.actions.ApiActionContext
+import fr.maif.otoroshi.daikoku.ctrls.PaymentClient
+import fr.maif.otoroshi.daikoku.domain.TeamPermission.Administrator
+import fr.maif.otoroshi.daikoku.domain.UsagePlanVisibility.Admin
+import fr.maif.otoroshi.daikoku.domain._
+import fr.maif.otoroshi.daikoku.domain.json.SeqApiFormat
+import fr.maif.otoroshi.daikoku.env.Env
+import fr.maif.otoroshi.daikoku.logger.AppLogger
+import fr.maif.otoroshi.daikoku.utils.Cypher.{decrypt, encrypt}
+import fr.maif.otoroshi.daikoku.utils.StringImplicits.BetterString
+import fr.maif.otoroshi.daikoku.utils.future.EnhancedObject
+import jobs.{ApiKeyStatsJob, OtoroshiVerifierJob, SyncInformation}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
@@ -975,20 +969,21 @@ class ApiService(
                   )
               )
             else EitherT.pure[Future, AppError](0)
-          parentSubscription <- subscription.parent match {
-            case Some(parentId) =>
-              EitherT.fromOptionF(
-                env.dataStore.apiSubscriptionRepo
-                  .forTenant(tenant)
-                  .findById(parentId),
-                AppError.EntityNotFound(
-                  s"Parent subscription (ID: ${parentId.value})"
-                )
-              )
-            case None => EitherT.pure[Future, AppError](updatedSubscription)
-          }
-          apk <- EitherT(computeOtoroshiApiKey(parentSubscription))
-          _ <- EitherT(otoroshiClient.updateApiKey(apk))
+//          parentSubscription <- subscription.parent match {
+//            case Some(parentId) =>
+//              EitherT.fromOptionF(
+//                env.dataStore.apiSubscriptionRepo
+//                  .forTenant(tenant)
+//                  .findById(parentId),
+//                AppError.EntityNotFound(
+//                  s"Parent subscription (ID: ${parentId.value})"
+//                )
+//              )
+//            case None => EitherT.pure[Future, AppError](updatedSubscription)
+//          }
+          _ <- EitherT.right[AppError](otoroshiSynchronisator.verify(Json.obj("_id" -> updatedSubscription.id.asJson)))
+//          apk <- EitherT(computeOtoroshiApiKey(parentSubscription))
+//          _ <- EitherT(otoroshiClient.updateApiKey(apk))
           _ <-
             paymentClient.toggleStateThirdPartySubscription(updatedSubscription)
         } yield updatedSubscription.asSafeJson.as[JsObject]
@@ -1355,7 +1350,8 @@ class ApiService(
         PlanNotFound
       )
 
-      // compute new OtoroshiApiKey for subscription to extract
+      //compute new OtoroshiApiKey for subscription to extract
+      //FIXME: use sync compute instead of
       apikey = createOtoroshiApiKey(
         user = user,
         api = api,

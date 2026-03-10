@@ -28,8 +28,54 @@ import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
+object LongExtensions {
+  implicit class HumanReadableExtension(duration: Long) {
+    final def toHumanReadable: String = {
+      val units = Seq(
+        TimeUnit.DAYS,
+        TimeUnit.HOURS,
+        TimeUnit.MINUTES,
+        TimeUnit.SECONDS,
+        TimeUnit.MILLISECONDS
+      )
+
+      val timeStrings = units
+        .foldLeft((Seq.empty[String], duration))({
+          case ((humanReadable, rest), unit) =>
+            val name = unit.toString.toLowerCase()
+            val result = unit.convert(rest, TimeUnit.NANOSECONDS)
+            val diff = rest - TimeUnit.NANOSECONDS.convert(result, unit)
+            val str = result match {
+              case 0    => humanReadable
+              case 1    => humanReadable :+ s"1 ${name.init}" // Drop last 's'
+              case more => humanReadable :+ s"$more $name"
+            }
+            (str, diff)
+        })
+        ._1
+
+      timeStrings.size match {
+        case 0 => ""
+        case 1 => timeStrings.head
+        case _ => timeStrings.init.mkString(", ") + " and " + timeStrings.last
+      }
+    }
+  }
+}
+
+case class SyncInformation(
+                            parent: ApiSubscription,
+                            childs: Seq[ApiSubscription],
+                            team: Team,
+                            parentApi: Api,
+                            apk: ActualOtoroshiApiKey,
+                            otoroshiSettings: OtoroshiSettings,
+                            tenant: Tenant,
+                            tenantAdminTeam: Team
+                          )
+
 class OtoroshiVerifierJob(
-    client: OtoroshiClient,
+                           client: OtoroshiClient,
     env: Env,
     translator: Translator,
     messagesApi: MessagesApi
@@ -78,17 +124,6 @@ class OtoroshiVerifierJob(
     val list2 = getListFromMeta(key, meta2)
     (list1 ++ list2).mkString(" | ")
   }
-
-  case class SyncInformation(
-      parent: ApiSubscription,
-      childs: Seq[ApiSubscription],
-      team: Team,
-      parentApi: Api,
-      apk: ActualOtoroshiApiKey,
-      otoroshiSettings: OtoroshiSettings,
-      tenant: Tenant,
-      tenantAdminTeam: Team
-  )
 
   case class ComputedInformation(
       parent: ApiSubscription,
@@ -203,9 +238,23 @@ class OtoroshiVerifierJob(
       }
   }
 
-  private def computeAPIKey(
+  private def metadataObjectToMap(
+      obj: Map[String, JsValue]
+  ): Map[String, String] = {
+    obj.map {
+      case (k, JsString(v))  => k -> v
+      case (k, JsBoolean(v)) => k -> v.toString
+      case (k, JsNumber(v))  => k -> v.toString
+      case (k, JsNull)       => k -> ""
+      case (k, v)            => k -> Json.stringify(v)
+    }
+  }
+
+  def computeAPIKey(
       infos: SyncInformation
   ): Future[ComputedInformation] = {
+    logger.warn(s"childs are : [${infos.childs.map(_.id.value).mkString(" & ")}]")
+    logger.warn(s"parent is ${infos.parent.id.value}")
     (infos.childs :+ infos.parent)
       .map(subscription => {
         for {
@@ -281,9 +330,13 @@ class OtoroshiVerifierJob(
           // ********************
           // process new metadata
           // ********************
-          val planMeta = plan.otoroshiTarget
-            .map(_.apikeyCustomization.metadata.as[Map[String, String]])
-            .getOrElse(Map.empty[String, String])
+          val planMeta = metadataObjectToMap(
+            plan.otoroshiTarget
+              .flatMap(
+                _.apikeyCustomization.metadata.asOpt[Map[String, JsValue]]
+              )
+              .getOrElse(Map.empty[String, JsValue])
+          )
 
           val metaFromDk = infos.apk.metadata
             .get("daikoku__metadata")
@@ -297,13 +350,26 @@ class OtoroshiVerifierJob(
             })
             .toMap
 
-          val customMetaFromSub = subscription.customMetadata
-            .flatMap(_.asOpt[Map[String, String]])
-            .getOrElse(Map.empty[String, String])
+//          val customMetaFromSub = subscription.customMetadata
+//            .flatMap(_.asOpt[Map[String, String]])
+//            .getOrElse(Map.empty[String, String])
+
+          val customMetaFromSub = metadataObjectToMap(
+            subscription.customMetadata
+              .flatMap(_.asOpt[Map[String, JsValue]])
+              .getOrElse(Map.empty[String, JsValue])
+          )
+
+          val metadataFromSub = metadataObjectToMap(
+            subscription.metadata
+              .flatMap(_.asOpt[Map[String, JsValue]])
+              .getOrElse(Map.empty[String, JsValue])
+          )
+          //todo: sync also subscription.metadata
 
           val newMetaFromDk =
-            (planMeta ++ customMetaFromSub).map { case (a, b) =>
-              a -> OtoroshiTarget.processValue(b, ctx)
+            (planMeta ++ customMetaFromSub ++ metadataFromSub).map {
+              case (a, b) => a -> OtoroshiTarget.processValue(b, ctx)
             }
           val newMeta = infos.apk.metadata
             .removedAll(metaFromDk.keys) ++ newMetaFromDk ++ Map(
@@ -318,6 +384,7 @@ class OtoroshiVerifierJob(
 
           infos.apk.copy(
             tags = newTagsFromDk,
+            enabled = infos.parent.enabled,
             metadata = newMeta,
             constrainedServicesOnly = plan.otoroshiTarget
               .exists(_.apikeyCustomization.constrainedServicesOnly),
@@ -386,6 +453,8 @@ class OtoroshiVerifierJob(
           case Right(apikey2) =>
             _apikey1.map(apikey1 =>
               apikey1.copy(
+                enabled = infos.parent.enabled,
+                validUntil = List(apikey1.validUntil, apikey2.validUntil).flatten.minOption,
                 tags = apikey1.tags ++ apikey2.tags,
                 metadata = apikey1.metadata ++
                   apikey2.metadata ++
@@ -420,7 +489,12 @@ class OtoroshiVerifierJob(
                     apikey1.authorizedEntities.services | apikey2.authorizedEntities.services,
                   routes =
                     apikey1.authorizedEntities.routes | apikey2.authorizedEntities.routes
-                )
+                ),
+                throttlingQuota = math.min(apikey1.throttlingQuota, apikey2.throttlingQuota),
+                dailyQuota = math.min(apikey1.dailyQuota, apikey2.dailyQuota),
+                monthlyQuota = math.min(apikey1.monthlyQuota, apikey2.monthlyQuota),
+                readOnly = apikey1.readOnly || apikey2.readOnly, //todo: not sure for aggregation
+                allowClientIdOnly = apikey1.allowClientIdOnly || apikey1.allowClientIdOnly //todo: not sure for aggregation
               )
             )
         }
@@ -731,7 +805,10 @@ class OtoroshiVerifierJob(
             childs <- EitherT.liftF(
               env.dataStore.apiSubscriptionRepo
                 .forAllTenant()
-                .findNotDeleted(Json.obj("parent" -> subscription.id.asJson))
+                .findNotDeleted(Json.obj(
+                  "parent" -> subscription.id.asJson,
+                  "enabled" -> true
+                ))
             )
 
             // get tenant
