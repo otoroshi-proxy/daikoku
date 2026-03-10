@@ -69,6 +69,7 @@ object AppError {
   case class BadRequestError(message: String) extends AppError
   case class AuthenticationError(message: String) extends AppError
   case class UserNotAllowed(email: String) extends AppError
+  case class AppErrors(errors: Seq[AppError]) extends AppError
 
   def renderF(error: AppError): Future[mvc.Result] =
     FastFuture.successful(render(error))
@@ -135,6 +136,8 @@ object AppError {
         play.api.mvc.Results.Unauthorized(toJson(error))
       case UserNotAllowed(_) =>
         play.api.mvc.Results.Unauthorized(toJson(error))
+      case i: AppErrors =>
+        BadRequest(toJson(i))
     }
 
   def getErrorMessage(error: AppError) =
@@ -203,6 +206,9 @@ object AppError {
       case AuthenticationError(msg) => msg
       case UserNotAllowed(email) =>
         s"User $email is not allowed to access this application"
+      case AppErrors(errors) =>
+        errors.map(_.getErrorMessage()).mkString("\n")
+        
     }
 
   def toJson(error: AppError) = {

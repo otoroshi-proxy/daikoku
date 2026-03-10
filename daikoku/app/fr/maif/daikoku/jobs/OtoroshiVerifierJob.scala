@@ -1,18 +1,15 @@
 package fr.maif.daikoku.jobs
 
 import cats.data.EitherT
-import cats.syntax.option._
+import cats.syntax.option.*
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.audit.{ApiKeyRotationEvent, JobEvent}
-import fr.maif.daikoku.domain.NotificationAction.{
-  OtoroshiSyncApiError,
-  OtoroshiSyncSubscriptionError
-}
-import fr.maif.daikoku.domain._
+import fr.maif.daikoku.domain.NotificationAction.{OtoroshiSyncApiError, OtoroshiSyncSubscriptionError}
+import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.json.ApiSubscriptionyRotationFormat
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.logger.AppLogger
-import fr.maif.daikoku.utils._
+import fr.maif.daikoku.utils.*
 import fr.maif.daikoku.utils.future.EnhancedObject
 import org.apache.pekko.Done
 import org.apache.pekko.actor.Cancellable
@@ -21,12 +18,17 @@ import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.joda.time.DateTime
 import play.api.Logger
 import play.api.i18n.MessagesApi
-import play.api.libs.json._
+import play.api.libs.json.*
 
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+
+case class SyncAllSubscription()
+
+case class SyncApiSubscriptionContext(subscription: ApiSubscription, api: Api, usagePlan: UsagePlan, by: User)
 
 object LongExtensions {
   implicit class HumanReadableExtension(duration: Long) {
@@ -64,10 +66,9 @@ object LongExtensions {
 }
 
 case class SyncInformation(
-                            parent: ApiSubscription,
-                            childs: Seq[ApiSubscription],
+                            parent: SyncApiSubscriptionContext,
+                            childs: Seq[SyncApiSubscriptionContext],
                             team: Team,
-                            parentApi: Api,
                             apk: ActualOtoroshiApiKey,
                             otoroshiSettings: OtoroshiSettings,
                             tenant: Tenant,
@@ -144,7 +145,7 @@ class OtoroshiVerifierJob(
         env.defaultActorSystem.scheduler
           .scheduleAtFixedRate(10.seconds, env.config.otoroshiSyncInterval) {
             () =>
-              verify()
+              run()
           }
       )
     }
@@ -746,7 +747,7 @@ class OtoroshiVerifierJob(
     */
 
   private def synchronizeApikeys(
-      query: JsObject
+      query: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription
   ): Future[Done] = {
     import cats.implicits._
 
@@ -928,7 +929,7 @@ class OtoroshiVerifierJob(
               otoroshiSettings = otoroshiSettings,
               tenant = tenant,
               team = team,
-              parentApi = parentApi,
+              parentApi = parentApi, //todo: ???
               tenantAdminTeam = tenantAdminTeam
             )
           }
@@ -1191,15 +1192,24 @@ class OtoroshiVerifierJob(
       )
     }
   }
-
-  def verify(query: JsObject = Json.obj()): Future[Unit] = {
+  
+  def run(item: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription()): Future[Unit] = {
     logger.info("Verifying sync between daikoku and otoroshi")
+    
+    //todo: pas 2 sychro en meme temps (select  for update)
+    
+    val query = item match {
+      case api: ApiId => Json.obj("api" -> api.asJson)
+      case plan: UsagePlanId => Json.obj("plan" -> plan.asJson)
+      case subscription: ApiSubscriptionId => Json.obj("_id" -> subscription.asJson)
+      case _: SyncAllSubscription => Json.obj()
+    }
 
     Future
       .sequence(
         Seq(
-          checkRotation(query),
-          verifyIfOtoroshiGroupsStillExists(),
+          //checkRotation(query), //todo: sortir dans un autre job
+          //verifyIfOtoroshiGroupsStillExists(),  //todo: sortir dans un autre job
           synchronizeApikeys(query)
         )
       )

@@ -2422,7 +2422,7 @@ class ApiController(
                       _ <- EitherT.liftF[Future, AppError, Seq[Boolean]](Future.sequence(childs.filter(c => c.id != futureParent.id)
                         .map(child => env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
                           .save(child.copy(parent = futureParent.id.some))))) //update first child to remove parent
-                      _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.verify(Json.obj("_id" -> futureParent.id.asJson)))
+                      _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.run(futureParent.id))
                       _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.notificationRepo.forTenant(ctx.tenant)
                         .save(Notification(
                         id = NotificationId(IdGenerator.token(32)),
@@ -3186,7 +3186,7 @@ class ApiController(
           _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiRepo
               .forTenant(ctx.tenant.id)
               .save(newApi))
-          _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.verify(Json.obj("api" -> newApi.id.value)))
+          _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.run(newApi.id))
           _ <- EitherT.liftF[Future, AppError, Seq[Boolean]](updateTagsOfIssues(ctx.tenant.id, newApi))
           _ <- EitherT.liftF[Future, AppError, Long](updateAllHumanReadableId(ctx, newApi, oldApi))
           _ <- EitherT.liftF[Future, AppError, Long](turnOffDefaultVersion(
@@ -5086,7 +5086,7 @@ class ApiController(
             env.dataStore.usagePlanRepo.forTenant(ctx.tenant).save(updatedPlan)
           )
           _ <- EitherT.liftF(
-            otoroshiSynchronisator.verify(Json.obj("plan" -> updatedPlan.id.value))
+            otoroshiSynchronisator.run(updatedPlan.id)
           )
           _ <- runDemandUpdate(oldPlan, updatedPlan, api)
           //FIXME: attention, peut etre il y en a qui sont blocked de base

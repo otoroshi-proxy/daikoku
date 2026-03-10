@@ -3,20 +3,21 @@ package fr.maif.daikoku.services
 import cats.Monad
 import cats.data.{EitherT, OptionT}
 import cats.implicits.catsSyntaxOptionId
-import controllers.AppError
-import controllers.AppError._
-import fr.maif.otoroshi.daikoku.actions.ApiActionContext
-import fr.maif.otoroshi.daikoku.ctrls.PaymentClient
-import fr.maif.otoroshi.daikoku.domain.TeamPermission.Administrator
-import fr.maif.otoroshi.daikoku.domain.UsagePlanVisibility.Admin
-import fr.maif.otoroshi.daikoku.domain._
-import fr.maif.otoroshi.daikoku.domain.json.SeqApiFormat
-import fr.maif.otoroshi.daikoku.env.Env
-import fr.maif.otoroshi.daikoku.logger.AppLogger
-import fr.maif.otoroshi.daikoku.utils.Cypher.{decrypt, encrypt}
-import fr.maif.otoroshi.daikoku.utils.StringImplicits.BetterString
-import fr.maif.otoroshi.daikoku.utils.future.EnhancedObject
-import jobs.{ApiKeyStatsJob, OtoroshiVerifierJob, SyncInformation}
+import fr.maif.daikoku.controllers.AppError.*
+import fr.maif.daikoku.controllers.AppError
+import fr.maif.daikoku.actions.ApiActionContext
+import fr.maif.daikoku.controllers.PaymentClient
+import fr.maif.daikoku.domain.TeamPermission.Administrator
+import fr.maif.daikoku.domain.UsagePlanVisibility.Admin
+import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.domain.json.SeqApiFormat
+import fr.maif.daikoku.env.Env
+import fr.maif.daikoku.logger.AppLogger
+import fr.maif.daikoku.utils.Cypher.{decrypt, encrypt}
+import fr.maif.daikoku.utils.StringImplicits.BetterString
+import fr.maif.daikoku.utils.future.EnhancedObject
+import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiVerifierJob, SyncInformation}
+import fr.maif.daikoku.utils.{IdGenerator, JsonOperationsHelper, OtoroshiClient, Translator}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
@@ -981,7 +982,7 @@ class ApiService(
 //              )
 //            case None => EitherT.pure[Future, AppError](updatedSubscription)
 //          }
-          _ <- EitherT.right[AppError](otoroshiSynchronisator.verify(Json.obj("_id" -> updatedSubscription.id.asJson)))
+          _ <- EitherT.right[AppError](otoroshiSynchronisator.run(updatedSubscription.id))
 //          apk <- EitherT(computeOtoroshiApiKey(parentSubscription))
 //          _ <- EitherT(otoroshiClient.updateApiKey(apk))
           _ <-
@@ -1087,7 +1088,7 @@ class ApiService(
                 notification
               )
           )
-          _ <- EitherT.liftF(Future.sequence(admins.map(admin => {
+          _ <- EitherT.right[AppError](Future.sequence(admins.map(admin => {
             implicit val language: String = admin.defaultLanguage.getOrElse(
               tenant.defaultLanguage.getOrElse("en")
             )
@@ -1208,7 +1209,7 @@ class ApiService(
                   )
                 )
             )
-            updatedSubscription <- EitherT.liftF(
+            updatedSubscription <- EitherT.right[AppError](
               env.dataStore.apiSubscriptionRepo
                 .forTenant(tenant.id)
                 .findById(subscription.id)
@@ -1494,9 +1495,7 @@ class ApiService(
                     )
 
                 // compute new tags, metadata...
-                _ <- otoroshiSynchronisator.verify(
-                  Json.obj("_id" -> newParent.id.asJson)
-                )
+                _ <- otoroshiSynchronisator.run(newParent.id)
                 // delete extracted OtoroshiApiKey into Otoroshi
                 // delete extracted subscription
                 - <-
@@ -1735,7 +1734,7 @@ class ApiService(
             )
           )
       )
-      _ <- EitherT.liftF(Future.sequence(admins.map(admin => {
+      _ <- EitherT.right[AppError](Future.sequence(admins.map(admin => {
         implicit val language: String =
           admin.defaultLanguage.getOrElse(tenantLanguage)
         (for {
@@ -2003,7 +2002,7 @@ class ApiService(
                 .findByIdNotDeleted(api.team),
               AppError.TeamNotFound
             )
-            _ <- EitherT.liftF(Future.sequence(emails.map(email => {
+            _ <- EitherT.right[AppError](Future.sequence(emails.map(email => {
               val stepValidator = StepValidator(
                 id = DatastoreId(IdGenerator.token(32)),
                 tenant = tenant.id,
