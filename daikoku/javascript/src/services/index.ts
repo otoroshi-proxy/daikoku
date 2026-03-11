@@ -68,11 +68,7 @@ const customFetch = <T>(
   });
 
 export const me = (): PromiseWithError<IUser> => customFetch('/api/me');
-export const myOwnTeam = () => customFetch('/api/me/teams/own');
-export const oneOfMyTeam = (id: any) => customFetch(`/api/me/teams/${id}`);
 export const getUserContext = (): PromiseWithError<IStateContext> => customFetch('/api/me/context');
-export const getAuthContext = (provider: string): PromiseWithError<IAuthContext> =>
-  customFetch(`/api/auth/${provider}/context`);
 
 export const getVisibleApiWithId = (id: string): PromiseWithError<IApi> =>
   customFetch(`/api/me/visible-apis/${id}`);
@@ -2157,7 +2153,7 @@ export const graphql = {
             }
 
           }
-          
+
         }
         total,
         totalFiltered,

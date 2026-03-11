@@ -56,17 +56,6 @@ class LoginController(
   implicit val tr: Translator = translator
   implicit val as: ActorSystem = env.defaultActorSystem
 
-  def loginContext(provider: String) =
-    DaikokuActionMaybeWithoutUser.async { _ =>
-      Ok(
-        Json.obj(
-          "action" -> fr.maif.daikoku.controllers.routes.LoginController
-            .login(provider)
-            .url
-        )
-      ).future
-    }
-
   def loginPage(provider: String) =
     DaikokuTenantAction.async { ctx =>
       AuthProvider(provider) match {

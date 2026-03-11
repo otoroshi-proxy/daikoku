@@ -217,6 +217,8 @@ export const ApiHome = ({
     const subscriptions = mySubscriptionQuery.data!.subscriptions;
     const pendingSubscriptions = mySubscriptionQuery.data!.requests;
 
+    console.log({pendingSubscriptions, mySubscriptionQuery: mySubscriptionQuery.data});
+
     const subscribingTeams = myTeams
       .filter((team) => subscriptions.some((sub) => sub.team === team._id));
 

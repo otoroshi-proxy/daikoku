@@ -4,12 +4,13 @@ import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.controllers.AppError.TranslationNotFound
 import fr.maif.daikoku.actions.{
   DaikokuAction,
+  DaikokuActionMaybeWithGuest,
   DaikokuActionMaybeWithoutUser
 }
 import fr.maif.daikoku.audit.AuditTrailEvent
-import fr.maif.daikoku.controllers.authorizations.async._
+import fr.maif.daikoku.controllers.authorizations.async.*
 import fr.maif.daikoku.domain.Translation
-import fr.maif.daikoku.domain.json._
+import fr.maif.daikoku.domain.json.*
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.services.TranslationsService
 import fr.maif.daikoku.utils.Translator
@@ -17,14 +18,19 @@ import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.joda.time.DateTime
 import play.api.i18n.I18nSupport
-import play.api.libs.json._
-import play.api.mvc.{AbstractController, ControllerComponents}
+import play.api.libs.json.*
+import play.api.mvc.{
+  AbstractController,
+  Action,
+  AnyContent,
+  ControllerComponents
+}
 
 import scala.concurrent.ExecutionContext
 
 class TranslationController(
     DaikokuAction: DaikokuAction,
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
+    DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
     env: Env,
     cc: ControllerComponents,
     translator: Translator,
@@ -63,8 +69,8 @@ class TranslationController(
       }
     }
 
-  def getAllTranslations() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+  def getAllTranslations: Action[AnyContent] =
+    DaikokuActionMaybeWithGuest.async { ctx =>
       env.dataStore.translationRepo
         .forTenant(ctx.tenant.id)
         .findAll()

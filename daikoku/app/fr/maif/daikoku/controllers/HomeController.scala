@@ -68,6 +68,7 @@ class HomeController(
       }
     }
 
+  // todo: handle case of maintenance mode
   def indexForRobots() =
     DaikokuActionMaybeWithoutUser.async { ctx =>
       ctx.tenant.robotTxt match {
@@ -89,29 +90,6 @@ class HomeController(
       assets.at("index.html").apply(ctx.request)
     }
 
-  def status() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
-      for {
-        maybeTenant <- env.dataStore.tenantRepo.findById(ctx.tenant.id)
-      } yield {
-        val isReady = maybeTenant.isDefined
-        val databaseStatus = maybeTenant.map(_ => "OK").getOrElse("KO")
-        val responseJson = Json.obj(
-          "status" -> (if (isReady) "ready" else "initializing"),
-          "version" -> BuildInfo.version,
-          "database" -> Json.obj(
-            "status" -> databaseStatus
-          ),
-          "timestamp" -> java.time.Instant.now().toString
-        )
-
-        if (isReady)
-          Ok(responseJson)
-        else
-          ServiceUnavailable(responseJson)
-      }
-    }
-
   def health() = {
     // Souci sur les Daikoku action, si l'on est pas connecté, je ne peux faire aucun appel
     // Il nous faut une Daikoku Action qui fonctionne par qui que ce soit
@@ -121,7 +99,7 @@ class HomeController(
           dataStore
             .checkDatabase()
             .map(_ => "UP")
-            .recover { case _ => "ECHEC" }
+            .recover { case _ => "DOWN" }
       }
       env.dataStore.tenantRepo
         .findAll()
@@ -137,7 +115,7 @@ class HomeController(
                           for {
                             mailerHealth: String <- tenant.mailer
                               .testConnection(tenant) map (b =>
-                              if (b) "UP" else "ECHEC"
+                              if (b) "UP" else "DOWN"
                             )
 
                             s3HealthFuture: Future[String] =
@@ -148,8 +126,8 @@ class HomeController(
                                 case Some(cfg: S3Configuration) =>
                                   env.assetsStore.checkBucket()(cfg).map {
                                     case BucketAccess.AccessDenied  => "DOWN"
-                                    case BucketAccess.AccessGranted => "OK"
-                                    case BucketAccess.NotExists     => "ABSENT"
+                                    case BucketAccess.AccessGranted => "UP"
+                                    case BucketAccess.NotExists     => "NONE"
                                   }
                               }
                             s3Health: String <- s3HealthFuture
@@ -209,26 +187,18 @@ class HomeController(
   }
 
   def getDaikokuVersion() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    Action.async { _ =>
       Ok(Json.obj("version" -> BuildInfo.version)).future
     }
 
-  def getConnectedUser() = {
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+  def getConnectedUser(): Action[AnyContent] = {
+    DaikokuActionMaybeWithGuest.async { ctx =>
       Ok(
         Json.obj(
           "connectedUser" -> ctx.user
-            .map(_.toUiPayload())
-            .getOrElse(JsNull)
-            .as[JsValue],
-          "impersonator" -> ctx.session
-            .map(_.impersonatorJson())
-            .getOrElse(JsNull)
-            .as[JsValue],
-          "session" -> ctx.session
-            .map(_.asSimpleJson)
-            .getOrElse(JsNull)
-            .as[JsValue],
+            .toUiPayload(),
+          "impersonator" -> ctx.session.impersonatorJson(),
+          "session" -> ctx.session.asSimpleJson,
           "tenant" -> ctx.tenant.toUiPayload(env),
           "isTenantAdmin" -> ctx.isTenantAdmin,
           "apiCreationPermitted" -> ctx.apiCreationPermitted,

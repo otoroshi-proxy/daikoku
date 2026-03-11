@@ -321,6 +321,13 @@ class DaikokuActionMaybeWithGuest(val parser: BodyParser[AnyContent], env: Env)
       request.attrs.get(IdentityAttrs.UserKey),
       request.attrs.get(IdentityAttrs.TenantAdminKey)
     ) match {
+      //todo: same as DaikokuActionMaybeWithoutUser for maintenance mode
+      //Front
+      //Si mode maintenance et session et isAdmin => block(...)
+      //Si mode maintenance sans session => redirect to login
+      //Pas Front
+      //if !tenantSecurity.isDefaultMŒode(tenant, user.some, isTenantAdmin) =>
+        
       case (Some(tenant), _, _, Some(user), isTenantAdmin)
           if !tenantSecurity.isDefaultMode(tenant, user.some, isTenantAdmin) =>
         Errors.craftResponseResultF(
@@ -417,37 +424,41 @@ class DaikokuActionMaybeWithoutUser(
       request.attrs.get(IdentityAttrs.UserKey),
       request.attrs.get(IdentityAttrs.TenantAdminKey)
     ) match {
-      case (Some(tenant), _, _, maybeUser, isTenantAdmin)
+      case (Some(tenant), None, _, maybeUser, isTenantAdmin)
           if !tenantSecurity.isDefaultMode(tenant, maybeUser, isTenantAdmin) =>
-        maybeUser match {
-          case Some(user) =>
-            if (user.isDaikokuAdmin) {
-              FastFuture.successful(
-                Results.Redirect(
-                  s"/auth/${tenant.authProvider.name}/login?redirect=${request.path}"
-                )
-              )
-            } else {
-              FastFuture.successful(
-                Results.Redirect(
-                  s"/auth/${tenant.authProvider.name}/maintenance"
-                )
-              )
-            }
-          case None =>
-            FastFuture.successful(
-              Results.Redirect(
-                s"/auth/${tenant.authProvider.name}/maintenance"
-              )
-            )
-        }
-      // todo: redirect to login page if  no user
-      // todo: redirect to "under construction" or "mainteannce" if user is not admin
-      // todo: if admin it's ok
-//        Errors.craftResponseResultF(
-//          s"${tenant.tenantMode.get.toString} mode enabled",
-//          Results.ServiceUnavailable
-
+        FastFuture.successful(
+          Results.Redirect(
+            s"/auth/${tenant.authProvider.name}/login?redirect=${request.path}"
+          )
+        )
+      case (Some(tenant), Some(session), _, Some(user), Some(isTenantAdmin))
+          if !tenantSecurity.isDefaultMode(
+            tenant,
+            Some(user),
+            Some(isTenantAdmin)
+          )
+            && (isTenantAdmin || user.isDaikokuAdmin) =>
+        block(
+          DaikokuActionMaybeWithoutUserContext(
+            request,
+            Some(user),
+            tenant,
+            Some(session),
+            None,
+            isTenantAdmin
+          )
+        )
+      case (Some(tenant), Some(session), _, Some(user), Some(isTenantAdmin))
+          if !tenantSecurity.isDefaultMode(
+            tenant,
+            Some(user),
+            Some(isTenantAdmin)
+          ) =>
+        FastFuture.successful(
+          Results.Redirect(
+            s"/auth/${tenant.authProvider.name}/maintenance"
+          )
+        )
       case (
             Some(tenant),
             Some(session),
@@ -524,6 +535,7 @@ class DaikokuTenantAction(val parser: BodyParser[AnyContent], env: Env)
       block: DaikokuTenantActionContext[A] => Future[Result]
   ): Future[Result] = {
     request.attrs.get(IdentityAttrs.TenantKey) match {
+      //todo: accept only teantnAdmin or DaikokuAdmin call if tenant is in maintenance mode
       case Some(tenant) => block(DaikokuTenantActionContext[A](request, tenant))
       case None =>
         TenantHelper.withTenant(request, env) { tenant =>

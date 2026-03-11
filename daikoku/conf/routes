@@ -47,7 +47,6 @@ GET     /notifications/*path                            fr.maif.daikoku.controll
 GET     /apis/*path                                     fr.maif.daikoku.controllers.HomeController.indexWithPath(path)
 GET     /consumptions/*path                             fr.maif.daikoku.controllers.HomeController.indexWithPath(path)
 GET     /health                                         fr.maif.daikoku.controllers.HomeController.health()
-GET     /status                                         fr.maif.daikoku.controllers.HomeController.status()
 GET     /api/versions/_daikoku                          fr.maif.daikoku.controllers.HomeController.getDaikokuVersion()
 GET     /api/me/context                                 fr.maif.daikoku.controllers.HomeController.getConnectedUser()
 
@@ -60,7 +59,6 @@ GET     /account/validate                               fr.maif.daikoku.controll
 POST    /account                                        fr.maif.daikoku.controllers.LoginController.createUser()
 GET     /api/account/_validate                          fr.maif.daikoku.controllers.LoginController.validateAccountCreationAttempt()
 GET     /api/account/_decline                           fr.maif.daikoku.controllers.LoginController.declineAccountCreationAttempt()
-GET     /api/auth/:provider/context                     fr.maif.daikoku.controllers.LoginController.loginContext(provider)
 GET     /auth/:provider/login                           fr.maif.daikoku.controllers.LoginController.loginPage(provider)
 POST    /auth/:provider/callback                        fr.maif.daikoku.controllers.LoginController.login(provider)
 GET     /auth/:provider/callback                        fr.maif.daikoku.controllers.LoginController.loginGet(provider)
@@ -69,8 +67,6 @@ POST    /api/auth/oauth/_check                          fr.maif.daikoku.controll
 POST    /api/auth/oauth/_fetch-configuration            fr.maif.daikoku.controllers.LoginController.fetchOauthConfiguration()
 
 GET     /api/me/teams                                   fr.maif.daikoku.controllers.ApiController.myTeams()
-GET     /api/me/teams/own                               fr.maif.daikoku.controllers.ApiController.myOwnTeam()
-GET     /api/me/teams/:id                               fr.maif.daikoku.controllers.ApiController.oneOfMyTeam(id)
 GET     /api/me/subscription/_retrieve                  fr.maif.daikoku.controllers.ApiController.checkTransferLink()
 GET     /api/me/dashboard                               fr.maif.daikoku.controllers.ApiController.myDashboard()
 

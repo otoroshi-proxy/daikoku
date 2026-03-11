@@ -3,7 +3,11 @@ package fr.maif.daikoku.controllers
 import cats.data.EitherT
 import com.eatthepath.otp.TimeBasedOneTimePasswordGenerator
 import fr.maif.daikoku.controllers.AppError
-import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionMaybeWithGuest, DaikokuActionMaybeWithoutUser}
+import fr.maif.daikoku.actions.{
+  DaikokuAction,
+  DaikokuActionMaybeWithGuest,
+  DaikokuActionMaybeWithoutUser
+}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.async.*
 import fr.maif.daikoku.domain.TeamPermission.Administrator
@@ -18,7 +22,13 @@ import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.joda.time.DateTime
 import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsArray, JsError, JsSuccess, Json}
-import play.api.mvc.{AbstractController, Action, AnyContent, ControllerComponents, Result}
+import play.api.mvc.{
+  AbstractController,
+  Action,
+  AnyContent,
+  ControllerComponents,
+  Result
+}
 
 import java.awt.image.BufferedImage
 import java.io.File
@@ -34,7 +44,6 @@ import javax.imageio.ImageIO
 class UsersController(
     DaikokuAction: DaikokuAction,
     DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
     env: Env,
     cc: ControllerComponents,
     deletionService: DeletionService
@@ -382,7 +391,8 @@ class UsersController(
                 ctx.user.copy(
                   twoFactorAuthentication = Some(
                     TwoFactorAuthentication(
-                      secret = Base64.getEncoder.encodeToString(secret.getEncoded),
+                      secret =
+                        Base64.getEncoder.encodeToString(secret.getEncoded),
                       token = "",
                       backupCodes = ""
                     )
@@ -501,7 +511,7 @@ class UsersController(
     }
 
   def checkTokenInvitation() =
-    DaikokuActionMaybeWithoutUser.async(parse.json) { ctx =>
+    DaikokuActionMaybeWithGuest.async(parse.json) { ctx =>
       // todo: log audit trace
       val body = ctx.request.body
 
