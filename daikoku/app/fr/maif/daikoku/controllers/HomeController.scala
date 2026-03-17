@@ -6,8 +6,8 @@ import fr.maif.daikoku.BuildInfo
 import fr.maif.daikoku.actions.{
   DaikokuAction,
   DaikokuActionMaybeWithGuest,
-  DaikokuActionMaybeWithoutUser,
-  DaikokuActionMaybeWithoutUserContext
+  DaikokuUnauthenticatedAction,
+  DaikokuUnauthenticatedActionContext
 }
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.async.TenantAdminOnly
@@ -18,7 +18,7 @@ import fr.maif.daikoku.utils.{Errors, OtoroshiClient, S3Configuration}
 import fr.maif.daikoku.utils.future.EnhancedObject
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.{libs}
+import play.api.libs
 import play.api.libs.json.*
 import play.api.mvc.*
 import fr.maif.daikoku.services.{CmsPage, CmsRequestRendering}
@@ -30,7 +30,7 @@ import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
 import org.apache.pekko.stream.connectors.s3.BucketAccess
 
 class HomeController(
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
+    DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
     DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
     DaikokuAction: DaikokuAction,
     env: Env,
@@ -44,7 +44,7 @@ class HomeController(
   implicit val m: MessagesApi = messagesApi
 
   def index() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       ctx.tenant.style match {
         case Some(value) if value.homePageVisible =>
           (value.homeCmsPage, value.notFoundCmsPage) match {
@@ -70,7 +70,7 @@ class HomeController(
 
   // todo: handle case of maintenance mode
   def indexForRobots() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       ctx.tenant.robotTxt match {
         case Some(robotTxt) =>
           FastFuture.successful(Ok(views.txt.robot.render(robotTxt)))
@@ -82,15 +82,15 @@ class HomeController(
     }
 
   def indexWithPath(path: String) =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       assets.at("index.html").apply(ctx.request)
     }
   def indexWithoutPath() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       assets.at("index.html").apply(ctx.request)
     }
 
-  def health() = {
+  def health(): Action[AnyContent] = {
     // Souci sur les Daikoku action, si l'on est pas connecté, je ne peux faire aucun appel
     // Il nous faut une Daikoku Action qui fonctionne par qui que ce soit
     Action.async { ctx =>
@@ -300,7 +300,7 @@ class HomeController(
   }
 
   def renderCmsPageFromBody(path: String) =
-    DaikokuActionMaybeWithoutUser.async(parse.json) { ctx =>
+    DaikokuUnauthenticatedAction.async(parse.json) { ctx =>
       val req = ctx.request.body.as[JsObject].as(CmsRequestRenderingFormat)
 
       val currentPage = req.content.find(_.path() == req.current_page)
@@ -319,7 +319,7 @@ class HomeController(
     }
 
   private def renderCmsPage[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A],
+      ctx: DaikokuUnauthenticatedActionContext[A],
       page: Option[CmsPage],
       fields: Map[String, JsValue]
   ) = {
@@ -333,9 +333,17 @@ class HomeController(
     }
   }
 
+  def cmsMaintenancePage(): Unit = {
+    DaikokuUnauthenticatedAction.async { ctx =>
+      Ok(
+        Json.obj("version" -> BuildInfo.version)
+      ).future
+    }
+  }
+
   def cmsPageByPath(path: String, page: Option[CmsPage] = None) =
-    DaikokuActionMaybeWithoutUser.async {
-      (ctx: DaikokuActionMaybeWithoutUserContext[AnyContent]) =>
+    DaikokuUnauthenticatedAction.async {
+      (ctx: DaikokuUnauthenticatedActionContext[AnyContent]) =>
         val actualPath = if (path.startsWith("/")) {
           path
         } else {
@@ -402,7 +410,7 @@ class HomeController(
     }
 
   private def redirectToLoginPage[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A]
+      ctx: DaikokuUnauthenticatedActionContext[A]
   ) =
     FastFuture.successful(
       Redirect(
@@ -411,7 +419,7 @@ class HomeController(
     )
 
   private def cmsPageNotFound[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A]
+      ctx: DaikokuUnauthenticatedActionContext[A]
   ): Future[Result] = {
     val optionFoundPage: Option[DaikokuStyle] = ctx.tenant.style
       .find(p => p.homePageVisible && p.notFoundCmsPage.nonEmpty)
@@ -453,7 +461,7 @@ class HomeController(
   }
 
   private def render[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A],
+      ctx: DaikokuUnauthenticatedActionContext[A],
       r: CmsPage,
       req: Option[CmsRequestRendering] = None,
       fields: Map[String, JsValue] = Map.empty[String, JsValue]
@@ -479,7 +487,7 @@ class HomeController(
   }
 
   private def cmsPageByIdWithoutAction[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A],
+      ctx: DaikokuUnauthenticatedActionContext[A],
       id: String,
       fields: Map[String, JsValue] = Map.empty
   ) = {
@@ -497,12 +505,12 @@ class HomeController(
   }
 
   def cmsPageById(id: String) =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       cmsPageByIdWithoutAction(ctx, id)
     }
 
   def advancedRenderCmsPageById(id: String) =
-    DaikokuActionMaybeWithoutUser.async(parse.json) { ctx =>
+    DaikokuUnauthenticatedAction.async(parse.json) { ctx =>
       cmsPageByIdWithoutAction(
         ctx,
         id,

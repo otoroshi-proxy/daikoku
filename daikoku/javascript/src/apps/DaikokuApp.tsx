@@ -1,6 +1,6 @@
 import { PropsWithChildren, useContext, useEffect } from 'react';
 import { Navigate, Outlet } from 'react-router';
-import { BrowserRouter, Route, Routes, useSearchParams } from 'react-router-dom';
+import { useLocation, Route, Routes, useSearchParams } from 'react-router-dom';
 
 import { TeamBackOffice } from '../components/backoffice/TeamBackOffice';
 import { Footer, LoginPage, SideBar, TopBar } from '../components/utils';
@@ -47,7 +47,7 @@ import { I18nContext } from '../contexts/i18n-context';
 import { MessagesEvents } from '../services/messages';
 import { ITenant } from '../types';
 import { ResetPassword, ResetPasswordEnd, TwoFactorAuthentication } from './DaikokuHomeApp';
-import {Maintenance} from "../components/utils/Maintenance";
+import {MaintenancePage} from "../components/frontend/Maintenance";
 
 const RouteWithFooterLayout = () => (
   <>
@@ -71,7 +71,6 @@ export const DaikokuApp = () => {
 
   if (!connectedUser) {
     return (
-      <BrowserRouter>
         <ModalProvider>
           <div
             role="root-container"
@@ -137,18 +136,20 @@ export const DaikokuApp = () => {
                 }
               />
               <Route
+                path="/maintenance"
+                element={<MaintenancePage provider={tenant.authProvider}/>}
+              />
+              <Route
                 path='*'
                 element={<ToLogin tenant={tenant} />}
               />
             </Routes>
           </div>
         </ModalProvider>
-      </BrowserRouter>
     );
   }
 
   return (
-    <BrowserRouter>
       <MessagesProvider>
         <NavProvider>
           <ModalProvider>
@@ -156,8 +157,8 @@ export const DaikokuApp = () => {
             <div className="d-flex flex-row">
               <SideBar />
               <RightPanel />
-              <div className="wrapper flex-grow-1 container-fluid d-flex flex-column">
-                {/* <Breadcrumb /> */}
+              <div className="wrapper flex-grow-1 container-fluid d-flex flex-column" style={{ overflow: 'auto' }}>
+                 {/*<Breadcrumb /> */}
                 <Routes>
                   <Route
                     path='/error'
@@ -211,9 +212,7 @@ export const DaikokuApp = () => {
                   />
                   <Route
                     path="/maintenance"
-                    element={
-                      <Maintenance />
-                    }
+                    element={<MaintenancePage provider={tenant.authProvider}/>}
                   />
                   <Route
                     path="/"
@@ -439,7 +438,6 @@ export const DaikokuApp = () => {
           </ModalProvider>
         </NavProvider>
       </MessagesProvider>
-    </BrowserRouter>
   );
 };
 
@@ -448,7 +446,8 @@ const ToLogin = ({ tenant }: { tenant: ITenant }) => {
   const [searchParams] = useSearchParams();
 
   const redirect = searchParams.get('redirect')
-  const to = `/auth/${tenant.authProvider}/login`
+
+  const to = tenant.tenantMode == `Maintenance` ? `/maintenance` : `/auth/${tenant.authProvider}/login`
 
   if (redirect)
     return <Navigate to={`${to}?redirect=${redirect}`} replace />

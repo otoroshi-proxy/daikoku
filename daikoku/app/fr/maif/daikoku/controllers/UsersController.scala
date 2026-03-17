@@ -6,7 +6,7 @@ import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.actions.{
   DaikokuAction,
   DaikokuActionMaybeWithGuest,
-  DaikokuActionMaybeWithoutUser
+  DaikokuUnauthenticatedAction
 }
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.async.*

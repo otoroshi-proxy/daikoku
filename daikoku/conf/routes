@@ -3,6 +3,7 @@ GET     /assets/*file                                   controllers.Assets.versi
 
 GET     /_/                                             fr.maif.daikoku.controllers.HomeController.cmsPageByPath(path="")
 GET     /_/*path                                        fr.maif.daikoku.controllers.HomeController.cmsPageByPath(path)
+
 POST    /_*path                                         fr.maif.daikoku.controllers.HomeController.renderCmsPageFromBody(path)
 GET     /cms/pages/:id                                  fr.maif.daikoku.controllers.HomeController.cmsPageById(id)
 POST    /cms/pages/:id                                  fr.maif.daikoku.controllers.HomeController.advancedRenderCmsPageById(id)
@@ -60,8 +61,10 @@ POST    /account                                        fr.maif.daikoku.controll
 GET     /api/account/_validate                          fr.maif.daikoku.controllers.LoginController.validateAccountCreationAttempt()
 GET     /api/account/_decline                           fr.maif.daikoku.controllers.LoginController.declineAccountCreationAttempt()
 GET     /auth/:provider/login                           fr.maif.daikoku.controllers.LoginController.loginPage(provider)
+POST    /auth/:provider/maintenance                     fr.maif.daikoku.controllers.LoginController.maintenanceLogin(provider)
 POST    /auth/:provider/callback                        fr.maif.daikoku.controllers.LoginController.login(provider)
 GET     /auth/:provider/callback                        fr.maif.daikoku.controllers.LoginController.loginGet(provider)
+GET     /api/auth/provider                              fr.maif.daikoku.controllers.LoginController.getAuthContext()
 POST    /api/auth/ldap/_check                           fr.maif.daikoku.controllers.LoginController.checkLdapConnection()
 POST    /api/auth/oauth/_check                          fr.maif.daikoku.controllers.LoginController.checkOauthConnection()
 POST    /api/auth/oauth/_fetch-configuration            fr.maif.daikoku.controllers.LoginController.fetchOauthConfiguration()

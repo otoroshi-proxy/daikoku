@@ -61,6 +61,9 @@ const customFetch = <T>(
   { headers = HEADERS, method = 'GET', body, ...props }: any = {}
 ) =>
   fetch(url, { headers, method, body, ...props }).then((r) => {
+    if (r.status === 503) {
+      location.href = "/maintenance"
+    }
     if (r.status === 204 || r.headers.get('content-length') === '0') {
       return null;
     }

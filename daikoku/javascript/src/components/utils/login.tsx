@@ -2,7 +2,6 @@ import { FormEvent, useContext, useEffect, useRef, useState } from 'react';
 import * as Services from '../../services/index';
 import { I18nContext } from '../../contexts';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { isError } from '../../types';
 
 export function LoginPage() {
   const { Translation, translate } = useContext(I18nContext);

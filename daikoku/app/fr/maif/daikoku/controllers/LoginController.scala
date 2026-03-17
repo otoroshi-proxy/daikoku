@@ -7,11 +7,12 @@ import com.google.common.base.Charsets
 import controllers.Assets
 import fr.maif.daikoku.actions.{
   DaikokuAction,
-  DaikokuActionMaybeWithoutUser,
   DaikokuTenantAction,
-  DaikokuTenantActionContext
+  DaikokuTenantActionContext,
+  DaikokuUnauthenticatedAction
 }
 import fr.maif.daikoku.audit.{AuditTrailEvent, AuthorizationLevel}
+import fr.maif.daikoku.controllers.AppError.getErrorMessage
 import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.env.Env
@@ -30,6 +31,7 @@ import org.joda.time.DateTime
 import org.mindrot.jbcrypt.BCrypt
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 import play.api.mvc.*
+import play.api.routing.Router.RequestImplicits.WithHandlerDef
 
 import java.net.URLEncoder
 import java.time.Instant
@@ -43,7 +45,7 @@ import scala.concurrent.{ExecutionContext, Future}
 
 class LoginController(
     DaikokuAction: DaikokuAction,
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
+    DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
     DaikokuTenantAction: DaikokuTenantAction,
     env: Env,
     cc: ControllerComponents,
@@ -55,6 +57,175 @@ class LoginController(
   implicit val ev: Env = env
   implicit val tr: Translator = translator
   implicit val as: ActorSystem = env.defaultActorSystem
+
+  def maintenanceLogin(provider: String) =
+    Action.async { request =>
+      {
+        val maybeTenant: Option[Tenant] =
+          request.attrs.get(IdentityAttrs.TenantKey)
+        val maybeAuthProvider = AuthProvider(provider)
+
+        def process(
+            tenant: Tenant,
+            authProvider: AuthProvider
+        ): Future[Result] = {
+          if (
+            tenant.authProvider != authProvider && authProvider != AuthProvider.Local
+          ) {
+            Errors.craftResponseResultF(
+              "Bad authentication provider",
+              Results.BadRequest
+            )
+          } else {
+            // log in user if admin
+            request.body.asFormUrlEncoded match {
+              case None =>
+                Errors.craftResponseResultF(
+                  "No credentials found",
+                  Results.BadRequest
+                )
+              case Some(form) =>
+                (
+                  form.get("username").map(_.last).map(_.toLowerCase),
+                  form.get("password").map(_.last)
+                ) match {
+                  case (Some(username), Some(password)) =>
+                    authProvider match {
+                      case AuthProvider.Local =>
+                        AuditTrailEvent(
+                          s"unauthenticated user with $username has tried to login [local provider]"
+                        ).logUnauthenticatedUserEvent(tenant)
+                        val localConfig = LocalLoginConfig.fromJsons(
+                          tenant.authProviderSettings
+                        )
+                        bindUser(
+                          localConfig.sessionMaxAge,
+                          tenant,
+                          request.request,
+                          LocalLoginSupport
+                            .bindUser(username, password, tenant, env)
+                            .flatMap {
+                              case Some(user) if user.isDaikokuAdmin =>
+                                Future.successful(Some(user))
+                              case Some(user) => {
+                                env.dataStore.teamRepo
+                                  .forTenant(tenant)
+                                  .exists(
+                                    Json.obj(
+                                      "type" -> "Admin",
+                                      "users.userId" -> user.id.asJson
+                                    )
+                                  )
+                                  .map(isTenantAdmin => {
+                                    if (isTenantAdmin) {
+                                      Some(user)
+                                    } else {
+                                      // todo retourner la page de maintenance avec une erreur affichée
+                                      throw new RuntimeException(
+                                        "Incorrect login / password or user is not admin"
+                                      )
+                                    }
+                                  })
+                              }
+                              case None =>
+                                // todo retourner la page de maintenance avec une erreur affichée
+                                throw new RuntimeException(
+                                  "Incorrect login / password or user is not admin"
+                                )
+                            }
+                        )
+                      /*case AuthProvider.Otoroshi =>
+                      // as otoroshi already done the job, nothing to do here
+                      AuditTrailEvent(
+                        s"unauthenticated user with $username has tried to login [Otoroshi provider]"
+                      ).logUnauthenticatedUserEvent(request.tenant)
+                      FastFuture.successful(
+                        Redirect(
+                          request.request.session.get("redirect").getOrElse("/")
+                        ).removingFromSession(
+                          "redirect"
+                        )(request.request)
+                      )
+                     case AuthProvider.LDAP =>
+                      AuditTrailEvent(
+                        s"unauthenticated user with $username has tried to login [LDAP provider]"
+                      ).logUnauthenticatedUserEvent(request.tenant)
+                      val ldapConfig =
+                        LdapConfig.fromJsons(request.tenant.authProviderSettings)
+
+                      LdapSupport.bindUser(
+                        username,
+                        password,
+                        request.tenant,
+                        env,
+                        Some(ldapConfig)
+                      ) match {
+                        case Left(_) =>
+                          val localConfig = LocalLoginConfig.fromJsons(
+                            request.tenant.authProviderSettings
+                          )
+                          bindUser(
+                            localConfig.sessionMaxAge,
+                            request.tenant,
+                            request.request,
+                            LocalLoginSupport
+                              .bindUser(username, password, request.tenant, env)
+                          )
+                        case Right(user) =>
+                          bindUser(
+                            ldapConfig.sessionMaxAge,
+                            request.tenant,
+                            request.request,
+                            user.map(u => Some(u))
+                          )
+                      }*/
+                      case _ =>
+                        after(3.seconds)(
+                          Errors.craftResponseResultF(
+                            "No matching provider found",
+                            Results.BadRequest
+                          )
+                        )
+                    }
+                  case _ =>
+                    after(3.seconds)(
+                      Errors.craftResponseResultF(
+                        "No credentials found",
+                        Results.BadRequest
+                      )
+                    )
+                }
+            }
+          }
+        }
+
+        (maybeTenant, maybeAuthProvider) match {
+          case (_, None) =>
+            Errors.craftResponseResultF(
+              "Bad authentication provider",
+              Results.BadRequest
+            )
+          case (None, Some(authProvider)) =>
+            TenantHelper.withTenant(request, env) { tenant =>
+              process(tenant, authProvider)
+            }
+          case (Some(tenant), Some(authProvider)) =>
+            process(tenant, authProvider)
+        }
+      }
+    }
+
+  def getAuthContext: Action[AnyContent] = {
+    Action.async { ctx =>
+      env.dataStore.tenantRepo
+        .findOneNotDeleted(Json.obj("domain" -> ctx.domain))
+        .map {
+          case Some(tenant) =>
+            Ok(Json.obj("provider" -> tenant.authProvider.name))
+          case None => AppError.EntityNotFound("tenant").render()
+        }
+    }
+  }
 
   def loginPage(provider: String) =
     DaikokuTenantAction.async { ctx =>
@@ -459,11 +630,16 @@ class LoginController(
       actualLogin(provider, ctx)
     }
 
-  def logout() =
+  def logout(): Action[AnyContent] =
     DaikokuAction.async { ctx =>
-      val redirect = ctx.request
-        .getQueryString("redirect")
-        .getOrElse(env.getDaikokuUrl(ctx.tenant, "/"))
+      val redirectURI: String = ctx.tenant.tenantMode match {
+        case Some(TenantMode.Maintenance) =>
+          env.getDaikokuUrl(ctx.tenant, "/maintenance")
+        case _ =>
+          ctx.request
+            .getQueryString("redirect")
+            .getOrElse(env.getDaikokuUrl(ctx.tenant, "/"))
+      }
 
       AuthProvider(ctx.tenant.authProvider.name) match {
         case Some(AuthProvider.Otoroshi) =>
@@ -479,7 +655,7 @@ class LoginController(
               ctx.ctx,
               AuthorizationLevel.AuthorizedSelf
             )
-            Redirect(s"/.well-known/otoroshi/logout?redirect=$redirect")
+            Redirect(s"/.well-known/otoroshi/logout?redirect=$redirectURI")
           }
         case Some(AuthProvider.OAuth2) =>
           val session = ctx.request.attrs(IdentityAttrs.SessionKey)
@@ -495,34 +671,37 @@ class LoginController(
               AuthorizationLevel.AuthorizedSelf
             )
             val idToken = ctx.request.session.get("id_token").getOrElse("")
-            val rootRedirect = env.getDaikokuUrl(ctx.tenant, "/")
-            val logoutTarget = OAuth2Config
-              .fromJson(ctx.tenant.authProviderSettings) match {
-              case Left(_) => redirect
-              case Right(config: OAuth2Config) =>
-                config.logoutUrl match {
-                  case None => redirect
-                  case Some(url) =>
-                    url
-                      .replace(
-                        "${idTokenHint}",
-                        URLEncoder.encode(idToken, "UTF-8")
-                      )
-                      .replace(
-                        "${redirect}",
-                        URLEncoder.encode(rootRedirect, "UTF-8")
-                      )
-                      .replace(
-                        "${clientId}",
-                        URLEncoder.encode(
-                          (ctx.tenant.authProviderSettings \ "clientId")
-                            .as[String],
-                          "UTF-8"
+            val logoutTarget: String =
+              OAuth2Config
+                .fromJson(ctx.tenant.authProviderSettings) match {
+                case Left(error) =>
+                  redirectURI
+                case Right(config: OAuth2Config) =>
+                  config.logoutUrl match {
+                    case None => redirectURI
+                    case Some(url) =>
+                      url
+                        .replace(
+                          "${idTokenHint}",
+                          URLEncoder.encode(idToken, "UTF-8")
                         )
-                      )
-                }
-            }
-            AppLogger.debug(logoutTarget)
+                        .replace(
+                          "${redirect}",
+                          URLEncoder.encode(
+                            redirectURI,
+                            "UTF-8"
+                          )
+                        )
+                        .replace(
+                          "${clientId}",
+                          URLEncoder.encode(
+                            (ctx.tenant.authProviderSettings \ "clientId")
+                              .as[String],
+                            "UTF-8"
+                          )
+                        )
+                  }
+              }
             Redirect(logoutTarget)
               .removingFromSession("sessionId", "id_token")(ctx.request)
           }
@@ -539,7 +718,7 @@ class LoginController(
               ctx.ctx,
               AuthorizationLevel.AuthorizedSelf
             )
-            Redirect(redirect).removingFromSession("sessionId")(ctx.request)
+            Redirect(redirectURI).removingFromSession("sessionId")(ctx.request)
           }
       }
     }
@@ -651,7 +830,7 @@ class LoginController(
     }
 
   def validateAccountCreationAttempt() = {
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       (for {
         encryptedToken <- EitherT.fromOption[Future][AppError, String](
           ctx.request.getQueryString("token"),
@@ -709,7 +888,7 @@ class LoginController(
   }
 
   def declineAccountCreationAttempt() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       (for {
         encryptedToken <- EitherT.fromOption[Future](
           ctx.request.getQueryString("token"),

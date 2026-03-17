@@ -1,12 +1,12 @@
-import React, { FunctionComponent, PropsWithChildren, useContext, useEffect, useState } from 'react';
-import { Option } from '../components/utils/Option';
+import React, {FunctionComponent, PropsWithChildren, useContext, useEffect, useState} from 'react';
+import {Option} from '../components/utils/Option';
 import * as Services from '../services';
 import translationEng from '../locales/en/translation.json';
 import translationFr from '../locales/fr/translation.json';
-import { TOptions } from '../types/types';
-import { TranslationItem } from '../types/tenant';
-import { isError } from '../types';
-import { GlobalContext } from './globalContext';
+import {Language, TOptions} from '../types/types';
+import {TranslationItem} from '../types/tenant';
+import {isError} from '../types';
+import {GlobalContext} from './globalContext';
 
 const initI8nContext: TI18ncontext = {
   language: 'en',
@@ -43,9 +43,9 @@ type TI18ncontext = {
 }
 
 export type TranslateParams = {
-  key: string, 
-  plural?: boolean, 
-  defaultResponse?: string, 
+  key: string,
+  plural?: boolean,
+  defaultResponse?: string,
   replacements?: Array<string>
 }
 
@@ -67,12 +67,10 @@ export const I18nProvider = ({
 
   const {connectedUser, tenant} = useContext(GlobalContext);
 
-  //@ts-ignore
-  const tenantDefaultLanguage = Option(tenant.defaultLanguage).getOrElse('En');
+  const tenantDefaultLanguage = Option(tenant.defaultLanguage).getOrElse(Language.en);
   const currentLanguage = Option(connectedUser?.defaultLanguage).getOrElse(tenantDefaultLanguage);
 
   const [language, setLanguage] = useState(currentLanguage);
-  const [loadingConf, setLoadingConf] = useState(true)
   const [isTranslationMode, setTranslationMode] = useState(
     tenant.tenantMode && tenant.tenantMode === 'Translation'
   );
@@ -87,7 +85,6 @@ export const I18nProvider = ({
             tmp[capitalize(translation.language)].translations[translation.key] = translation.value;
           });
           setTranslations(tmp);
-          setLoadingConf(false)
         }
       });
   }, []);

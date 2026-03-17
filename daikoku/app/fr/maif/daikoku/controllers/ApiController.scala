@@ -6,7 +6,7 @@ import fr.maif.daikoku.actions.{
   DaikokuAction,
   DaikokuActionContext,
   DaikokuActionMaybeWithGuest,
-  DaikokuActionMaybeWithoutUser
+  DaikokuUnauthenticatedAction
 }
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.AppError
@@ -46,18 +46,18 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 class ApiController(
-    DaikokuAction: DaikokuAction,
-    DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
-    apiService: ApiService,
-    apiKeyStatsJob: ApiKeyStatsJob,
-    env: Env,
-    otoroshiClient: OtoroshiClient,
-    cc: ControllerComponents,
-    otoroshiSynchronisator: OtoroshiVerifierJob,
-    translator: Translator,
-    paymentClient: PaymentClient,
-    deletionService: DeletionService
+                     DaikokuAction: DaikokuAction,
+                     DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
+                     DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
+                     apiService: ApiService,
+                     apiKeyStatsJob: ApiKeyStatsJob,
+                     env: Env,
+                     otoroshiClient: OtoroshiClient,
+                     cc: ControllerComponents,
+                     otoroshiSynchronisator: OtoroshiVerifierJob,
+                     translator: Translator,
+                     paymentClient: PaymentClient,
+                     deletionService: DeletionService
 ) extends AbstractController(cc)
     with I18nSupport {
 
@@ -1270,7 +1270,7 @@ class ApiController(
     }
 
   def validateProcess() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       import fr.maif.daikoku.utils.RequestImplicits.*
       implicit val language: String = ctx.request.getLanguage(ctx.tenant)
       implicit val currentUser: User = ctx.user.getOrElse(GuestUser(ctx.tenant.id))
