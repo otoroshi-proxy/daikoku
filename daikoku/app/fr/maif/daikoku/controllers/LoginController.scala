@@ -134,51 +134,6 @@ class LoginController(
                                 )
                             }
                         )
-                      /*case AuthProvider.Otoroshi =>
-                      // as otoroshi already done the job, nothing to do here
-                      AuditTrailEvent(
-                        s"unauthenticated user with $username has tried to login [Otoroshi provider]"
-                      ).logUnauthenticatedUserEvent(request.tenant)
-                      FastFuture.successful(
-                        Redirect(
-                          request.request.session.get("redirect").getOrElse("/")
-                        ).removingFromSession(
-                          "redirect"
-                        )(request.request)
-                      )
-                     case AuthProvider.LDAP =>
-                      AuditTrailEvent(
-                        s"unauthenticated user with $username has tried to login [LDAP provider]"
-                      ).logUnauthenticatedUserEvent(request.tenant)
-                      val ldapConfig =
-                        LdapConfig.fromJsons(request.tenant.authProviderSettings)
-
-                      LdapSupport.bindUser(
-                        username,
-                        password,
-                        request.tenant,
-                        env,
-                        Some(ldapConfig)
-                      ) match {
-                        case Left(_) =>
-                          val localConfig = LocalLoginConfig.fromJsons(
-                            request.tenant.authProviderSettings
-                          )
-                          bindUser(
-                            localConfig.sessionMaxAge,
-                            request.tenant,
-                            request.request,
-                            LocalLoginSupport
-                              .bindUser(username, password, request.tenant, env)
-                          )
-                        case Right(user) =>
-                          bindUser(
-                            ldapConfig.sessionMaxAge,
-                            request.tenant,
-                            request.request,
-                            user.map(u => Some(u))
-                          )
-                      }*/
                       case _ =>
                         after(3.seconds)(
                           Errors.craftResponseResultF(
