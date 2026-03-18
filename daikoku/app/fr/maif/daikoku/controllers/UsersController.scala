@@ -282,7 +282,7 @@ class UsersController(
             )
             env.dataStore.userSessionRepo.save(session).map { _ =>
               Redirect(ctx.request.session.get("redirect").getOrElse("/"))
-                .removingFromSession("sessionId", "redirect")(ctx.request)
+                .removingFromSession("sessionId", "redirect")(using ctx.request)
                 .withSession(
                   "sessionId" -> session.sessionId.value
                 )
@@ -319,7 +319,7 @@ class UsersController(
                         Redirect(
                           ctx.request.session.get("redirect").getOrElse("/")
                         ).removingFromSession("sessionId", "redirect")(
-                          ctx.request
+                          using ctx.request
                         ).withSession(("sessionId", sessionId.value))
                     }
                 case None => FastFuture.successful(Redirect("/logout"))

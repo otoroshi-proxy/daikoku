@@ -118,7 +118,7 @@ class LoginController(
                 ).addingToSession(
                   sessionParams ++ Map(
                     "redirect" -> redirect.getOrElse("/")
-                  ): _*
+                  )*
                 )
               )
             case _ if env.config.isDev =>
@@ -320,8 +320,8 @@ class LoginController(
             idToken.map(t => "id_token" -> t)
 
           Redirect(redirectUri)
-            .withSession(baseSession.toSeq: _*)
-            .removingFromSession("redirect")(request)
+            .withSession(baseSession.toSeq*)
+            .removingFromSession("redirect")(using request)
         }
       }
   }
@@ -405,7 +405,7 @@ class LoginController(
                         ctx.request.session.get("redirect").getOrElse("/")
                       ).removingFromSession(
                         "redirect"
-                      )(ctx.request)
+                      )(using ctx.request)
                     )
                   case AuthProvider.LDAP =>
                     AuditTrailEvent(
@@ -535,7 +535,7 @@ class LoginController(
             }
             AppLogger.debug(logoutTarget)
             Redirect(logoutTarget)
-              .removingFromSession("sessionId", "id_token")(ctx.request)
+              .removingFromSession("sessionId", "id_token")(using ctx.request)
           }
         case _ =>
           val session = ctx.request.attrs(IdentityAttrs.SessionKey)
@@ -550,7 +550,7 @@ class LoginController(
               ctx.ctx,
               AuthorizationLevel.AuthorizedSelf
             )
-            Redirect(redirect).removingFromSession("sessionId")(ctx.request)
+            Redirect(redirect).removingFromSession("sessionId")(using ctx.request)
           }
       }
     }
@@ -899,7 +899,7 @@ class LoginController(
               "tenant" -> JsString(ctx.tenant.name),
               "tenant_data" -> ctx.tenant.toUiPayload(env)
             )
-          )(messagesApi, language, env)
+          )(using messagesApi, language, env)
         )
         body <- EitherT.liftF[Future, AppError, String](
           translator.translate(
@@ -911,7 +911,7 @@ class LoginController(
               "link" -> JsString(link),
               "tenant_data" -> ctx.tenant.toUiPayload(env)
             )
-          )(messagesApi, language, env)
+          )(using messagesApi, language, env)
         )
         _ <- EitherT.liftF[Future, AppError, Unit](
           ctx.tenant.mailer
@@ -921,7 +921,7 @@ class LoginController(
               body,
               ctx.tenant
             )(
-              ec = ec,
+              using ec = ec,
               translator = tr,
               messagesApi = messagesApi,
               env = env,

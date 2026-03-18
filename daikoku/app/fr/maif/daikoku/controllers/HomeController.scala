@@ -249,7 +249,7 @@ class HomeController(
 
   def renderCmsPageFromBody(path: String) =
     DaikokuActionMaybeWithoutUser.async(parse.json) { ctx =>
-      val req = ctx.request.body.as[JsObject].as(CmsRequestRenderingFormat)
+      val req = ctx.request.body.as[JsObject].as(using CmsRequestRenderingFormat)
 
       val currentPage = req.content.find(_.path() == req.current_page)
 

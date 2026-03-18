@@ -435,7 +435,7 @@ case class SwaggerAccess(
           else _url
         env.wsClient
           .url(finalUrl)
-          .withHttpHeaders(headers.toSeq: _*)
+          .withHttpHeaders(headers.toSeq*)
           .get()
           .map { resp =>
             Json.parse(resp.body)

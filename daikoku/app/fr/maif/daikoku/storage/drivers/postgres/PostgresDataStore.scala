@@ -28,18 +28,18 @@ case object ColString       extends ColType
 case object ColUUID         extends ColType
 case object ColInt          extends ColType
 case object ColLong         extends ColType
-case object ColDouble       extends ColType
-case object ColFloat        extends ColType
-case object ColBigDecimal   extends ColType
+//case object ColDouble       extends ColType
+//case object ColFloat        extends ColType
+//case object ColBigDecimal   extends ColType
 case object ColBoolean      extends ColType
 case object ColJson         extends ColType
 case object ColJsonArray    extends ColType
-case object ColInstant      extends ColType
-case object ColLocalDate    extends ColType
-case object ColLocalTime    extends ColType
-case object ColLocalDateTime extends ColType
-case object ColDuration     extends ColType
-case object ColByteArray    extends ColType
+//case object ColInstant      extends ColType
+//case object ColLocalDate    extends ColType
+//case object ColLocalTime    extends ColType
+//case object ColLocalDateTime extends ColType
+//case object ColDuration     extends ColType
+//case object ColByteArray    extends ColType
 
 case class Col(name: String, tpe: ColType)
 
@@ -389,7 +389,7 @@ case class PostgresTenantCapableConsumptionRepo(
 
   implicit val jsObjectFormat: OFormat[JsObject] = new OFormat[JsObject] {
     override def reads(json: JsValue): JsResult[JsObject] =
-      json.validate[JsObject](Reads.JsObjectReads)
+      json.validate[JsObject](using Reads.JsObjectReads)
 
     override def writes(o: JsObject): JsObject = o
   }
@@ -510,7 +510,7 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
   )
 
   private lazy val reactivePg =
-    new ReactivePg(pgPool, configuration)(ec)
+    new ReactivePg(pgPool, configuration)(using ec)
 
   def getSchema: String = configuration.get[String]("daikoku.postgres.schema")
 
@@ -610,7 +610,7 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
 
   private val _jobInformationRepo: JobInformationRepo =
     PostgresTenantCapableJobInformationRepo(
-      () => new PostgresJobInformationRepo()(env, reactivePg),
+      () => new PostgresJobInformationRepo(env, reactivePg),
       t => new PostgresTenantJobInformationRepo(env, reactivePg, t)
     )
 
@@ -687,6 +687,8 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
   override def apiSubscriptionTransferRepo: ApiSubscriptionTransferRepo =
     _apiSubscriptionTransferRepo
 
+  override def JobInformationRepo: JobInformationRepo = _jobInformationRepo
+
   override def queryOneRaw(query: String, name: String, params: Seq[AnyRef])(
       implicit ec: ExecutionContext
   ): Future[Option[JsObject]] = {
@@ -741,12 +743,12 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
       value
     }
   }
-  
+
   def queryRawMapped(query: String, columns: Seq[Col], params: Seq[AnyRef])(
       implicit ec: ExecutionContext
   ): Future[Seq[JsObject]] = {
     logger.debug(s"queryRaw($query)")
-    
+
     reactivePg.querySeq(query = query, params = params) { row =>
       val fields = columns.flatMap(col => readCol(row, col).map(col.name -> _))
       Some(JsObject(fields))
@@ -863,8 +865,8 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
       ec: ExecutionContext,
       mat: Materializer,
       env: Env
-  ): Source[ByteString, _] = {
-    val collections = ListBuffer[Repo[_, _]]()
+  ): Source[ByteString, ?] = {
+    val collections = ListBuffer[Repo[?, ?]]()
     collections ++= List(
       tenantRepo,
       userRepo,
@@ -916,7 +918,7 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
     }
   }
 
-  override def importFromStream(source: Source[ByteString, _]): Future[Unit] = {
+  override def importFromStream(source: Source[ByteString, ?]): Future[Unit] = {
     logger.debug("importFromStream")
 
     Future
@@ -1024,7 +1026,7 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
               FastFuture.successful(false)
           }
           .toMat(Sink.ignore)(Keep.right)
-          .run()(env.defaultMaterializer)
+          .run()(using env.defaultMaterializer)
       }
       .map(_ => logger.info("importFromStream ended"))
   }
@@ -1042,7 +1044,7 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
       .mapAsync(5)(query => {
         reactivePg.query(query)
       })
-      .runWith(Sink.ignore)(env.defaultMaterializer)
+      .runWith(Sink.ignore)(using env.defaultMaterializer)
       .map(_ => ())
   }
 }
@@ -1186,7 +1188,7 @@ class PostgresTenantJobInformationRepo(
     env: Env,
     reactivePg: ReactivePg,
     tenant: TenantId
-) extends PostgresTenantAwareRepo[JobInformation, DemandId](
+) extends PostgresTenantAwareRepo[JobInformation, DatastoreId](
       env,
       reactivePg,
       tenant
@@ -1506,7 +1508,7 @@ class PostgresJobInformationRepo(env: Env, reactivePg: ReactivePg)
   override def format: Format[JobInformation] =
     json.JobInformationFormat
 
-  override def extractId(value: DatastoreId): String = value.value
+  override def extractId(value: JobInformation): String = value.id.value
 }
 
 class PostgresStepValidatorRepo(env: Env, reactivePg: ReactivePg)
@@ -2163,7 +2165,7 @@ abstract class CommonRepo[Of, Id <: ValueType](env: Env, reactivePg: ReactivePg)
 
   implicit val jsObjectFormat: OFormat[JsObject] = new OFormat[JsObject] {
     override def reads(json: JsValue): JsResult[JsObject] =
-      json.validate[JsObject](Reads.JsObjectReads)
+      json.validate[JsObject](using Reads.JsObjectReads)
 
     override def writes(o: JsObject): JsObject = o
   }

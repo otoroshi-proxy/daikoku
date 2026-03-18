@@ -41,7 +41,7 @@ sealed trait AlgoSettings extends AsJson {
   def asAlgorithmF(
       mode: AlgoMode
   )(implicit env: Env): Future[Option[Algorithm]] = {
-    FastFuture.successful(asAlgorithm(mode)(env))
+    FastFuture.successful(asAlgorithm(mode)(using env))
   }
 
   def transformValue(secret: String)(implicit env: Env): String = {
@@ -373,7 +373,7 @@ case class JWKSAlgoSettings(
   override def asAlgorithm(
       mode: AlgoMode
   )(implicit env: Env): Option[Algorithm] = {
-    Await.result(asAlgorithmF(mode)(env, env.defaultExecutionContext), timeout)
+    Await.result(asAlgorithmF(mode)(using env, env.defaultExecutionContext), timeout)
   }
 
   def asAlgorithmF(
@@ -392,7 +392,7 @@ case class JWKSAlgoSettings(
             env.wsClient
               .url(url)
               .withRequestTimeout(timeout)
-              .withHttpHeaders(headers.toSeq: _*)
+              .withHttpHeaders(headers.toSeq*)
               .get()
               .map { resp =>
                 val stop = System.currentTimeMillis() + ttl.toMillis

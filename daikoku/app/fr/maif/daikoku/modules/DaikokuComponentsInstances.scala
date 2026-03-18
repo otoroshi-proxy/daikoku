@@ -61,7 +61,7 @@ class DaikokuComponentsInstances(context: Context)
     new SecurityFilter(env)
   ) ++ env.expositionFilters ++ env.identityFilters
 
-  lazy val filters = new DefaultHttpFilters(httpFilters: _*)
+  lazy val filters = new DefaultHttpFilters(httpFilters*)
 
   override lazy val httpErrorHandler: HttpErrorHandler = wire[ErrorHandler]
 

@@ -46,7 +46,7 @@ class AssetsService {
 
   def storeAssets[T](
       ctx: ApiActionContext[T],
-      body: Source[ByteString, _]
+      body: Source[ByteString, ?]
   )(implicit env: Env) = {
 
     implicit val ec: ExecutionContext = env.defaultExecutionContext
@@ -58,7 +58,7 @@ class AssetsService {
         )
       case Some(cfg) =>
         body
-          .runWith(Sink.reduce[ByteString](_ ++ _))(env.defaultMaterializer)
+          .runWith(Sink.reduce[ByteString](_ ++ _))(using env.defaultMaterializer)
           .map(str => str.utf8String)
           .map(Json.parse)
           .flatMap(items =>
@@ -83,7 +83,7 @@ class AssetsService {
                         .single((item \ "content").get)
                         .map(Json.stringify)
                         .map(ByteString.apply)
-                    )(cfg)
+                    )(using cfg)
                     .flatMap { _ =>
                       internalDeleteAsset(slug, ctx)
                         .map(_ =>
@@ -124,7 +124,7 @@ class AssetsService {
 
   def storeAsset[T](
       ctx: ApiActionContext[T],
-      body: Source[ByteString, _]
+      body: Source[ByteString, ?]
   )(implicit env: Env) = {
     implicit val ec = env.defaultExecutionContext
 
@@ -162,7 +162,7 @@ class AssetsService {
             desc,
             contentType,
             body
-          )(cfg)
+          )(using cfg)
           .flatMap { _ =>
             val slug = querySlug.map(_.slugify).getOrElse(filename.slugify)
 
@@ -189,7 +189,7 @@ class AssetsService {
     }
   }
 
-  def replaceAsset[T <: Source[ByteString, _]](
+  def replaceAsset[T <: Source[ByteString, ?]](
       assetId: String,
       ctx: ApiActionContext[T]
   )(implicit
@@ -214,7 +214,7 @@ class AssetsService {
         )
       case Some(cfg) =>
         env.assetsStore
-          .getTenantAssetMetaHeaders(ctx.tenant.id, AssetId(assetId))(cfg)
+          .getTenantAssetMetaHeaders(ctx.tenant.id, AssetId(assetId))(using cfg)
           .flatMap {
             case None =>
               FastFuture.successful(
@@ -240,7 +240,7 @@ class AssetsService {
                   desc,
                   contentType,
                   ctx.request.body
-                )(cfg)
+                )(using cfg)
                 .flatMap { _ =>
                   val slug = filename.slugify
                   env.dataStore.assetRepo
@@ -294,7 +294,7 @@ class AssetsService {
                       .asOpt[String])
                 }
               )
-          assets <- env.assetsStore.listTenantAssets(ctx.tenant.id)(cfg)
+          assets <- env.assetsStore.listTenantAssets(ctx.tenant.id)(using cfg)
         } yield {
           Ok(JsArray(assets.map(item => {
             val id = item.content.key.split("/").last
@@ -344,7 +344,7 @@ class AssetsService {
           }
           .flatMap(id => {
             env.assetsStore
-              .deleteTenantAsset(ctx.tenant.id, AssetId(id))(cfg)
+              .deleteTenantAsset(ctx.tenant.id, AssetId(id))(using cfg)
               .flatMap { _ =>
                 env.dataStore.assetRepo
                   .forTenant(ctx.tenant)
@@ -398,12 +398,12 @@ class AssetsService {
               env.assetsStore.getTenantAssetPresignedUrl(
                 ctx.tenant.id,
                 asset.id
-              )(cfg)
+              )(using cfg)
             case None =>
               env.assetsStore.getTenantAssetPresignedUrl(
                 ctx.tenant.id,
                 AssetId(assetId)
-              )(cfg)
+              )(using cfg)
           }
           .flatMap {
             case None =>
@@ -413,7 +413,7 @@ class AssetsService {
             case Some(url) if redirect => FastFuture.successful(Redirect(url))
             case Some(_) =>
               env.assetsStore
-                .getTenantAsset(ctx.tenant.id, AssetId(assetId))(cfg)
+                .getTenantAsset(ctx.tenant.id, AssetId(assetId))(using cfg)
                 .map {
                   case (_, bytes, _) if bytes.isEmpty =>
                     NotFound(Json.obj("error" -> "Asset empty!"))

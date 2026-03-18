@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ScalaCompilerConfiguration">
+    <option name="separateProdTestSources" value="true" />
+    <profile name="sbt 1" modules="daikoku,daikoku_5698" />
+    <profile name="sbt 3" modules="daikoku.main,daikoku.test">
+      <option name="postfixOps" value="true" />
+      <option name="implicitConversions" value="true" />
+      <option name="higherKinds" value="true" />
+      <option name="existentials" value="true" />
+      <option name="deprecationWarnings" value="true" />
+      <option name="uncheckedWarnings" value="true" />
+      <option name="featureWarnings" value="true" />
+      <parameters>
+        <parameter value="-encoding" />
+        <parameter value="utf8" />
+        <parameter value="-Wconf:msg=possible missing interpolator:silent" />
+        <parameter value="-Wconf:src=conf/routes:silent" />
+        <parameter value="-Wconf:src=views/.*:silent" />
+        <parameter value="-Wconf:msg=discarded non-Unit value:s" />
+      </parameters>
+    </profile>
+  </component>
+</project>

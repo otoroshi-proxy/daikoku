@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="sbt: software.amazon.awssdk:http-auth-spi:2.41.29:jar" type="java-imported" external-system-id="SBT">
+    <properties groupId="software.amazon.awssdk" artifactId="http-auth-spi" version="2.41.29" baseVersion="2.41.29" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/software/amazon/awssdk/http-auth-spi/2.41.29/http-auth-spi-2.41.29.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/software/amazon/awssdk/http-auth-spi/2.41.29/http-auth-spi-2.41.29-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

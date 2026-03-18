@@ -68,7 +68,7 @@ object OAuth2Config {
       Right(
         OAuth2Config(
           pkceConfig =
-            (json \ "pkceConfig").asOpt(pkceConfigFmt),
+            (json \ "pkceConfig").asOpt(using pkceConfigFmt),
           sessionMaxAge = (json \ "sessionMaxAge").asOpt[Int].getOrElse(86400),
           clientId = (json \ "clientId").asOpt[String].getOrElse("client"),
           clientSecret = (json \ "clientSecret").asOpt[String],
@@ -245,7 +245,7 @@ object OAuth2Support {
       val alg =
         (tokenHeader \ "alg").asOpt[String].getOrElse("RS256")
       val settings = algoSettings
-        .asAlgorithm(InputMode(alg, kid))(_env)
+        .asAlgorithm(InputMode(alg, kid))(using _env)
 
       EitherT
         .fromOption[Future][AppError, Algorithm](
@@ -276,7 +276,7 @@ object OAuth2Support {
           Map(
             "access_token" -> accessToken
           )
-        )(writeableOf_urlEncodedSimpleForm)
+        )(using writeableOf_urlEncodedSimpleForm)
       }
 
       EitherT
@@ -463,7 +463,7 @@ object OAuth2Support {
       } else {
         builder.post(
           mapPayload
-        )(writeableOf_urlEncodedSimpleForm)
+        )(using writeableOf_urlEncodedSimpleForm)
       })
       accessToken = (response.json \ authConfig.accessTokenField).as[String]
       idToken = (response.json \ "id_token").asOpt[String]

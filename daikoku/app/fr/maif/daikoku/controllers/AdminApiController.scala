@@ -41,7 +41,7 @@ class StateController(
   implicit val mat: Materializer = env.defaultMaterializer
   implicit val ev: Env = env
 
-  val bodyParser: BodyParser[Source[ByteString, _]] =
+  val bodyParser: BodyParser[Source[ByteString, ?]] =
     BodyParser("Import parser") { _ =>
       Accumulator.source[ByteString].map(Right.apply)
     }
@@ -287,7 +287,7 @@ class StateAdminApiController(
   implicit val mat: Materializer = env.defaultMaterializer
   implicit val ev: Env = env
 
-  val bodyParser: BodyParser[Source[ByteString, _]] =
+  val bodyParser: BodyParser[Source[ByteString, ?]] =
     BodyParser("Import parser") { _ =>
       Accumulator.source[ByteString].map(Right.apply)
     }
@@ -896,7 +896,7 @@ class MessagesAdminApiController(
   override def toJson(entity: Message): JsValue = entity.asJson
   override def fromJson(entity: JsValue): Either[String, Message] =
     entity.asOpt[JsObject] match {
-      case Some(v) => Right(entity.as(json.MessageFormat))
+      case Some(v) => Right(entity.as(using json.MessageFormat))
       case None    => Left("Not an object")
     }
 
@@ -1052,7 +1052,7 @@ class CmsPagesAdminApiController(
         Future
           .sequence(
             body
-              .as(Reads.seq(CmsFileFormat))
+              .as(using Reads.seq(using CmsFileFormat))
               .map(page => {
                 env.dataStore.cmsRepo
                   .forTenant(ctx.tenant)

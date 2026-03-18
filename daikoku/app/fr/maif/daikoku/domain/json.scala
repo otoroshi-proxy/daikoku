@@ -52,8 +52,8 @@ object json {
       Try {
         JsSuccess(
           BillingDuration(
-            value = (json \ "value").as(LongFormat),
-            unit = (json \ "unit").as(BillingTimeUnitFormat)
+            value = (json \ "value").as(using LongFormat),
+            unit = (json \ "unit").as(using BillingTimeUnitFormat)
           )
         )
       } recover { case e =>
@@ -96,7 +96,7 @@ object json {
       Try {
         JsSuccess(
           OtoroshiSettings(
-            id = (json \ "_id").as(OtoroshiSettingsIdFormat),
+            id = (json \ "_id").as(using OtoroshiSettingsIdFormat),
             url = (json \ "url").as[String],
             host = (json \ "host").as[String],
             clientId = (json \ "clientId")
@@ -106,7 +106,7 @@ object json {
               .asOpt[String]
               .getOrElse("admin-api-apikey-secret"),
             elasticConfig =
-              (json \ "elasticConfig").asOpt(ElasticAnalyticsConfig.format)
+              (json \ "elasticConfig").asOpt(using ElasticAnalyticsConfig.format)
           )
         )
       } recover { case e =>
@@ -133,9 +133,9 @@ object json {
         JsSuccess(
           TestingConfig(
             otoroshiSettings =
-              (json \ "otoroshiSettings").as(OtoroshiSettingsIdFormat),
+              (json \ "otoroshiSettings").as(using OtoroshiSettingsIdFormat),
             authorizedEntities =
-              (json \ "authorizedEntities").as(AuthorizedEntitiesFormat),
+              (json \ "authorizedEntities").as(using AuthorizedEntitiesFormat),
             clientName = (json \ "clientName").as[String],
             tag = (json \ "tag").as[String],
             customMetadata = (json \ "customMetadata").asOpt[JsObject],
@@ -212,7 +212,7 @@ object json {
                   (json \ "username").asOpt[String].filter(_.trim.nonEmpty),
                 password =
                   (json \ "password").asOpt[String].filter(_.trim.nonEmpty),
-                config = (json \ "config").asOpt(TestingConfigFormat)
+                config = (json \ "config").asOpt(using TestingConfigFormat)
               )
             )
           } recover { case e =>
@@ -398,7 +398,7 @@ object json {
         JsSuccess(
           ApiIssueTag(
             id = (json \ "id")
-              .asOpt[ApiIssueTagId](ApiIssueTagIdFormat)
+              .asOpt[ApiIssueTagId](using ApiIssueTagIdFormat)
               .getOrElse(ApiIssueTagId(IdGenerator.token(32))),
             name = (json \ "name").as[String],
             color = (json \ "color").as[String]
@@ -420,12 +420,12 @@ object json {
       Try {
         JsSuccess(
           ApiIssueComment(
-            by = (json \ "by").as(UserIdFormat),
+            by = (json \ "by").as(using UserIdFormat),
             createdAt = (json \ "createdAt")
-              .asOpt(DateTimeFormat)
+              .asOpt(using DateTimeFormat)
               .getOrElse(DateTime.now()),
             lastModificationAt = (json \ "lastModificationAt")
-              .asOpt(DateTimeFormat)
+              .asOpt(using DateTimeFormat)
               .getOrElse(DateTime.now()),
             content = (json \ "content").as[String]
           )
@@ -689,7 +689,7 @@ object json {
           JsSuccess(
             ValidationStep.TeamAdmin(
               id = (json \ "id").as[String],
-              team = (json \ "team").as(TeamIdFormat),
+              team = (json \ "team").as(using TeamIdFormat),
               title = (json \ "title").as[String]
             )
           )
@@ -728,7 +728,7 @@ object json {
               id = (json \ "id").as[String],
               thirdPartyPaymentSettingsId =
                 (json \ "thirdPartyPaymentSettingsId")
-                  .as(ThirdPartyPaymentSettingsIdFormat),
+                  .as(using ThirdPartyPaymentSettingsIdFormat),
               title = (json \ "title").as[String]
             )
           )
@@ -764,10 +764,10 @@ object json {
         JsSuccess(
           BasePaymentInformation(
             costPerMonth = (json \ "costPerMonth").as[BigDecimal],
-            trialPeriod = (json \ "trialPeriod").asOpt(BillingDurationFormat),
+            trialPeriod = (json \ "trialPeriod").asOpt(using BillingDurationFormat),
             billingDuration =
-              (json \ "billingDuration").as(BillingDurationFormat),
-            currency = (json \ "currency").as(CurrencyFormat)
+              (json \ "billingDuration").as(using BillingDurationFormat),
+            currency = (json \ "currency").as(using CurrencyFormat)
           )
         )
       } recover { case e =>
@@ -792,44 +792,44 @@ object json {
       Try {
         JsSuccess(
           UsagePlan(
-            id = (json \ "_id").as(UsagePlanIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using UsagePlanIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
-            maxPerSecond = (json \ "maxPerSecond").asOpt(LongFormat),
-            maxPerDay = (json \ "maxPerDay").asOpt(LongFormat),
-            maxPerMonth = (json \ "maxPerMonth").asOpt(LongFormat),
+            maxPerSecond = (json \ "maxPerSecond").asOpt(using LongFormat),
+            maxPerDay = (json \ "maxPerDay").asOpt(using LongFormat),
+            maxPerMonth = (json \ "maxPerMonth").asOpt(using LongFormat),
             costPerMonth = (json \ "costPerMonth").asOpt[BigDecimal],
             costPerRequest = (json \ "costPerRequest").asOpt[BigDecimal],
-            trialPeriod = (json \ "trialPeriod").asOpt(BillingDurationFormat),
+            trialPeriod = (json \ "trialPeriod").asOpt(using BillingDurationFormat),
             billingDuration =
-              (json \ "billingDuration").asOpt(BillingDurationFormat),
-            currency = (json \ "currency").asOpt(CurrencyFormat),
+              (json \ "billingDuration").asOpt(using BillingDurationFormat),
+            currency = (json \ "currency").asOpt(using CurrencyFormat),
             customName = (json \ "customName").as[String],
             customDescription = (json \ "customDescription").asOpt[String],
             otoroshiTarget =
-              (json \ "otoroshiTarget").asOpt(OtoroshiTargetFormat),
+              (json \ "otoroshiTarget").asOpt(using OtoroshiTargetFormat),
             allowMultipleKeys = (json \ "allowMultipleKeys").asOpt[Boolean],
             visibility = (json \ "visibility")
-              .asOpt(UsagePlanVisibilityFormat)
+              .asOpt(using UsagePlanVisibilityFormat)
               .getOrElse(UsagePlanVisibility.Public),
             authorizedTeams = (json \ "authorizedTeams")
-              .asOpt(SeqTeamIdFormat)
+              .asOpt(using SeqTeamIdFormat)
               .getOrElse(Seq.empty),
             autoRotation = (json \ "autoRotation")
               .asOpt[Boolean],
             subscriptionProcess =
-              (json \ "subscriptionProcess").as(SeqValidationStepFormat),
+              (json \ "subscriptionProcess").as(using SeqValidationStepFormat),
             integrationProcess = (json \ "integrationProcess")
-              .asOpt(IntegrationProcessFormat)
+              .asOpt(using IntegrationProcessFormat)
               .getOrElse(IntegrationProcess.ApiKey),
             aggregationApiKeysSecurity =
               (json \ "aggregationApiKeysSecurity").asOpt[Boolean],
             paymentSettings =
-              (json \ "paymentSettings").asOpt(PaymentSettingsFormat),
-            swagger = (json \ "swagger").asOpt(SwaggerAccessFormat),
-            testing = (json \ "testing").asOpt(TestingFormat),
+              (json \ "paymentSettings").asOpt(using PaymentSettingsFormat),
+            swagger = (json \ "swagger").asOpt(using SwaggerAccessFormat),
+            testing = (json \ "testing").asOpt(using TestingFormat),
             documentation =
-              (json \ "documentation").asOpt(ApiDocumentationFormat),
+              (json \ "documentation").asOpt(using ApiDocumentationFormat),
             metadata = (json \ "metadata")
               .asOpt[Map[String, String]]
               .getOrElse(Map.empty)
@@ -1128,9 +1128,9 @@ object json {
         JsSuccess(
           PaymentSettings.Stripe(
             thirdPartyPaymentSettingsId = (json \ "thirdPartyPaymentSettingsId")
-              .as(ThirdPartyPaymentSettingsIdFormat),
+              .as(using ThirdPartyPaymentSettingsIdFormat),
             productId = (json \ "productId").as[String],
-            priceIds = (json \ "priceIds").as(StripePriceIdsFormat)
+            priceIds = (json \ "priceIds").as(using StripePriceIdsFormat)
           )
         )
       } recover { case e =>
@@ -1222,10 +1222,10 @@ object json {
             metadata =
               (json \ "metadata").asOpt[JsObject].getOrElse(Json.obj()),
             customMetadata = (json \ "customMetadata")
-              .asOpt(SeqCustomMetadataFormat)
+              .asOpt(using SeqCustomMetadataFormat)
               .getOrElse(Seq.empty),
             tags = (json \ "tags").asOpt[JsArray].getOrElse(Json.arr()),
-            restrictions = (json \ "restrictions").as(ApiKeyRestrictionsFormat)
+            restrictions = (json \ "restrictions").as(using ApiKeyRestrictionsFormat)
           )
         )
       } recover { case e =>
@@ -1325,11 +1325,11 @@ object json {
         JsSuccess(
           OtoroshiTarget(
             otoroshiSettings =
-              (json \ "otoroshiSettings").as(OtoroshiSettingsIdFormat),
+              (json \ "otoroshiSettings").as(using OtoroshiSettingsIdFormat),
             authorizedEntities =
-              (json \ "authorizedEntities").asOpt(AuthorizedEntitiesFormat),
+              (json \ "authorizedEntities").asOpt(using AuthorizedEntitiesFormat),
             apikeyCustomization = (json \ "apikeyCustomization")
-              .asOpt(ApikeyCustomizationFormat)
+              .asOpt(using ApikeyCustomizationFormat)
               .getOrElse(ApikeyCustomization())
           )
         )
@@ -1356,8 +1356,8 @@ object json {
           OtoroshiService(
             name = (json \ "name").as[String],
             otoroshiSettings =
-              (json \ "otoroshiSettings").as(OtoroshiSettingsIdFormat),
-            service = (json \ "service").as(OtoroshiServiceIdFormat)
+              (json \ "otoroshiSettings").as(using OtoroshiSettingsIdFormat),
+            service = (json \ "service").as(using OtoroshiServiceIdFormat)
           )
         )
       } recover { case e =>
@@ -1385,7 +1385,7 @@ object json {
                   .getOrElse(Map.empty[String, String]),
                 additionalConf = (json \ "additionalConf").asOpt[JsObject],
                 specificationType = (json \ "specificationType")
-                  .asOpt(SpecificationTypeFormat)
+                  .asOpt(using SpecificationTypeFormat)
                   .getOrElse(SpecificationType.OpenApi)
               )
             )
@@ -1412,12 +1412,12 @@ object json {
       Try {
         JsSuccess(
           ApiDocumentationPage(
-            id = (json \ "_id").as(ApiDocumentationPageIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using ApiDocumentationPageIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
             title = (json \ "title").as[String],
             lastModificationAt =
-              (json \ "lastModificationAt").as(DateTimeFormat),
+              (json \ "lastModificationAt").as(using DateTimeFormat),
             content = (json \ "content").asOpt[String].getOrElse(""),
             cmsPage = (json \ "cmsPage").asOpt[String],
             remoteContentEnabled =
@@ -1462,13 +1462,13 @@ object json {
         JsSuccess(
           ApiPost(
             id = (json \ "_id")
-              .asOpt(ApiPostIdFormat)
+              .asOpt(using ApiPostIdFormat)
               .getOrElse(ApiPostId(IdGenerator.token(32))),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
             title = (json \ "title").as[String],
             lastModificationAt =
-              (json \ "lastModificationAt").as(DateTimeFormat),
+              (json \ "lastModificationAt").as(using DateTimeFormat),
             content = (json \ "content").asOpt[String].getOrElse("")
           )
         )
@@ -1493,30 +1493,30 @@ object json {
         JsSuccess(
           ApiIssue(
             id = (json \ "_id")
-              .asOpt(ApiIssueIdFormat)
+              .asOpt(using ApiIssueIdFormat)
               .getOrElse(ApiIssueId(IdGenerator.token(32))),
             seqId = (json \ "seqId").asOpt[Int].getOrElse(0),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
             title = (json \ "title").as[String],
             lastModificationAt = (json \ "lastModificationAt")
-              .asOpt(DateTimeFormat)
+              .asOpt(using DateTimeFormat)
               .getOrElse(DateTime.now()),
             tags = (json \ "tags")
-              .asOpt[Set[ApiIssueTagId]](Reads.set(ApiIssueTagIdFormat))
+              .asOpt[Set[ApiIssueTagId]](using Reads.set(using ApiIssueTagIdFormat))
               .getOrElse(Set.empty),
             open = (json \ "open").asOpt[Boolean].getOrElse(true),
             createdAt = (json \ "createdAt")
-              .asOpt(DateTimeFormat)
+              .asOpt(using DateTimeFormat)
               .getOrElse(DateTime.now()),
-            by = (json \ "by").as(UserIdFormat),
+            by = (json \ "by").as(using UserIdFormat),
             comments = (json \ "comments")
               .asOpt[Seq[ApiIssueComment]](
-                Reads.seq(ApiIssueCommentFormat)
+                using Reads.seq(using ApiIssueCommentFormat)
               )
               .getOrElse(Seq.empty),
             closedAt = (json \ "closedAt")
-              .asOpt(DateTimeFormat),
+              .asOpt(using DateTimeFormat),
             apiVersion = (json \ "apiVersion").asOpt[String]
           )
         )
@@ -1566,10 +1566,10 @@ object json {
         Try {
           JsSuccess(
             ApiDocumentationDetailPage(
-              id = (json \ "id").as(ApiDocumentationPageIdFormat),
+              id = (json \ "id").as(using ApiDocumentationPageIdFormat),
               title = (json \ "title").as[String],
               children =
-                (json \ "children").as(SeqApiDocumentationDetailPageFormat)
+                (json \ "children").as(using SeqApiDocumentationDetailPageFormat)
             )
           )
         } recover { case e =>
@@ -1590,14 +1590,14 @@ object json {
       Try {
         JsSuccess(
           ApiDocumentation(
-            id = (json \ "_id").as(ApiDocumentationIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using ApiDocumentationIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             // api = (json \ "api").as(ApiIdFormat),
             pages = (json \ "pages")
-              .asOpt(SeqApiDocumentationDetailPageFormat)
+              .asOpt(using SeqApiDocumentationDetailPageFormat)
               .getOrElse(Seq.empty[ApiDocumentationDetailPage]),
             lastModificationAt =
-              (json \ "lastModificationAt").as(DateTimeFormat)
+              (json \ "lastModificationAt").as(using DateTimeFormat)
           )
         )
       } recover { case e =>
@@ -1709,20 +1709,20 @@ object json {
       Try {
         JsSuccess(
           Tenant(
-            id = (json \ "_id").as(TenantIdFormat),
+            id = (json \ "_id").as(using TenantIdFormat),
             enabled = (json \ "enabled").as[Boolean],
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
             name = (json \ "name").as[String],
             domain = (json \ "domain").asOpt[String].getOrElse("localhost"),
             defaultLanguage = (json \ "defaultLanguage").asOpt[String],
             contact = (json \ "contact").as[String],
-            style = (json \ "style").asOpt(DaikokuStyleFormat),
+            style = (json \ "style").asOpt(using DaikokuStyleFormat),
             otoroshiSettings = (json \ "otoroshiSettings")
-              .asOpt(SeqOtoroshiSettingsFormat)
+              .asOpt(using SeqOtoroshiSettingsFormat)
               .map(_.toSet)
               .getOrElse(Set.empty),
             mailerSettings =
-              (json \ "mailerSettings").asOpt(MailerSettingsFormat),
+              (json \ "mailerSettings").asOpt(using MailerSettingsFormat),
             bucketSettings =
               (json \ "bucketSettings").asOpt[JsObject].flatMap { settings =>
                 S3Configuration.format.reads(settings).asOpt
@@ -1732,7 +1732,7 @@ object json {
               .flatMap(AuthProvider.apply)
               .getOrElse(AuthProvider.Otoroshi),
             auditTrailConfig = (json \ "auditTrailConfig")
-              .asOpt(AuditTrailConfigFormat)
+              .asOpt(using AuditTrailConfigFormat)
               .getOrElse(AuditTrailConfig()),
             authProviderSettings = (json \ "authProviderSettings")
               .asOpt[JsObject]
@@ -1750,9 +1750,9 @@ object json {
                 )
               ),
             isPrivate = (json \ "isPrivate").asOpt[Boolean].getOrElse(true),
-            adminApi = (json \ "adminApi").as(ApiIdFormat),
+            adminApi = (json \ "adminApi").as(using ApiIdFormat),
             adminSubscriptions = (json \ "adminSubscriptions")
-              .asOpt(SeqApiSubscriptionIdFormat)
+              .asOpt(using SeqApiSubscriptionIdFormat)
               .getOrElse(Seq.empty),
             creationSecurity = (json \ "creationSecurity")
               .asOpt[Boolean],
@@ -1762,7 +1762,7 @@ object json {
               .asOpt[Boolean],
             defaultMessage = (json \ "defaultMessage")
               .asOpt[String],
-            tenantMode = (json \ "tenantMode").asOpt(TenantModeFormat),
+            tenantMode = (json \ "tenantMode").asOpt(using TenantModeFormat),
             aggregationApiKeysSecurity = (json \ "aggregationApiKeysSecurity")
               .asOpt[Boolean],
             environmentAggregationApiKeysSecurity =
@@ -1770,10 +1770,10 @@ object json {
                 .asOpt[Boolean],
             robotTxt = (json \ "robotTxt").asOpt[String],
             thirdPartyPaymentSettings = (json \ "thirdPartyPaymentSettings")
-              .asOpt(SeqThirdPartyPaymentSettingsFormat)
+              .asOpt(using SeqThirdPartyPaymentSettingsFormat)
               .getOrElse(Seq.empty),
             display = (json \ "display")
-              .asOpt(TenantDisplayFormat)
+              .asOpt(using TenantDisplayFormat)
               .getOrElse(TenantDisplay.Default),
             environments = (json \ "environments")
               .asOpt[Set[String]]
@@ -1781,11 +1781,11 @@ object json {
             clientNamePattern = (json \ "clientNamePattern")
               .asOpt[String],
             accountCreationProcess = (json \ "accountCreationProcess")
-              .asOpt(SeqValidationStepFormat)
+              .asOpt(using SeqValidationStepFormat)
               .getOrElse(Seq.empty),
             defaultAuthorizedOtoroshiEntities =
               (json \ "defaultAuthorizedOtoroshiEntities")
-                .asOpt(SeqTeamAuthorizedEntitiesFormat),
+                .asOpt(using SeqTeamAuthorizedEntitiesFormat),
             teamCreationSecurity =
               (json \ "teamCreationSecurity").asOpt[Boolean]
           )
@@ -1895,9 +1895,9 @@ object json {
         JsSuccess(
           AuditTrailConfig(
             elasticConfigs = (json \ "elasticConfigs")
-              .asOpt[ElasticAnalyticsConfig](ElasticAnalyticsConfig.format),
+              .asOpt[ElasticAnalyticsConfig](using ElasticAnalyticsConfig.format),
             auditWebhooks = (json \ "auditWebhooks")
-              .asOpt[Seq[Webhook]](Reads.seq(Webhook.format))
+              .asOpt[Seq[Webhook]](using Reads.seq(using Webhook.format))
               .getOrElse(Seq.empty[Webhook]),
             alertsEmails = (json \ "alertsEmails")
               .asOpt[Seq[String]]
@@ -1966,10 +1966,10 @@ object json {
       Try {
         JsSuccess(
           User(
-            id = (json \ "_id").as(UserIdFormat),
+            id = (json \ "_id").as(using UserIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
             tenants = (json \ "tenants")
-              .asOpt(SeqTenantIdFormat)
+              .asOpt(using SeqTenantIdFormat)
               .map(_.toSet)
               .getOrElse(Set.empty),
             origins = (json \ "origins")
@@ -1996,17 +1996,17 @@ object json {
             isDaikokuAdmin =
               (json \ "isDaikokuAdmin").asOpt[Boolean].getOrElse(false),
             personalToken = (json \ "personalToken").asOpt[String],
-            lastTenant = (json \ "lastTenant").asOpt(TenantIdFormat),
+            lastTenant = (json \ "lastTenant").asOpt(using TenantIdFormat),
             metadata = (json \ "metadata")
               .asOpt[Map[String, String]]
               .getOrElse(Map.empty),
             defaultLanguage = (json \ "defaultLanguage").asOpt[String],
             starredApis =
-              (json \ "starredApis").asOpt(SetApiIdFormat).getOrElse(Set.empty),
+              (json \ "starredApis").asOpt(using SetApiIdFormat).getOrElse(Set.empty),
             twoFactorAuthentication = (json \ "twoFactorAuthentication").asOpt(
-              TwoFactorAuthenticationFormat
+              using TwoFactorAuthenticationFormat
             ),
-            invitation = (json \ "invitation").asOpt(UserInvitationFormat)
+            invitation = (json \ "invitation").asOpt(using UserInvitationFormat)
           )
         )
       } recover { case e =>
@@ -2056,20 +2056,20 @@ object json {
       Try {
         JsSuccess(
           Team(
-            id = (json \ "_id").as(TeamIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using TeamIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
-            `type` = (json \ "type").as(TeamTypeFormat),
+            `type` = (json \ "type").as(using TeamTypeFormat),
             name = (json \ "name").as[String],
             contact = (json \ "contact").as[String],
             description = (json \ "description").asOpt[String].getOrElse(""),
             avatar = (json \ "avatar").asOpt[String],
             users = (json \ "users")
-              .asOpt(SetUserWithPermissionFormat)
+              .asOpt(using SetUserWithPermissionFormat)
               .map(_.toSet)
               .getOrElse(Set.empty[UserWithPermission]),
             authorizedOtoroshiEntities = (json \ "authorizedOtoroshiEntities")
-              .asOpt(SeqTeamAuthorizedEntitiesFormat),
+              .asOpt(using SeqTeamAuthorizedEntitiesFormat),
             metadata = (json \ "metadata")
               .asOpt[Map[String, String]]
               .getOrElse(Map.empty),
@@ -2129,9 +2129,9 @@ object json {
           JsSuccess(
             TeamAuthorizedEntities(
               otoroshiSettingsId =
-                (json \ "otoroshiSettingsId").as(OtoroshiSettingsIdFormat),
+                (json \ "otoroshiSettingsId").as(using OtoroshiSettingsIdFormat),
               authorizedEntities =
-                (json \ "authorizedEntities").as(AuthorizedEntitiesFormat)
+                (json \ "authorizedEntities").as(using AuthorizedEntitiesFormat)
             )
           )
         } recover { case e =>
@@ -2146,12 +2146,12 @@ object json {
       Try {
         JsSuccess(
           Api(
-            id = (json \ "_id").as(ApiIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
-            team = (json \ "team").as(TeamIdFormat),
+            id = (json \ "_id").as(using ApiIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
+            team = (json \ "team").as(using TeamIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
             name = (json \ "name").as[String],
-            lastUpdate = (json \ "lastUpdate").as(DateTimeFormat),
+            lastUpdate = (json \ "lastUpdate").as(using DateTimeFormat),
             description = (json \ "description").asOpt[String].getOrElse(""),
             smallDescription =
               (json \ "smallDescription").asOpt[String].getOrElse(""),
@@ -2159,15 +2159,15 @@ object json {
             descriptionCmsPage = (json \ "descriptionCmsPage").asOpt[String],
             header = (json \ "header").asOpt[String],
             image = (json \ "image").asOpt[String],
-            currentVersion = (json \ "currentVersion").as(VersionFormat),
+            currentVersion = (json \ "currentVersion").as(using VersionFormat),
             supportedVersions = (json \ "supportedVersions")
-              .asOpt(SeqVersionFormat)
+              .asOpt(using SeqVersionFormat)
               .map(_.toSet)
               .getOrElse(Set.empty),
-            testing = (json \ "testing").asOpt(TestingFormat),
+            testing = (json \ "testing").asOpt(using TestingFormat),
             documentation = (json \ "documentation")
-              .as(ApiDocumentationFormat),
-            swagger = (json \ "swagger").asOpt(SwaggerAccessFormat),
+              .as(using ApiDocumentationFormat),
+            swagger = (json \ "swagger").asOpt(using SwaggerAccessFormat),
             tags = (json \ "tags")
               .asOpt[Seq[String]]
               .map(_.toSet)
@@ -2176,28 +2176,28 @@ object json {
               .asOpt[Seq[String]]
               .map(_.toSet)
               .getOrElse(Set.empty),
-            visibility = (json \ "visibility").as(ApiVisibilityFormat),
+            visibility = (json \ "visibility").as(using ApiVisibilityFormat),
             possibleUsagePlans = (json \ "possibleUsagePlans")
-              .as(SeqUsagePlanIdFormat),
+              .as(using SeqUsagePlanIdFormat),
             defaultUsagePlan =
-              (json \ "defaultUsagePlan").asOpt(UsagePlanIdFormat),
+              (json \ "defaultUsagePlan").asOpt(using UsagePlanIdFormat),
             authorizedTeams = (json \ "authorizedTeams")
-              .asOpt(SeqTeamIdFormat)
+              .asOpt(using SeqTeamIdFormat)
               .getOrElse(Seq.empty),
             posts = (json \ "posts")
-              .asOpt(SeqPostIdFormat)
+              .asOpt(using SeqPostIdFormat)
               .getOrElse(Seq.empty),
             issues = (json \ "issues")
-              .asOpt(SeqIssueIdFormat)
+              .asOpt(using SeqIssueIdFormat)
               .getOrElse(Seq.empty),
             issuesTags = (json \ "issuesTags")
-              .asOpt(SetApiTagFormat)
+              .asOpt(using SetApiTagFormat)
               .getOrElse(Set.empty),
             stars = (json \ "stars").asOpt[Int].getOrElse(0),
-            parent = (json \ "parent").asOpt(ApiIdFormat),
+            parent = (json \ "parent").asOpt(using ApiIdFormat),
             isDefault = (json \ "isDefault").asOpt[Boolean].getOrElse(false),
-            apis = (json \ "apis").asOpt(SetApiIdFormat),
-            state = (json \ "state").as(ApiStateFormat),
+            apis = (json \ "apis").asOpt(using SetApiIdFormat),
+            state = (json \ "state").as(using ApiStateFormat),
             metadata = (json \ "metadata")
               .asOpt[Map[String, String]]
               .getOrElse(Map.empty)
@@ -2274,8 +2274,8 @@ object json {
           JsSuccess(
             ApiKeyRotation(
               enabled = (json \ "enabled").as[Boolean],
-              rotationEvery = (json \ "rotationEvery").as(LongFormat),
-              gracePeriod = (json \ "gracePeriod").as(LongFormat),
+              rotationEvery = (json \ "rotationEvery").as(using LongFormat),
+              gracePeriod = (json \ "gracePeriod").as(using LongFormat),
               nextSecret = (json \ "nextSecret").asOpt[String]
             )
           )
@@ -2298,8 +2298,8 @@ object json {
         JsSuccess(
           ApiSubscriptionRotation(
             enabled = (json \ "enabled").as[Boolean],
-            rotationEvery = (json \ "rotationEvery").as(LongFormat),
-            gracePeriod = (json \ "gracePeriod").as(LongFormat),
+            rotationEvery = (json \ "rotationEvery").as(using LongFormat),
+            gracePeriod = (json \ "gracePeriod").as(using LongFormat),
             pendingRotation = (json \ "pendingRotation").as[Boolean]
           )
         )
@@ -2321,32 +2321,32 @@ object json {
       Try {
         JsSuccess(
           ApiSubscription(
-            id = (json \ "_id").as(ApiSubscriptionIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using ApiSubscriptionIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
-            apiKey = (json \ "apiKey").as(OtoroshiApiKeyFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat),
-            team = (json \ "team").as(TeamIdFormat),
-            api = (json \ "api").as(ApiIdFormat),
-            createdAt = (json \ "createdAt").as(DateTimeFormat),
-            validUntil = (json \ "validUntil").asOpt(DateTimeFormat),
-            by = (json \ "by").as(UserIdFormat),
+            apiKey = (json \ "apiKey").as(using OtoroshiApiKeyFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat),
+            team = (json \ "team").as(using TeamIdFormat),
+            api = (json \ "api").as(using ApiIdFormat),
+            createdAt = (json \ "createdAt").as(using DateTimeFormat),
+            validUntil = (json \ "validUntil").asOpt(using DateTimeFormat),
+            by = (json \ "by").as(using UserIdFormat),
             customName = (json \ "customName").asOpt[String],
             adminCustomName = (json \ "adminCustomName").asOpt[String],
             enabled = (json \ "enabled").asOpt[Boolean].getOrElse(true),
             rotation =
-              (json \ "rotation").asOpt(ApiSubscriptionyRotationFormat),
+              (json \ "rotation").asOpt(using ApiSubscriptionyRotationFormat),
             integrationToken = (json \ "integrationToken").as[String],
             bearerToken = (json \ "bearerToken").asOpt[String],
             metadata = (json \ "metadata").asOpt[JsObject],
             customMetadata = (json \ "customMetadata").asOpt[JsObject],
             tags = (json \ "tags").asOpt[Set[String]],
             customMaxPerSecond =
-              (json \ "customMaxPerSecond").asOpt(LongFormat),
-            customMaxPerDay = (json \ "customMaxPerDay").asOpt(LongFormat),
-            customMaxPerMonth = (json \ "customMaxPerMonth").asOpt(LongFormat),
+              (json \ "customMaxPerSecond").asOpt(using LongFormat),
+            customMaxPerDay = (json \ "customMaxPerDay").asOpt(using LongFormat),
+            customMaxPerMonth = (json \ "customMaxPerMonth").asOpt(using LongFormat),
             customReadOnly = (json \ "customReadOnly").asOpt[Boolean],
-            parent = (json \ "parent").asOpt(ApiSubscriptionIdFormat),
+            parent = (json \ "parent").asOpt(using ApiSubscriptionIdFormat),
             thirdPartySubscriptionInformations =
               (json \ "thirdPartySubscriptionInformations") match {
                 case JsDefined(value) =>
@@ -2546,22 +2546,22 @@ object json {
       Try {
         JsSuccess(
           SubscriptionDemand(
-            id = (json \ "_id").as(SubscriptionDemandIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using SubscriptionDemandIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
-            api = (json \ "api").as(ApiIdFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat),
-            steps = (json \ "steps").as(SeqSubscriptionDemanStepFormat),
-            state = (json \ "state").as(SubscriptionDemandStateFormat),
-            team = (json \ "team").as(TeamIdFormat),
-            from = (json \ "from").as(UserIdFormat),
-            date = (json \ "date").as(DateTimeFormat),
+            api = (json \ "api").as(using ApiIdFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat),
+            steps = (json \ "steps").as(using SeqSubscriptionDemanStepFormat),
+            state = (json \ "state").as(using SubscriptionDemandStateFormat),
+            team = (json \ "team").as(using TeamIdFormat),
+            from = (json \ "from").as(using UserIdFormat),
+            date = (json \ "date").as(using DateTimeFormat),
             motivation = (json \ "motivation")
               .asOpt[String]
               .map(m => Json.obj("motivation" -> m))
               .orElse((json \ "motivation").asOpt[JsObject]),
             parentSubscriptionId =
-              (json \ "parentSubscription").asOpt(ApiSubscriptionIdFormat),
+              (json \ "parentSubscription").asOpt(using ApiSubscriptionIdFormat),
             customMetadata = (json \ "customMetadata").asOpt[JsObject],
             customMaxPerSecond = (json \ "customMaxPerSecond").asOpt[Long],
             customMaxPerDay = (json \ "customMaxPerDay").asOpt[Long],
@@ -2591,9 +2591,9 @@ object json {
       Try {
         JsSuccess(
           SubscriptionDemandStep(
-            id = (json \ "_id").as(SubscriptionDemandStepIdFormat),
-            state = (json \ "state").as(SubscriptionDemandStateFormat),
-            step = (json \ "step").as(ValidationStepFormat),
+            id = (json \ "_id").as(using SubscriptionDemandStepIdFormat),
+            state = (json \ "state").as(using SubscriptionDemandStateFormat),
+            step = (json \ "step").as(using ValidationStepFormat),
             metadata = (json \ "metadata").as[JsObject]
           )
         )
@@ -2619,13 +2619,13 @@ object json {
       Try {
         JsSuccess(
           StepValidator(
-            id = (json \ "_id").as(DatastoreIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using DatastoreIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").as[Boolean],
             token = (json \ "token").as[String],
-            step = (json \ "step").as(SubscriptionDemandStepIdFormat),
+            step = (json \ "step").as(using SubscriptionDemandStepIdFormat),
             subscriptionDemand =
-              (json \ "subscriptionDemand").as(SubscriptionDemandIdFormat),
+              (json \ "subscriptionDemand").as(using SubscriptionDemandIdFormat),
             metadata = (json \ "metadata").as[JsObject]
           )
         )
@@ -2699,9 +2699,9 @@ object json {
         Try {
           JsSuccess(
             AuthorizedEntities(
-              groups = (json \ "groups").as(SetOtoroshiServiceGroupsIdFormat),
-              services = (json \ "services").as(SetOtoroshiServicesIdFormat),
-              routes = (json \ "routes").as(SetOtoroshiRoutesIdFormat)
+              groups = (json \ "groups").as(using SetOtoroshiServiceGroupsIdFormat),
+              services = (json \ "services").as(using SetOtoroshiServicesIdFormat),
+              routes = (json \ "routes").as(using SetOtoroshiRoutesIdFormat)
             )
           )
         } recover { case e =>
@@ -2747,7 +2747,7 @@ object json {
             clientSecret = (json \ "clientSecret").as[String],
             clientName = (json \ "clientName").as[String],
             authorizedEntities = (json \ "authorizedEntities").as(
-              AuthorizedEntitiesOtoroshiFormat
+              using AuthorizedEntitiesOtoroshiFormat
             ),
             enabled = (json \ "enabled").asOpt[Boolean].getOrElse(true),
             allowClientIdOnly =
@@ -2771,8 +2771,8 @@ object json {
             tags = (json \ "tags")
               .asOpt[Set[String]]
               .getOrElse(Set.empty[String]),
-            restrictions = (json \ "restrictions").as(ApiKeyRestrictionsFormat),
-            rotation = (json \ "rotation").asOpt(ApiKeyRotationFormat),
+            restrictions = (json \ "restrictions").as(using ApiKeyRestrictionsFormat),
+            rotation = (json \ "rotation").asOpt(using ApiKeyRotationFormat),
             validUntil = (json \ "validUntil").asOpt[Long],
             bearer = (json \ "bearer").asOpt[String]
           )
@@ -2962,7 +2962,7 @@ object json {
         JsSuccess(
           NewCommentOnIssue(
             apiName = (json \ "apiName").asOpt[String].getOrElse(""),
-            teamId = (json \ "teamId").as(TeamIdFormat).value,
+            teamId = (json \ "teamId").as(using TeamIdFormat).value,
             linkTo = (json \ "linkTo").asOpt[String].getOrElse("")
           )
         )
@@ -2982,9 +2982,9 @@ object json {
       Try {
         JsSuccess(
           NewCommentOnIssueV2(
-            api = (json \ "api").as(ApiIdFormat),
-            issue = (json \ "issue").as(ApiIssueIdFormat),
-            user = (json \ "user").as(UserIdFormat)
+            api = (json \ "api").as(using ApiIdFormat),
+            issue = (json \ "issue").as(using ApiIssueIdFormat),
+            user = (json \ "user").as(using UserIdFormat)
           )
         )
       } recover { case e =>
@@ -3004,8 +3004,8 @@ object json {
       Try {
         JsSuccess(
           TransferApiOwnership(
-            api = (json \ "api").as(ApiIdFormat),
-            team = (json \ "team").as(TeamIdFormat)
+            api = (json \ "api").as(using ApiIdFormat),
+            team = (json \ "team").as(using TeamIdFormat)
           )
         )
       } recover { case e =>
@@ -3025,10 +3025,10 @@ object json {
       Try {
         JsSuccess(
           CheckoutForSubscription(
-            demand = (json \ "demand").as(SubscriptionDemandIdFormat),
-            api = (json \ "api").as(ApiIdFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat),
-            step = (json \ "step").as(SubscriptionDemandStepIdFormat)
+            demand = (json \ "demand").as(using SubscriptionDemandIdFormat),
+            api = (json \ "api").as(using ApiIdFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat),
+            step = (json \ "step").as(using SubscriptionDemandStepIdFormat)
           )
         )
       } recover { case e =>
@@ -3051,7 +3051,7 @@ object json {
         JsSuccess(
           NewIssueOpen(
             apiName = (json \ "apiName").asOpt[String].getOrElse(""),
-            teamId = (json \ "teamId").as(TeamIdFormat).value,
+            teamId = (json \ "teamId").as(using TeamIdFormat).value,
             linkTo = (json \ "linkTo").asOpt[String].getOrElse("")
           )
         )
@@ -3071,8 +3071,8 @@ object json {
       Try {
         JsSuccess(
           NewIssueOpenV2(
-            api = (json \ "api").as(ApiIdFormat),
-            issue = (json \ "issue").as(IssueIdFormat)
+            api = (json \ "api").as(using ApiIdFormat),
+            issue = (json \ "issue").as(using IssueIdFormat)
           )
         )
       } recover { case e =>
@@ -3092,7 +3092,7 @@ object json {
         JsSuccess(
           NewPostPublished(
             apiName = (json \ "apiName").asOpt[String].getOrElse(""),
-            teamId = (json \ "teamId").as(TeamIdFormat).value
+            teamId = (json \ "teamId").as(using TeamIdFormat).value
           )
         )
       } recover { case e =>
@@ -3110,8 +3110,8 @@ object json {
       Try {
         JsSuccess(
           NewPostPublishedV2(
-            api = (json \ "api").as(ApiIdFormat),
-            post = (json \ "post").as(PostIdFormat)
+            api = (json \ "api").as(using ApiIdFormat),
+            post = (json \ "post").as(using PostIdFormat)
           )
         )
       } recover { case e =>
@@ -3130,8 +3130,8 @@ object json {
       Try {
         JsSuccess(
           ApiAccess(
-            api = (json \ "api").as(ApiIdFormat),
-            team = (json \ "team").as(TeamIdFormat)
+            api = (json \ "api").as(using ApiIdFormat),
+            team = (json \ "team").as(using TeamIdFormat)
           )
         )
       } recover { case e =>
@@ -3149,13 +3149,13 @@ object json {
       Try {
         JsSuccess(
           ApiSubscriptionDemand(
-            api = (json \ "api").as(ApiIdFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat),
-            team = (json \ "team").as(TeamIdFormat),
-            demand = (json \ "demand").as(SubscriptionDemandIdFormat),
-            step = (json \ "step").as(SubscriptionDemandStepIdFormat),
+            api = (json \ "api").as(using ApiIdFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat),
+            team = (json \ "team").as(using TeamIdFormat),
+            demand = (json \ "demand").as(using SubscriptionDemandIdFormat),
+            step = (json \ "step").as(using SubscriptionDemandStepIdFormat),
             parentSubscriptionId =
-              (json \ "parentSubscriptionId").asOpt(ApiSubscriptionIdFormat),
+              (json \ "parentSubscriptionId").asOpt(using ApiSubscriptionIdFormat),
             motivation = (json \ "motivation").asOpt[String]
           )
         )
@@ -3186,8 +3186,8 @@ object json {
       Try {
         JsSuccess(
           AccountCreationAttempt(
-            demand = (json \ "demand").as(SubscriptionDemandIdFormat),
-            step = (json \ "step").as(SubscriptionDemandStepIdFormat),
+            demand = (json \ "demand").as(using SubscriptionDemandIdFormat),
+            step = (json \ "step").as(using SubscriptionDemandStepIdFormat),
             motivation = (json \ "motivation").as[String]
           )
         )
@@ -3212,7 +3212,7 @@ object json {
         Try {
           JsSuccess(
             ApiSubscriptionTransferSuccess(
-              subscription = (json \ "subscription").as(ApiSubscriptionIdFormat)
+              subscription = (json \ "subscription").as(using ApiSubscriptionIdFormat)
             )
           )
         } recover { case e =>
@@ -3229,9 +3229,9 @@ object json {
       Try {
         JsSuccess(
           ApiSubscriptionReject(
-            api = (json \ "api").as(ApiIdFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat),
-            team = (json \ "team").as(TeamIdFormat),
+            api = (json \ "api").as(using ApiIdFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat),
+            team = (json \ "team").as(using TeamIdFormat),
             message = (json \ "message").asOpt[String]
           )
         )
@@ -3256,9 +3256,9 @@ object json {
       Try {
         JsSuccess(
           ApiSubscriptionAccept(
-            api = (json \ "api").as(ApiIdFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat),
-            team = (json \ "team").as(TeamIdFormat)
+            api = (json \ "api").as(using ApiIdFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat),
+            team = (json \ "team").as(using TeamIdFormat)
           )
         )
       } recover { case e =>
@@ -3297,9 +3297,9 @@ object json {
         Try {
           JsSuccess(
             ApiKeyDeletionInformationV2(
-              api = (json \ "api").as(ApiIdFormat),
+              api = (json \ "api").as(using ApiIdFormat),
               clientId = (json \ "clientId").as[String],
-              subscription = (json \ "subscription").as(ApiSubscriptionIdFormat)
+              subscription = (json \ "subscription").as(using ApiSubscriptionIdFormat)
             )
           )
         } recover { case e =>
@@ -3322,7 +3322,7 @@ object json {
         Try {
           JsSuccess(
             OtoroshiSyncSubscriptionError(
-              subscription = (json \ "subscription").as(ApiSubscriptionFormat),
+              subscription = (json \ "subscription").as(using ApiSubscriptionFormat),
               message = (json \ "message").as[String]
             )
           )
@@ -3342,7 +3342,7 @@ object json {
       Try {
         JsSuccess(
           OtoroshiSyncApiError(
-            api = (json \ "api").as(ApiFormat),
+            api = (json \ "api").as(using ApiFormat),
             message = (json \ "message").as[String]
           )
         )
@@ -3384,9 +3384,9 @@ object json {
           JsSuccess(
             ApiKeyRotationInProgressV2(
               subscription =
-                (json \ "subscription").as(ApiSubscriptionIdFormat),
-              api = (json \ "api").as(ApiIdFormat),
-              plan = (json \ "plan").as(UsagePlanIdFormat)
+                (json \ "subscription").as(using ApiSubscriptionIdFormat),
+              api = (json \ "api").as(using ApiIdFormat),
+              plan = (json \ "plan").as(using UsagePlanIdFormat)
             )
           )
         } recover { case e =>
@@ -3428,9 +3428,9 @@ object json {
       Try {
         JsSuccess(
           ApiKeyRotationEndedV2(
-            subscription = (json \ "subscription").as(ApiSubscriptionIdFormat),
-            api = (json \ "api").as(ApiIdFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat)
+            subscription = (json \ "subscription").as(using ApiSubscriptionIdFormat),
+            api = (json \ "api").as(using ApiIdFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat)
           )
         )
       } recover { case e =>
@@ -3449,8 +3449,8 @@ object json {
       Try {
         JsSuccess(
           TeamInvitation(
-            team = (json \ "team").as(TeamIdFormat),
-            user = (json \ "user").as(UserIdFormat)
+            team = (json \ "team").as(using TeamIdFormat),
+            user = (json \ "user").as(using UserIdFormat)
           )
         )
       } recover { case e =>
@@ -3489,9 +3489,9 @@ object json {
       Try {
         JsSuccess(
           ApiKeyRefreshV2(
-            subscription = (json \ "subscription").as(ApiSubscriptionIdFormat),
-            api = (json \ "api").as(ApiIdFormat),
-            plan = (json \ "plan").as(UsagePlanIdFormat),
+            subscription = (json \ "subscription").as(using ApiSubscriptionIdFormat),
+            api = (json \ "api").as(using ApiIdFormat),
+            plan = (json \ "plan").as(using UsagePlanIdFormat),
             message = (json \ "message").asOpt[String]
           )
         )
@@ -3570,7 +3570,7 @@ object json {
         Try {
           JsSuccess(
             Accepted(
-              date = (json \ "date").as(DateTimeFormat)
+              date = (json \ "date").as(using DateTimeFormat)
             )
           )
         } recover { case e =>
@@ -3590,7 +3590,7 @@ object json {
         Try {
           JsSuccess(
             Rejected(
-              date = (json \ "date").as(DateTimeFormat)
+              date = (json \ "date").as(using DateTimeFormat)
             )
           )
         } recover { case e =>
@@ -3612,7 +3612,7 @@ object json {
             NotificationSender(
               name = (json \ "name").as[String],
               email = (json \ "email").as[String],
-              id = (json \ "id").asOpt(UserIdFormat)
+              id = (json \ "id").asOpt(using UserIdFormat)
             )
           )
         } recover { case e =>
@@ -3632,17 +3632,17 @@ object json {
       Try {
         JsSuccess(
           Notification(
-            id = (json \ "_id").as(NotificationIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using NotificationIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
-            team = (json \ "team").asOpt(TeamIdFormat),
-            sender = (json \ "sender").as(NotificationSenderFormat),
+            team = (json \ "team").asOpt(using TeamIdFormat),
+            sender = (json \ "sender").as(using NotificationSenderFormat),
             date =
-              (json \ "date").asOpt(DateTimeFormat).getOrElse(DateTime.now()),
-            status = (json \ "status").as(NotificationStatusFormat),
-            action = (json \ "action").as(NotificationActionFormat),
+              (json \ "date").asOpt(using DateTimeFormat).getOrElse(DateTime.now()),
+            status = (json \ "status").as(using NotificationStatusFormat),
+            action = (json \ "action").as(using NotificationActionFormat),
             notificationType = (json \ "notificationType")
-              .asOpt(NotificationTypeFormat)
+              .asOpt(using NotificationTypeFormat)
               .getOrElse(NotificationType.AcceptOrReject)
           )
         )
@@ -3675,21 +3675,21 @@ object json {
       Try {
         JsSuccess(
           UserSession(
-            id = (json \ "_id").as(DatastoreIdFormat),
-            sessionId = (json \ "sessionId").as(UserSessionIdFormat),
-            userId = (json \ "userId").as(UserIdFormat),
+            id = (json \ "_id").as(using DatastoreIdFormat),
+            sessionId = (json \ "sessionId").as(using UserSessionIdFormat),
+            userId = (json \ "userId").as(using UserIdFormat),
             userName = (json \ "userName").as[String],
             userEmail = (json \ "userEmail").as[String],
-            impersonatorId = (json \ "impersonatorId").asOpt(UserIdFormat),
+            impersonatorId = (json \ "impersonatorId").asOpt(using UserIdFormat),
             impersonatorName = (json \ "impersonatorName").asOpt[String],
             impersonatorEmail = (json \ "impersonatorEmail").asOpt[String],
             impersonatorSessionId =
-              (json \ "impersonatorSessionId").asOpt(UserSessionIdFormat),
+              (json \ "impersonatorSessionId").asOpt(using UserSessionIdFormat),
             created = (json \ "created")
-              .asOpt(DateTimeFormat)
+              .asOpt(using DateTimeFormat)
               .getOrElse(DateTime.now()),
             expires = (json \ "expires")
-              .asOpt(DateTimeFormat)
+              .asOpt(using DateTimeFormat)
               .getOrElse(DateTime.now()),
             ttl = (json \ "ttl")
               .asOpt[Long]
@@ -3755,22 +3755,22 @@ object json {
         Try {
           JsSuccess(
             ApiKeyConsumption(
-              id = (json \ "_id").as(DatastoreIdFormat),
+              id = (json \ "_id").as(using DatastoreIdFormat),
               deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
-              tenant = (json \ "_tenant").as(TenantIdFormat),
-              team = (json \ "team").as(TeamIdFormat),
-              api = (json \ "api").as(ApiIdFormat),
-              plan = (json \ "plan").as(UsagePlanIdFormat),
+              tenant = (json \ "_tenant").as(using TenantIdFormat),
+              team = (json \ "team").as(using TeamIdFormat),
+              api = (json \ "api").as(using ApiIdFormat),
+              plan = (json \ "plan").as(using UsagePlanIdFormat),
               clientId = (json \ "clientId").as[String],
               hits = (json \ "hits").as[Long],
               globalInformations = (json \ "globalInformations").as(
-                GlobalConsumptionInformationsFormat
+                using GlobalConsumptionInformationsFormat
               ),
-              quotas = (json \ "quotas").as(ApiKeyQuotasFormat),
-              billing = (json \ "billing").as(ApiKeyBillingFormat),
-              from = (json \ "from").as(DateTimeFormat),
-              to = (json \ "to").as(DateTimeFormat),
-              state = (json \ "state").as(ApiKeyConsumptionStateFormat)
+              quotas = (json \ "quotas").as(using ApiKeyQuotasFormat),
+              billing = (json \ "billing").as(using ApiKeyBillingFormat),
+              from = (json \ "from").as(using DateTimeFormat),
+              to = (json \ "to").as(using DateTimeFormat),
+              state = (json \ "state").as(using ApiKeyConsumptionStateFormat)
             )
           )
         } recover { case e =>
@@ -3808,9 +3808,9 @@ object json {
         Try {
           JsSuccess(
             ApiKeyGlobalConsumptionInformations(
-              hits = (json \ "hits").as(LongFormat),
-              dataIn = (json \ "dataIn").as(LongFormat),
-              dataOut = (json \ "dataOut").as(LongFormat),
+              hits = (json \ "hits").as(using LongFormat),
+              dataIn = (json \ "dataIn").as(using LongFormat),
+              dataOut = (json \ "dataOut").as(using LongFormat),
               avgDuration = (json \ "avgDuration").asOpt[Double],
               avgOverhead = (json \ "avgOverhead").asOpt[Double]
             )
@@ -3841,25 +3841,25 @@ object json {
         JsSuccess(
           ApiKeyQuotas(
             authorizedCallsPerSec = (json \ "authorizedCallsPerWindow")
-              .asOpt(LongFormat)
-              .getOrElse((json \ "authorizedCallsPerSec").as(LongFormat)),
+              .asOpt(using LongFormat)
+              .getOrElse((json \ "authorizedCallsPerSec").as(using LongFormat)),
             currentCallsPerSec = (json \ "throttlingCallsPerWindow")
-              .asOpt(LongFormat)
-              .getOrElse((json \ "currentCallsPerSec").as(LongFormat)),
+              .asOpt(using LongFormat)
+              .getOrElse((json \ "currentCallsPerSec").as(using LongFormat)),
             remainingCallsPerSec = (json \ "remainingCallsPerWindow")
-              .asOpt(LongFormat)
-              .getOrElse((json \ "remainingCallsPerSec").as(LongFormat)),
+              .asOpt(using LongFormat)
+              .getOrElse((json \ "remainingCallsPerSec").as(using LongFormat)),
             authorizedCallsPerDay =
-              (json \ "authorizedCallsPerDay").as(LongFormat),
-            currentCallsPerDay = (json \ "currentCallsPerDay").as(LongFormat),
+              (json \ "authorizedCallsPerDay").as(using LongFormat),
+            currentCallsPerDay = (json \ "currentCallsPerDay").as(using LongFormat),
             remainingCallsPerDay =
-              (json \ "remainingCallsPerDay").as(LongFormat),
+              (json \ "remainingCallsPerDay").as(using LongFormat),
             authorizedCallsPerMonth =
-              (json \ "authorizedCallsPerMonth").as(LongFormat),
+              (json \ "authorizedCallsPerMonth").as(using LongFormat),
             currentCallsPerMonth =
-              (json \ "currentCallsPerMonth").as(LongFormat),
+              (json \ "currentCallsPerMonth").as(using LongFormat),
             remainingCallsPerMonth =
-              (json \ "remainingCallsPerMonth").as(LongFormat)
+              (json \ "remainingCallsPerMonth").as(using LongFormat)
           )
         )
       } recover { case e =>
@@ -3885,7 +3885,7 @@ object json {
       Try {
         JsSuccess(
           ApiKeyBilling(
-            hits = (json \ "hits").as(LongFormat),
+            hits = (json \ "hits").as(using LongFormat),
             total = (json \ "total").as[BigDecimal]
           )
         )
@@ -3905,14 +3905,14 @@ object json {
       Try {
         JsSuccess(
           PasswordReset(
-            id = (json \ "_id").as(DatastoreIdFormat),
+            id = (json \ "_id").as(using DatastoreIdFormat),
             deleted = (json \ "_deleted").as[Boolean],
             randomId = (json \ "randomId").as[String],
             email = (json \ "email").as[String],
             password = (json \ "password").as[String],
-            user = (json \ "user").as(UserIdFormat),
-            creationDate = (json \ "creationDate").as(DateTimeFormat),
-            validUntil = (json \ "validUntil").as(DateTimeFormat)
+            user = (json \ "user").as(using UserIdFormat),
+            creationDate = (json \ "creationDate").as(using DateTimeFormat),
+            validUntil = (json \ "validUntil").as(using DateTimeFormat)
           )
         )
       } recover { case e =>
@@ -3938,19 +3938,19 @@ object json {
         Try {
           JsSuccess(
             AccountCreation(
-              id = (json \ "_id").as(SubscriptionDemandIdFormat),
+              id = (json \ "_id").as(using SubscriptionDemandIdFormat),
               deleted = (json \ "_deleted").as[Boolean],
               randomId = (json \ "randomId").as[String],
               email = (json \ "email").as[String],
               name = (json \ "name").as[String],
               avatar = (json \ "avatar").as[String],
               password = (json \ "password").as[String],
-              creationDate = (json \ "creationDate").as(DateTimeFormat),
-              validUntil = (json \ "validUntil").as(DateTimeFormat),
-              steps = (json \ "steps").as(SeqSubscriptionDemanStepFormat),
-              state = (json \ "state").as(SubscriptionDemandStateFormat),
+              creationDate = (json \ "creationDate").as(using DateTimeFormat),
+              validUntil = (json \ "validUntil").as(using DateTimeFormat),
+              steps = (json \ "steps").as(using SeqSubscriptionDemanStepFormat),
+              state = (json \ "state").as(using SubscriptionDemandStateFormat),
               value = (json \ "value").as[JsObject],
-              fromTenant = (json \ "fromTenant").as(TenantIdFormat)
+              fromTenant = (json \ "fromTenant").as(using TenantIdFormat)
             )
           )
         } recover { case e =>
@@ -3981,13 +3981,13 @@ object json {
         Try {
           JsSuccess(
             EmailVerification(
-              id = (json \ "_id").as(DatastoreIdFormat),
+              id = (json \ "_id").as(using DatastoreIdFormat),
               deleted = (json \ "_deleted").as[Boolean],
               randomId = (json \ "randomId").as[String],
-              tenant = (json \ "_tenant").as(TenantIdFormat),
-              team = (json \ "teamId").as(TeamIdFormat),
-              creationDate = (json \ "creationDate").as(DateTimeFormat),
-              validUntil = (json \ "validUntil").as(DateTimeFormat)
+              tenant = (json \ "_tenant").as(using TenantIdFormat),
+              team = (json \ "teamId").as(using TeamIdFormat),
+              creationDate = (json \ "creationDate").as(using DateTimeFormat),
+              validUntil = (json \ "validUntil").as(using DateTimeFormat)
             )
           )
         } recover { case e =>
@@ -4011,13 +4011,13 @@ object json {
       Try {
         JsSuccess(
           Translation(
-            id = (json \ "_id").as(DatastoreIdFormat),
-            tenant = (json \ "_tenant").as(TenantIdFormat),
+            id = (json \ "_id").as(using DatastoreIdFormat),
+            tenant = (json \ "_tenant").as(using TenantIdFormat),
             language = (json \ "language").as[String],
             key = (json \ "key").as[String],
             value = (json \ "value").as[String],
             lastModificationAt =
-              (json \ "lastModificationAt").asOpt(DateTimeFormat)
+              (json \ "lastModificationAt").asOpt(using DateTimeFormat)
           )
         )
       } recover { case e =>
@@ -4047,7 +4047,7 @@ object json {
             IntlTranslation(
               id = (json \ "_id").as[String],
               translations = (json \ "translations")
-                .asOpt(SeqTranslationFormat)
+                .asOpt(using SeqTranslationFormat)
                 .getOrElse(Seq.empty),
               content = (json \ "content").asOpt[String].getOrElse("")
             )
@@ -4083,9 +4083,9 @@ object json {
         Try {
           JsSuccess(
             UserWithPermission(
-              userId = (json \ "userId").as(UserIdFormat),
+              userId = (json \ "userId").as(using UserIdFormat),
               teamPermission =
-                (json \ "teamPermission").as(TeamPermissionFormat)
+                (json \ "teamPermission").as(using TeamPermissionFormat)
             )
           )
         } recover { case e =>
@@ -4105,17 +4105,17 @@ object json {
         Try {
           JsSuccess(
             Message(
-              id = (json \ "_id").as(DatastoreIdFormat),
-              tenant = (json \ "_tenant").as(TenantIdFormat),
-              messageType = (json \ "messageType").as(MessageTypeFormat),
-              chat = (json \ "chat").as(UserIdFormat),
-              date = (json \ "date").as(DateTimeFormat),
-              sender = (json \ "sender").as(UserIdFormat),
-              participants = (json \ "participants").as(SetUserIdFormat),
-              readBy = (json \ "readBy").as(SetUserIdFormat),
+              id = (json \ "_id").as(using DatastoreIdFormat),
+              tenant = (json \ "_tenant").as(using TenantIdFormat),
+              messageType = (json \ "messageType").as(using MessageTypeFormat),
+              chat = (json \ "chat").as(using UserIdFormat),
+              date = (json \ "date").as(using DateTimeFormat),
+              sender = (json \ "sender").as(using UserIdFormat),
+              participants = (json \ "participants").as(using SetUserIdFormat),
+              readBy = (json \ "readBy").as(using SetUserIdFormat),
               message = (json \ "message").as[String],
               send = (json \ "send").asOpt[Boolean].getOrElse(false),
-              closed = (json \ "closed").asOpt(DateTimeFormat)
+              closed = (json \ "closed").asOpt(using DateTimeFormat)
             )
           )
         } recover { case e =>
@@ -4193,7 +4193,7 @@ object json {
           UserInvitation(
             token = (json \ "token").as[String],
             createdAt = (json \ "createdAt")
-              .asOpt(DateTimeFormat)
+              .asOpt(using DateTimeFormat)
               .getOrElse(DateTime.now()),
             team = (json \ "team").asOpt[String].getOrElse("team"),
             notificationId =
@@ -4221,10 +4221,10 @@ object json {
         Try {
           JsSuccess(
             Evolution(
-              id = (json \ "_id").as(DatastoreIdFormat),
+              id = (json \ "_id").as(using DatastoreIdFormat),
               version = (json \ "version").as[String],
               applied = (json \ "applied").as[Boolean],
-              date = (json \ "date").as(DateTimeFormat)
+              date = (json \ "date").as(using DateTimeFormat)
             )
           )
         } recover { case e =>
@@ -4246,7 +4246,7 @@ object json {
         Try {
           JsSuccess(
             ReportsInfo(
-              (json \ "_id").as(DatastoreIdFormat),
+              (json \ "_id").as(using DatastoreIdFormat),
               (json \ "activated").as[Boolean],
               (json \ "date").asOpt[Long]
             )
@@ -4279,19 +4279,19 @@ object json {
         Try {
           JsSuccess(
             JobInformation(
-              id = (json \ "_id").as(DatastoreIdFormat),
-              tenant = (json \ "_tenant").as(TenantIdFormat),
+              id = (json \ "_id").as(using DatastoreIdFormat),
+              tenant = (json \ "_tenant").as(using TenantIdFormat),
               deleted = (json \ "_deleted").as[Boolean],
-              jobName = (json \ "jobName").as(JobNameFormat),
+              jobName = (json \ "jobName").as(using JobNameFormat),
               lockedBy = (json \ "lockedBy").as[String],
-              lockedAt = (json \ "lockedAt").as(DateTimeFormat),
-              expiresAt = (json \ "expiresAt").as(DateTimeFormat),
+              lockedAt = (json \ "lockedAt").as(using DateTimeFormat),
+              expiresAt = (json \ "expiresAt").as(using DateTimeFormat),
               cursor = (json \ "cursor").as[String],
               batchSize = (json \ "batchSize").as[Int],
               totalProcessed = (json \ "totalProcessed").as[BigDecimal],
-              startedAt = (json \ "startedAt").as(DateTimeFormat),
-              lastBatchAt = (json \ "lastBatchAt").as(DateTimeFormat),
-              status = (json \ "status").as(JobStatusFormat)
+              startedAt = (json \ "startedAt").as(using DateTimeFormat),
+              lastBatchAt = (json \ "lastBatchAt").as(using DateTimeFormat),
+              status = (json \ "status").as(using JobStatusFormat)
             )
           )
         } recover { case e =>
@@ -4322,11 +4322,11 @@ object json {
         JsSuccess(
           ApiSubscriptionDetail(
             apiSubscription =
-              (json \ "apiSubscription").as(ApiSubscriptionFormat),
+              (json \ "apiSubscription").as(using ApiSubscriptionFormat),
             parentSubscription =
-              (json \ "parentSubscription").asOpt(ApiSubscriptionFormat),
+              (json \ "parentSubscription").asOpt(using ApiSubscriptionFormat),
             accessibleResources = (json \ "accessibleResources").as(
-              SeqApiSubscriptionAccessibleResourceFormat
+              using SeqApiSubscriptionAccessibleResourceFormat
             )
           )
         )
@@ -4356,9 +4356,9 @@ object json {
           JsSuccess(
             ApiSubscriptionAccessibleResource(
               apiSubscription =
-                (json \ "apiSubscription").as(ApiSubscriptionFormat),
-              api = (json \ "api").as(ApiFormat),
-              usagePlan = (json \ "usagePlan").as(UsagePlanFormat)
+                (json \ "apiSubscription").as(using ApiSubscriptionFormat),
+              api = (json \ "api").as(using ApiFormat),
+              usagePlan = (json \ "usagePlan").as(using UsagePlanFormat)
             )
           )
         } recover { case e =>
@@ -4375,80 +4375,80 @@ object json {
     }
 
   val SeqApiSubscriptionAccessibleResourceFormat = Format(
-    Reads.seq(ApiSubscriptionAccessibleResourceFormat),
-    Writes.seq(ApiSubscriptionAccessibleResourceFormat)
+    Reads.seq(using ApiSubscriptionAccessibleResourceFormat),
+    Writes.seq(using ApiSubscriptionAccessibleResourceFormat)
   )
 
   val SeqOtoroshiSettingsFormat = Format(
-    Reads.seq(OtoroshiSettingsFormat),
-    Writes.seq(OtoroshiSettingsFormat)
+    Reads.seq(using OtoroshiSettingsFormat),
+    Writes.seq(using OtoroshiSettingsFormat)
   )
   val SeqVersionFormat =
-    Format(Reads.seq(VersionFormat), Writes.seq(VersionFormat))
+    Format(Reads.seq(using VersionFormat), Writes.seq(using VersionFormat))
   val SeqTeamIdFormat =
-    Format(Reads.seq(TeamIdFormat), Writes.seq(TeamIdFormat))
+    Format(Reads.seq(using TeamIdFormat), Writes.seq(using TeamIdFormat))
   val SeqPostIdFormat =
-    Format(Reads.seq(PostIdFormat), Writes.seq(PostIdFormat))
+    Format(Reads.seq(using PostIdFormat), Writes.seq(using PostIdFormat))
   val SeqIssueIdFormat =
-    Format(Reads.seq(IssueIdFormat), Writes.seq(IssueIdFormat))
+    Format(Reads.seq(using IssueIdFormat), Writes.seq(using IssueIdFormat))
   val SeqOtoroshiGroupFormat =
-    Format(Reads.seq(OtoroshiGroupFormat), Writes.seq(OtoroshiGroupFormat))
+    Format(Reads.seq(using OtoroshiGroupFormat), Writes.seq(using OtoroshiGroupFormat))
   val SeqTenantIdFormat =
-    Format(Reads.seq(TenantIdFormat), Writes.seq(TenantIdFormat))
+    Format(Reads.seq(using TenantIdFormat), Writes.seq(using TenantIdFormat))
   val SeqTenantFormat =
-    Format(Reads.seq(TenantFormat), Writes.seq(TenantFormat))
-  val SeqUserFormat = Format(Reads.seq(UserFormat), Writes.seq(UserFormat))
+    Format(Reads.seq(using TenantFormat), Writes.seq(using TenantFormat))
+  val SeqUserFormat = Format(Reads.seq(using UserFormat), Writes.seq(using UserFormat))
   val SeqUserIdFormat =
-    Format(Reads.seq(UserIdFormat), Writes.seq(UserIdFormat))
+    Format(Reads.seq(using UserIdFormat), Writes.seq(using UserIdFormat))
   val SetUserIdFormat =
-    Format(Reads.set(UserIdFormat), Writes.set(UserIdFormat))
+    Format(Reads.set(using UserIdFormat), Writes.set(using UserIdFormat))
   val SeqApiSubscriptionIdFormat = Format(
-    Reads.seq(ApiSubscriptionIdFormat),
-    Writes.seq(ApiSubscriptionIdFormat)
+    Reads.seq(using ApiSubscriptionIdFormat),
+    Writes.seq(using ApiSubscriptionIdFormat)
   )
   val SeqApiDocumentationPageIdFormat =
     Format(
-      Reads.seq(ApiDocumentationPageIdFormat),
-      Writes.seq(ApiDocumentationPageIdFormat)
+      Reads.seq(using ApiDocumentationPageIdFormat),
+      Writes.seq(using ApiDocumentationPageIdFormat)
     )
   val SeqApiDocumentationFormat = Format(
-    Reads.seq(ApiDocumentationFormat),
-    Writes.seq(ApiDocumentationFormat)
+    Reads.seq(using ApiDocumentationFormat),
+    Writes.seq(using ApiDocumentationFormat)
   )
   val SeqApiDocumentationPageFormat =
     Format(
-      Reads.seq(ApiDocumentationPageFormat),
-      Writes.seq(ApiDocumentationPageFormat)
+      Reads.seq(using ApiDocumentationPageFormat),
+      Writes.seq(using ApiDocumentationPageFormat)
     )
   val SeqUsagePlanFormat =
-    Format(Reads.seq(UsagePlanFormat), Writes.seq(UsagePlanFormat))
+    Format(Reads.seq(using UsagePlanFormat), Writes.seq(using UsagePlanFormat))
   val SeqUsagePlanIdFormat =
-    Format(Reads.seq(UsagePlanIdFormat), Writes.seq(UsagePlanIdFormat))
+    Format(Reads.seq(using UsagePlanIdFormat), Writes.seq(using UsagePlanIdFormat))
   val SeqTeamFormat =
-    Format(Reads.seq(TeamFormat), Writes.seq(TeamFormat))
+    Format(Reads.seq(using TeamFormat), Writes.seq(using TeamFormat))
   val SeqApiFormat =
-    Format(Reads.seq(ApiFormat), Writes.seq(ApiFormat))
+    Format(Reads.seq(using ApiFormat), Writes.seq(using ApiFormat))
   val SetApiIdFormat =
-    Format(Reads.set(ApiIdFormat), Writes.set(ApiIdFormat))
+    Format(Reads.set(using ApiIdFormat), Writes.set(using ApiIdFormat))
   val SetApiTagFormat =
-    Format(Reads.set(ApiTagFormat), Writes.set(ApiTagFormat))
+    Format(Reads.set(using ApiTagFormat), Writes.set(using ApiTagFormat))
   val SetUserWithPermissionFormat =
     Format(
-      Reads.set(UserWithPermissionFormat),
-      Writes.set(UserWithPermissionFormat)
+      Reads.set(using UserWithPermissionFormat),
+      Writes.set(using UserWithPermissionFormat)
     )
   val SeqNotificationFormat =
-    Format(Reads.seq(NotificationFormat), Writes.seq(NotificationFormat))
+    Format(Reads.seq(using NotificationFormat), Writes.seq(using NotificationFormat))
   val SeqConsumptionFormat =
-    Format(Reads.seq(ConsumptionFormat), Writes.seq(ConsumptionFormat))
+    Format(Reads.seq(using ConsumptionFormat), Writes.seq(using ConsumptionFormat))
   val SeqApiSubscriptionFormat =
-    Format(Reads.seq(ApiSubscriptionFormat), Writes.seq(ApiSubscriptionFormat))
+    Format(Reads.seq(using ApiSubscriptionFormat), Writes.seq(using ApiSubscriptionFormat))
   val SeqTranslationFormat =
-    Format(Reads.seq(TranslationFormat), Writes.seq(TranslationFormat))
+    Format(Reads.seq(using TranslationFormat), Writes.seq(using TranslationFormat))
   val SeqCustomMetadataFormat =
-    Format(Reads.seq(CustomMetadataFormat), Writes.seq(CustomMetadataFormat))
+    Format(Reads.seq(using CustomMetadataFormat), Writes.seq(using CustomMetadataFormat))
   val SeqMessagesFormat =
-    Format(Reads.seq(MessageFormat), Writes.seq(MessageFormat))
+    Format(Reads.seq(using MessageFormat), Writes.seq(using MessageFormat))
 
   val DefaultFormat = new Format[JsObject] {
     override def reads(json: JsValue): JsResult[JsObject] =
@@ -4513,7 +4513,7 @@ object json {
     override def reads(json: JsValue): JsResult[CmsRequestRendering] =
       Try {
         CmsRequestRendering(
-          content = (json \ "content").as(Reads.seq(CmsFileFormat)),
+          content = (json \ "content").as(using Reads.seq(using CmsFileFormat)),
           current_page = (json \ "current_page").as[String],
           fields = (json \ "fields").as[Map[String, JsValue]]
         )
@@ -4533,9 +4533,9 @@ object json {
     override def reads(json: JsValue): JsResult[Asset] =
       Try {
         Asset(
-          id = (json \ "_id").as(AssetIdFormat),
+          id = (json \ "_id").as(using AssetIdFormat),
           slug = (json \ "slug").as[String],
-          tenant = (json \ "_tenant").as(TenantIdFormat)
+          tenant = (json \ "_tenant").as(using TenantIdFormat)
         )
       } match {
         case Failure(exception) => JsError(exception.getMessage)
@@ -4571,8 +4571,8 @@ object json {
     override def reads(json: JsValue): JsResult[CmsPage] =
       Try {
         CmsPage(
-          id = (json \ "_id").as(CmsPageIdFormat),
-          tenant = (json \ "_tenant").as(TenantIdFormat),
+          id = (json \ "_id").as(using CmsPageIdFormat),
+          tenant = (json \ "_tenant").as(using TenantIdFormat),
           deleted = (json \ "_deleted").asOpt[Boolean].getOrElse(false),
           visible = (json \ "visible").asOpt[Boolean].getOrElse(false),
           authenticated =
@@ -4592,7 +4592,7 @@ object json {
           path = (json \ "path").asOpt[String],
           exact = (json \ "exact").asOpt[Boolean].getOrElse(false),
           lastPublishedDate =
-            (json \ "lastPublishedDate").asOpt(DateTimeFormat)
+            (json \ "lastPublishedDate").asOpt(using DateTimeFormat)
         )
       } match {
         case Failure(exception) => JsError(exception.getMessage)
@@ -4636,13 +4636,13 @@ object json {
     override def reads(json: JsValue): JsResult[Operation] =
       Try {
         Operation(
-          id = (json \ "_id").as(DatastoreIdFormat),
-          tenant = (json \ "_tenant").as(TenantIdFormat),
+          id = (json \ "_id").as(using DatastoreIdFormat),
+          tenant = (json \ "_tenant").as(using TenantIdFormat),
           itemId = (json \ "itemId").as[String],
-          itemType = (json \ "itemType").as(ItemTypeFormat),
-          action = (json \ "action").as(OperationActionFormat),
+          itemType = (json \ "itemType").as(using ItemTypeFormat),
+          action = (json \ "action").as(using OperationActionFormat),
           payload = (json \ "payload").asOpt[JsObject],
-          status = (json \ "status").as(OperationStatusFormat)
+          status = (json \ "status").as(using OperationStatusFormat)
         )
       } match {
         case Failure(exception) => JsError(exception.getMessage)
@@ -4681,7 +4681,7 @@ object json {
     override def reads(json: JsValue): JsResult[StripeSettings] =
       Try {
         StripeSettings(
-          id = (json \ "_id").as(ThirdPartyPaymentSettingsIdFormat),
+          id = (json \ "_id").as(using ThirdPartyPaymentSettingsIdFormat),
           name = (json \ "name").as[String],
           publicKey = (json \ "publicKey").as[String],
           secretKey = (json \ "secretKey").as[String]
@@ -4708,13 +4708,13 @@ object json {
     override def reads(json: JsValue): JsResult[ApiSubscriptionTransfer] =
       Try {
         ApiSubscriptionTransfer(
-          id = (json \ "_id").as(DatastoreIdFormat),
-          tenant = (json \ "_tenant").as(TenantIdFormat),
+          id = (json \ "_id").as(using DatastoreIdFormat),
+          tenant = (json \ "_tenant").as(using TenantIdFormat),
           deleted = (json \ "_deleted").as[Boolean],
           token = (json \ "token").as[String],
-          subscription = (json \ "subscription").as(ApiSubscriptionIdFormat),
-          by = (json \ "by").as(UserIdFormat),
-          date = (json \ "date").as(DateTimeFormat)
+          subscription = (json \ "subscription").as(using ApiSubscriptionIdFormat),
+          by = (json \ "by").as(using UserIdFormat),
+          date = (json \ "date").as(using DateTimeFormat)
         )
       } match {
         case Failure(e) =>
@@ -4762,13 +4762,13 @@ object json {
     override def reads(json: JsValue): JsResult[ApiWithAuthorizations] =
       Try {
         ApiWithAuthorizations(
-          api = (json \ "api").as(ApiFormat),
-          plans = (json \ "plans").as(SeqUsagePlanFormat),
+          api = (json \ "api").as(using ApiFormat),
+          plans = (json \ "plans").as(using SeqUsagePlanFormat),
           authorizations =
-            (json \ "authorizations").as(SeqAuthorizationApiFormat),
+            (json \ "authorizations").as(using SeqAuthorizationApiFormat),
           subscriptionDemands =
-            (json \ "subscriptionDemands").as(SeqSubscriptionDemandFormat),
-          subscriptions = (json \ "subscriptions").as(SeqApiSubscriptionFormat)
+            (json \ "subscriptionDemands").as(using SeqSubscriptionDemandFormat),
+          subscriptions = (json \ "subscriptions").as(using SeqApiSubscriptionFormat)
         )
       } match {
         case Failure(e) =>
@@ -4793,7 +4793,7 @@ object json {
     override def reads(json: JsValue): JsResult[TeamCount] =
       Try {
         TeamCount(
-          team = (json \ "team").as(TeamFormat),
+          team = (json \ "team").as(using TeamFormat),
           total = (json \ "total").as[Int]
         )
       } match {
@@ -4835,10 +4835,10 @@ object json {
     override def reads(json: JsValue): JsResult[ApiWithCount] =
       Try {
         ApiWithCount(
-          apis = (json \ "apis").as(SeqApiWithAuthorizationsFormat),
-          producers = (json \ "producers").as(SeqTeamCountFormat),
-          tags = (json \ "tags").as(SeqValueCountFormat),
-          categories = (json \ "categories").as(SeqValueCountFormat),
+          apis = (json \ "apis").as(using SeqApiWithAuthorizationsFormat),
+          producers = (json \ "producers").as(using SeqTeamCountFormat),
+          tags = (json \ "tags").as(using SeqValueCountFormat),
+          categories = (json \ "categories").as(using SeqValueCountFormat),
           total = (json \ "total").as[Long],
           totalFiltered = (json \ "totalFiltered").as[Long]
         )
@@ -4861,63 +4861,63 @@ object json {
   }
 
   val SeqTeamCountFormat = Format(
-    Reads.seq(TeamCountFormat),
-    Writes.seq(TeamCountFormat)
+    Reads.seq(using TeamCountFormat),
+    Writes.seq(using TeamCountFormat)
   )
   val SeqValueCountFormat = Format(
-    Reads.seq(ValueCountFormat),
-    Writes.seq(ValueCountFormat)
+    Reads.seq(using ValueCountFormat),
+    Writes.seq(using ValueCountFormat)
   )
   val SeqAuthorizationApiFormat = Format(
-    Reads.seq(AuthorizationApiFormat),
-    Writes.seq(AuthorizationApiFormat)
+    Reads.seq(using AuthorizationApiFormat),
+    Writes.seq(using AuthorizationApiFormat)
   )
 
   val SeqApiWithAuthorizationsFormat = Format(
-    Reads.seq(ApiWithAuthorizationsFormat),
-    Writes.seq(ApiWithAuthorizationsFormat)
+    Reads.seq(using ApiWithAuthorizationsFormat),
+    Writes.seq(using ApiWithAuthorizationsFormat)
   )
 
   val SetOtoroshiServicesIdFormat =
     Format(
-      Reads.set(OtoroshiServiceIdFormat),
-      Writes.set(OtoroshiServiceIdFormat)
+      Reads.set(using OtoroshiServiceIdFormat),
+      Writes.set(using OtoroshiServiceIdFormat)
     )
   val SetOtoroshiRoutesIdFormat =
-    Format(Reads.set(OtoroshiRouteIdFormat), Writes.set(OtoroshiRouteIdFormat))
+    Format(Reads.set(using OtoroshiRouteIdFormat), Writes.set(using OtoroshiRouteIdFormat))
   val SetOtoroshiServiceGroupsIdFormat =
     Format(
-      Reads.set(OtoroshiServiceGroupIdFormat),
-      Writes.set(OtoroshiServiceGroupIdFormat)
+      Reads.set(using OtoroshiServiceGroupIdFormat),
+      Writes.set(using OtoroshiServiceGroupIdFormat)
     )
   val SeqApiDocumentationDetailPageFormat
       : Format[Seq[ApiDocumentationDetailPage]] =
     Format(
-      Reads.seq(ApiDocumentationDetailPageFormat),
-      Writes.seq(ApiDocumentationDetailPageFormat)
+      Reads.seq(using ApiDocumentationDetailPageFormat),
+      Writes.seq(using ApiDocumentationDetailPageFormat)
     )
   val SeqThirdPartyPaymentSettingsFormat
       : Format[Seq[ThirdPartyPaymentSettings]] =
     Format(
-      Reads.seq(ThirdPartyPaymentSettingsFormat),
-      Writes.seq(ThirdPartyPaymentSettingsFormat)
+      Reads.seq(using ThirdPartyPaymentSettingsFormat),
+      Writes.seq(using ThirdPartyPaymentSettingsFormat)
     )
   val SeqValidationStepFormat: Format[Seq[ValidationStep]] =
-    Format(Reads.seq(ValidationStepFormat), Writes.seq(ValidationStepFormat))
+    Format(Reads.seq(using ValidationStepFormat), Writes.seq(using ValidationStepFormat))
   val SeqSubscriptionDemanStepFormat =
     Format(
-      Reads.seq(SubscriptionDemandStepFormat),
-      Writes.seq(SubscriptionDemandStepFormat)
+      Reads.seq(using SubscriptionDemandStepFormat),
+      Writes.seq(using SubscriptionDemandStepFormat)
     )
   val SeqSubscriptionDemandFormat =
     Format(
-      Reads.seq(SubscriptionDemandFormat),
-      Writes.seq(SubscriptionDemandFormat)
+      Reads.seq(using SubscriptionDemandFormat),
+      Writes.seq(using SubscriptionDemandFormat)
     )
   val SeqTeamAuthorizedEntitiesFormat =
     Format(
-      Reads.seq(TeamAuthorizedEntitiesFormat),
-      Writes.seq(TeamAuthorizedEntitiesFormat)
+      Reads.seq(using TeamAuthorizedEntitiesFormat),
+      Writes.seq(using TeamAuthorizedEntitiesFormat)
     )
 
 }

@@ -69,7 +69,7 @@ object evolution_102 extends EvolutionScript {
       logger.info("Begin evolution 1.0.2")
       dataStore.apiRepo
         .forAllTenant()
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .filter(value =>
           (value \ "possibleUsagePlans")
             .as[JsArray]
@@ -106,9 +106,9 @@ object evolution_102 extends EvolutionScript {
 
           dataStore.apiRepo
             .forAllTenant()
-            .save(Json.obj("_id" -> (goodApi \ "_id").as[String]), goodApi)(ec)
+            .save(Json.obj("_id" -> (goodApi \ "_id").as[String]), goodApi)(using ec)
         }
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -135,20 +135,20 @@ object evolution_150 extends EvolutionScript {
 
       dataStore.apiRepo
         .forAllTenant()
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           ApiFormat.reads(value) match {
             case JsSuccess(api, _) =>
               dataStore.apiRepo
                 .forAllTenant()
-                .save(api.copy(isDefault = true))(ec)
+                .save(api.copy(isDefault = true))(using ec)
             case JsError(errors) =>
               FastFuture.successful(
                 logger.error(s"Evolution $version : $errors")
               )
           }
         }
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -174,7 +174,7 @@ object evolution_151 extends EvolutionScript {
       )
 
       dataStore.tenantRepo
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           TenantFormat.reads(value) match {
             case JsSuccess(tenant, _) =>
@@ -182,7 +182,7 @@ object evolution_151 extends EvolutionScript {
                 case Some(value) =>
                   dataStore.cmsRepo
                     .forTenant(tenant)
-                    .findOneNotDeleted(Json.obj("path" -> "/"))(ec)
+                    .findOneNotDeleted(Json.obj("path" -> "/"))(using ec)
                     .map {
                       case Some(_) => FastFuture.successful(())
                       case None =>
@@ -207,13 +207,13 @@ object evolution_151 extends EvolutionScript {
                               path = Some("/"),
                               lastPublishedDate = Some(DateTime.now())
                             )
-                          )(ec)
+                          )(using ec)
                         dataStore.tenantRepo.save(
                           tenant.copy(style =
                             tenant.style.map(_.copy(homeCmsPage = Some(homeId)))
                           )
-                        )(ec)
-                    }(ec)
+                        )(using ec)
+                    }(using ec)
                 case None => FastFuture.successful(())
               }
             case JsError(errors) =>
@@ -222,7 +222,7 @@ object evolution_151 extends EvolutionScript {
               )
           }
         }
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -249,12 +249,12 @@ object evolution_155 extends EvolutionScript {
       )
 
       val userSource = dataStore.userRepo
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           UserFormat.reads(value) match {
             case JsSuccess(v, _) =>
               dataStore.userRepo
-                .save(v)(ec)
+                .save(v)(using ec)
             case JsError(errors) =>
               FastFuture.successful(
                 logger.error(s"Evolution $version : $errors")
@@ -262,12 +262,12 @@ object evolution_155 extends EvolutionScript {
           }
         }
       val tenantSource = dataStore.tenantRepo
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           TenantFormat.reads(value) match {
             case JsSuccess(v, _) =>
               dataStore.tenantRepo
-                .save(v)(ec)
+                .save(v)(using ec)
             case JsError(errors) =>
               FastFuture.successful(
                 logger.error(s"Evolution $version : $errors")
@@ -276,13 +276,13 @@ object evolution_155 extends EvolutionScript {
         }
       val teamSource = dataStore.teamRepo
         .forAllTenant()
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           TeamFormat.reads(value) match {
             case JsSuccess(v, _) =>
               dataStore.teamRepo
                 .forAllTenant()
-                .save(v)(ec)
+                .save(v)(using ec)
             case JsError(errors) =>
               FastFuture.successful(
                 logger.error(s"Evolution $version : $errors")
@@ -291,13 +291,13 @@ object evolution_155 extends EvolutionScript {
         }
       val apiSource = dataStore.apiRepo
         .forAllTenant()
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           ApiFormat.reads(value) match {
             case JsSuccess(v, _) =>
               dataStore.apiRepo
                 .forAllTenant()
-                .save(v)(ec)
+                .save(v)(using ec)
             case JsError(errors) =>
               FastFuture.successful(
                 logger.error(s"Evolution $version : $errors")
@@ -314,7 +314,7 @@ object evolution_155 extends EvolutionScript {
 
       Source(repos)
         .flatMapConcat(x => x)
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
 
     }
 }
@@ -393,7 +393,7 @@ object evolution_157 extends EvolutionScript {
 
                       realApk <- OptionT.liftF(
                         otoroshiClient
-                          .getApikey(sub.apiKey.clientId)(otoSettings)
+                          .getApikey(sub.apiKey.clientId)(using otoSettings)
                       )
 
                       metadata =
@@ -432,7 +432,7 @@ object evolution_157 extends EvolutionScript {
         }
 
       source
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -510,13 +510,13 @@ object evolution_157_b extends EvolutionScript {
 
       val recalcDocHumanReadableIdSource = dataStore.apiDocumentationPageRepo
         .forAllTenant()
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           ApiDocumentationPageFormat.reads(value) match {
             case JsSuccess(v, _) =>
               dataStore.apiDocumentationPageRepo
                 .forAllTenant()
-                .save(v)(ec)
+                .save(v)(using ec)
             case JsError(errors) =>
               FastFuture.successful(
                 logger.error(s"Evolution $version : $errors")
@@ -526,7 +526,7 @@ object evolution_157_b extends EvolutionScript {
 
       Source(Seq(rewriteApiDocSource, recalcDocHumanReadableIdSource))
         .flatMapConcat(x => x)
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -566,7 +566,7 @@ object evolution_157_c extends EvolutionScript {
 
       Source
         .future(eventualLong)
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
 
     }
 }
@@ -624,7 +624,7 @@ object evolution_1612_a extends EvolutionScript {
 
         Source
           .future(future)
-          .runWith(Sink.ignore)(mat)
+          .runWith(Sink.ignore)(using mat)
 
       }
   }
@@ -684,7 +684,7 @@ object evolution_1612_b extends EvolutionScript {
 
         Source
           .future(eventualLong)
-          .runWith(Sink.ignore)(mat)
+          .runWith(Sink.ignore)(using mat)
 
       }
   }
@@ -748,10 +748,10 @@ object evolution_1612_c extends EvolutionScript {
             dataStore.apiRepo
               .forAllTenant()
               .save(Json.obj("_id" -> (goodApi \ "_id").as[String]), goodApi)(
-                ec
+                using ec
               )
           })
-          .runWith(Sink.ignore)(mat)
+          .runWith(Sink.ignore)(using mat)
       }
   }
 }
@@ -781,7 +781,7 @@ object evolution_1613 extends EvolutionScript {
 
       val source = dataStore.apiRepo
         .forAllTenant()
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(1) { value =>
           val state =
             if ((value \ "published").asOpt[Boolean].getOrElse(false)) {
@@ -801,7 +801,7 @@ object evolution_1613 extends EvolutionScript {
                     ValidationStep
                       .TeamAdmin(
                         id = IdGenerator.token(32),
-                        team = (value \ "team").as(TeamIdFormat)
+                        team = (value \ "team").as(using TeamIdFormat)
                       )
                   )
                 case _ => Seq.empty
@@ -829,7 +829,7 @@ object evolution_1613 extends EvolutionScript {
         }
 
       source
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
 
     }
 }
@@ -867,18 +867,18 @@ object evolution_1613_b extends EvolutionScript {
           )
         )
         .mapAsync(1) { value =>
-          val tenant = (value \ "_tenant").as(json.TenantIdFormat)
+          val tenant = (value \ "_tenant").as(using json.TenantIdFormat)
           val action = (value \ "action").as[JsObject]
           val sender = (value \ "sender")
-            .asOpt(json.UserFormat)
+            .asOpt(using json.UserFormat)
             .map(_.asNotificationSender)
-            .getOrElse((value \ "sender").as(json.NotificationSenderFormat))
-          val date = (value \ "date").as(json.DateTimeFormat)
-          val apiId = (action \ "api").as(json.ApiIdFormat)
-          val planId = (action \ "plan").as(json.UsagePlanIdFormat)
-          val teamId = (value \ "team").as(json.TeamIdFormat)
+            .getOrElse((value \ "sender").as(using json.NotificationSenderFormat))
+          val date = (value \ "date").as(using json.DateTimeFormat)
+          val apiId = (action \ "api").as(using json.ApiIdFormat)
+          val planId = (action \ "plan").as(using json.UsagePlanIdFormat)
+          val teamId = (value \ "team").as(using json.TeamIdFormat)
           val parentSubscriptionId = (action \ "parentSubscriptionId").asOpt(
-            json.ApiSubscriptionIdFormat
+            using json.ApiSubscriptionIdFormat
           )
           val motivation = (action \ "motivation")
             .asOpt[String]
@@ -900,9 +900,9 @@ object evolution_1613_b extends EvolutionScript {
               id = DemandId(IdGenerator.token),
               tenant = tenant,
               api = apiId,
-              plan = (plan \ "_id").as(json.UsagePlanIdFormat),
+              plan = (plan \ "_id").as(using json.UsagePlanIdFormat),
               steps = (plan \ "subscriptionProcess")
-                .as(json.SeqValidationStepFormat)
+                .as(using json.SeqValidationStepFormat)
                 .map(step =>
                   SubscriptionDemandStep(
                     id = SubscriptionDemandStepId(IdGenerator.token),
@@ -923,13 +923,13 @@ object evolution_1613_b extends EvolutionScript {
                 .save(demand)
             )
             notif = Notification(
-              id = (value \ "_id").as(json.NotificationIdFormat),
+              id = (value \ "_id").as(using json.NotificationIdFormat),
               tenant = tenant,
               team = teamId.some,
               sender = sender,
               date = date,
               notificationType = NotificationType.AcceptOrReject,
-              status = (value \ "status").as(json.NotificationStatusFormat),
+              status = (value \ "status").as(using json.NotificationStatusFormat),
               action = NotificationAction.ApiSubscriptionDemand(
                 api = apiId,
                 plan = planId,
@@ -945,7 +945,7 @@ object evolution_1613_b extends EvolutionScript {
             )
           } yield ()).value
         }
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -1094,11 +1094,11 @@ object evolution_1634 extends EvolutionScript {
         .streamAllRaw()
         .mapAsync(10)(consumption => {
           (consumption \ "state")
-            .asOpt(json.ApiKeyConsumptionStateFormat) match {
+            .asOpt(using json.ApiKeyConsumptionStateFormat) match {
             case Some(_) => FastFuture.successful(())
             case None =>
-              val from = (consumption \ "from").as(json.DateTimeFormat)
-              val to = (consumption \ "to").as(json.DateTimeFormat)
+              val from = (consumption \ "from").as(using json.DateTimeFormat)
+              val to = (consumption \ "to").as(using json.DateTimeFormat)
               val id = (consumption \ "_id").as[String]
 
               val state =
@@ -1299,13 +1299,13 @@ object evolution_1820 extends EvolutionScript {
         .mapAsync(10)(plan => {
           dataStore.usagePlanRepo.forAllTenant().save(plan)
         })
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
         .andThen {
           case Success(_) =>
             logger.debug(s"[evolution $version] :: completed successfully")
           case Failure(e) =>
             logger.error(s"[evolution $version] :: failed with error", e)
-        }(ec)
+        }(using ec)
     }
 }
 
@@ -1335,7 +1335,7 @@ object evolution_1830 extends EvolutionScript {
       dataStore.tenantRepo
         .streamAllRaw()
         .map(rawTenant => {
-          val tenantId = (rawTenant \ "_id").as(TenantIdFormat)
+          val tenantId = (rawTenant \ "_id").as(using TenantIdFormat)
           val oldCss = (rawTenant \ "style" \ "css").as[String]
           val oldTheme = (rawTenant \ "style" \ "colorTheme").as[String]
           val oldJs = (rawTenant \ "style" \ "js").as[String]
@@ -1392,13 +1392,13 @@ object evolution_1830 extends EvolutionScript {
             _ <- dataStore.tenantRepo.save(tuple._1)
           } yield ()
         })
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
         .andThen {
           case Success(_) =>
             logger.debug(s"[evolution $version] :: completed successfully")
           case Failure(e) =>
             logger.error(s"[evolution $version] :: failed with error", e)
-        }(ec)
+        }(using ec)
     }
 }
 
@@ -1425,7 +1425,7 @@ object evolution_1840_a extends EvolutionScript {
 
       dataStore.usagePlanRepo
         .forAllTenant()
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         //        .filter(plan => (plan \ "subscriptionProcess").asOpt[JsArray].exists(_.value.nonEmpty))
         //        .filter(plan => (plan \ "subscriptionProcess").as[JsArray].value.exists(step => (step \ "type").as[String] == "teamAdmin"))
         .mapAsync(10) { plan =>
@@ -1451,7 +1451,7 @@ object evolution_1840_a extends EvolutionScript {
                 formatter = (oldAdminStep \ "formatter").asOpt[String]
               )
               // creer le nouveau step d'admin
-              val newAdminStep = oldAdminStep.as(json.ValidationStepFormat)
+              val newAdminStep = oldAdminStep.as(using json.ValidationStepFormat)
               // save le plan modifié
               val subscriptionProcess = json.SeqValidationStepFormat.reads(
                 JsArray(
@@ -1468,16 +1468,16 @@ object evolution_1840_a extends EvolutionScript {
               )
 
               val _plan = plan
-                .as(json.UsagePlanFormat)
+                .as(using json.UsagePlanFormat)
                 .copy(subscriptionProcess = subscriptionProcess.get)
               logger.info(Json.stringify(_plan.asJson))
               dataStore.usagePlanRepo
                 .forAllTenant()
-                .save(_plan)(ec)
+                .save(_plan)(using ec)
           }
 
         }
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -1505,10 +1505,10 @@ object evolution_1840_b extends EvolutionScript {
       implicit val _ec = ec
 
       dataStore.tenantRepo
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(1) { tenant =>
           dataStore.teamRepo
-            .forTenant((tenant \ "_id").as(TenantIdFormat))
+            .forTenant((tenant \ "_id").as(using TenantIdFormat))
             .findOneNotDeleted(Json.obj("type" -> TeamType.Admin.name))
             .map(t => (tenant, t))
         }
@@ -1607,7 +1607,7 @@ object evolution_1840_b extends EvolutionScript {
             )
             FastFuture.successful(())
         }
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -1664,7 +1664,7 @@ object evolution_1840_c extends EvolutionScript {
                   )
                 keyWithBearer <- EitherT(
                   otoroshiClient
-                    .getApikey(subscription.apiKey.clientId)(otoroshiSettings)
+                    .getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
                 ).leftMap[Option[Unit]](_ => None)
                 _ <- EitherT.liftF[Future, Option[Unit], Boolean](
                   dataStore.apiSubscriptionRepo
@@ -1674,7 +1674,7 @@ object evolution_1840_c extends EvolutionScript {
               } yield Some(())).merge
             })
         })
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -1700,14 +1700,14 @@ object evolution_1860 extends EvolutionScript {
       )
 
       dataStore.tenantRepo
-        .streamAllRaw()(ec)
+        .streamAllRaw()(using ec)
         .mapAsync(10) { value =>
           (value \ "style" \ "footer").asOpt[String] match {
             case Some(footer) =>
-              val tenant = (value \ "_id").as(json.TenantIdFormat)
+              val tenant = (value \ "_id").as(using json.TenantIdFormat)
               dataStore.cmsRepo
                 .forTenant(tenant)
-                .findOneNotDeleted(Json.obj("name" -> "footer.html"))(ec)
+                .findOneNotDeleted(Json.obj("name" -> "footer.html"))(using ec)
                 .map {
                   case Some(_) => FastFuture.successful(())
                   case None =>
@@ -1728,12 +1728,12 @@ object evolution_1860 extends EvolutionScript {
                           path = Some("/footer"),
                           lastPublishedDate = Some(DateTime.now())
                         )
-                      )(ec)
-                }(ec)
+                      )(using ec)
+                }(using ec)
             case None => FastFuture.successful(())
           }
         }
-        .runWith(Sink.ignore)(mat)
+        .runWith(Sink.ignore)(using mat)
     }
 }
 
@@ -1799,7 +1799,7 @@ object evolutions {
                         version = evolution.version,
                         applied = true
                       )
-                    )(ec)
+                    )(using ec)
                     .map(f => {
                       AppLogger.info(s"Evolution ${evolution.version} done")
                       f

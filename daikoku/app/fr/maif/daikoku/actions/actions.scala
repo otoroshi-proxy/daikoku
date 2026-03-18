@@ -274,7 +274,7 @@ class DaikokuAction(val parser: BodyParser[AnyContent], env: Env)
           ) =>
         if (user.tenants.contains(tenant.id)) {
           tenantSecurity
-            .userCanCreateApi(tenant, user)(env, ec)
+            .userCanCreateApi(tenant, user)(using env, ec)
             .flatMap(permission =>
               block(
                 DaikokuActionContext(
@@ -292,7 +292,7 @@ class DaikokuAction(val parser: BodyParser[AnyContent], env: Env)
           logger.info(
             s"User ${user.email} is not registered on tenant ${tenant.name}"
           )
-          session.invalidate()(ec, env).map { _ =>
+          session.invalidate()(using ec, env).map { _ =>
             Results.Redirect(env.getDaikokuUrl(tenant, "/"))
           }
         }
@@ -339,7 +339,7 @@ class DaikokuActionMaybeWithGuest(val parser: BodyParser[AnyContent], env: Env)
           ) =>
         if (user.tenants.contains(tenant.id)) {
           tenantSecurity
-            .userCanCreateApi(tenant, user)(env, ec)
+            .userCanCreateApi(tenant, user)(using env, ec)
             .flatMap(security =>
               block(
                 DaikokuActionContext(
@@ -357,7 +357,7 @@ class DaikokuActionMaybeWithGuest(val parser: BodyParser[AnyContent], env: Env)
           logger.info(
             s"User ${user.email} is not registered on tenant ${tenant.name}"
           )
-          session.invalidate()(ec, env).map { _ =>
+          session.invalidate()(using ec, env).map { _ =>
             Results.Redirect(env.getDaikokuUrl(tenant, "/"))
           }
         }
@@ -435,7 +435,7 @@ class DaikokuActionMaybeWithoutUser(
           ) =>
         if (user.tenants.contains(tenant.id)) {
           tenantSecurity
-            .userCanCreateApi(tenant, user)(env, ec)
+            .userCanCreateApi(tenant, user)(using env, ec)
             .flatMap(perm =>
               block(
                 DaikokuActionMaybeWithoutUserContext(
@@ -453,7 +453,7 @@ class DaikokuActionMaybeWithoutUser(
           logger.info(
             s"User ${user.email} is not registered on tenant ${tenant.name}"
           )
-          session.invalidate()(ec, env).map { _ =>
+          session.invalidate()(using ec, env).map { _ =>
             Results.Redirect(env.getDaikokuUrl(tenant, "/"))
           }
         }

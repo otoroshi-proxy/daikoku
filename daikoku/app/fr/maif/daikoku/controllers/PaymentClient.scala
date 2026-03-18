@@ -648,7 +648,7 @@ class PaymentClient(
                   s: ThirdPartyPaymentSettings.StripeSettings,
                   i: StripeSubscriptionInformations
                 ) =>
-              deleteStripeSubscription(i)(s)
+              deleteStripeSubscription(i)(using s)
           }
         } yield r
       case _ => EitherT.pure[Future, AppError](Json.obj())
@@ -697,7 +697,7 @@ class PaymentClient(
       )
       value <- settings match {
         case Some(p: StripeSettings) =>
-          toggleStateStripeSubscription(apiSubscription)(p)
+          toggleStateStripeSubscription(apiSubscription)(using p)
         case None => EitherT.pure[Future, AppError](apiSubscription.asJson)
       }
     } yield value
@@ -828,7 +828,7 @@ class PaymentClient(
         AppError.EntityNotFound("payment settings")
       )
       portalUrl <- settings match {
-        case p: StripeSettings => getStripeInvoices(team, tenant, callback)(p)
+        case p: StripeSettings => getStripeInvoices(team, tenant, callback)(using p)
       }
     } yield portalUrl
 

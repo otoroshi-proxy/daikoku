@@ -116,7 +116,7 @@ object OtoroshiIdentityFilter {
             Option(jwt.getClaim("user"))
               .flatMap(b => Try(b.toString).toOption)
               .flatMap(b =>
-                Try(Json.parse(b).as(OtoroshiUser.fmt)).toOption
+                Try(Json.parse(b).as(using OtoroshiUser.fmt)).toOption
               ) match {
               case None =>
                 Errors.craftResponseResultF(
@@ -221,7 +221,7 @@ object OtoroshiIdentityFilter {
                                   .addAttr(IdentityAttrs.SessionKey, session)
                               )
                               r <- FastFuture.successful(
-                                rr.removingFromSession("sessionId")(request)
+                                rr.removingFromSession("sessionId")(using request)
                                   .withSession(
                                     "sessionId" -> session.sessionId.value
                                   )
@@ -269,7 +269,7 @@ object OtoroshiIdentityFilter {
                                   .forTenant(tenant)
                                   .findNotDeleted(Json.obj("type" -> "Admin"))
                               userTeamOpt <-
-                                findUserTeam(tenant.id, updatedUser)(ec, env)
+                                findUserTeam(tenant.id, updatedUser)(using ec, env)
                               userTeam <-
                                 if (userTeamOpt.isDefined)
                                   FastFuture.successful(userTeamOpt.get)
@@ -307,7 +307,7 @@ object OtoroshiIdentityFilter {
                                   .addAttr(IdentityAttrs.SessionKey, session)
                               )
                               r <- FastFuture.successful(
-                                rr.removingFromSession("sessionId")(request)
+                                rr.removingFromSession("sessionId")(using request)
                                   .withSession(
                                     "sessionId" -> session.sessionId.value
                                   )
@@ -363,7 +363,7 @@ object OtoroshiIdentityFilter {
                             .forTenant(tenant)
                             .findNotDeleted(Json.obj("type" -> "Admin"))
                         userTeamOpt <-
-                          findUserTeam(tenant.id, updatedUser)(ec, env)
+                          findUserTeam(tenant.id, updatedUser)(using ec, env)
                         userTeam <-
                           if (userTeamOpt.isDefined)
                             FastFuture.successful(userTeamOpt.get)
@@ -399,7 +399,7 @@ object OtoroshiIdentityFilter {
                             .addAttr(IdentityAttrs.SessionKey, session)
                         )
                         r <- FastFuture.successful(
-                          rr.removingFromSession("sessionId")(request)
+                          rr.removingFromSession("sessionId")(using request)
                             .withSession("sessionId" -> session.sessionId.value)
                         )
                       } yield {

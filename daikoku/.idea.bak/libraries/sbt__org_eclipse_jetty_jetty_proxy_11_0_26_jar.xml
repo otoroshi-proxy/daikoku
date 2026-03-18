@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="sbt: org.eclipse.jetty:jetty-proxy:11.0.26:jar" type="java-imported" external-system-id="SBT">
+    <properties groupId="org.eclipse.jetty" artifactId="jetty-proxy" version="11.0.26" baseVersion="11.0.26" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/eclipse/jetty/jetty-proxy/11.0.26/jetty-proxy-11.0.26.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/org/eclipse/jetty/jetty-proxy/11.0.26/jetty-proxy-11.0.26-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

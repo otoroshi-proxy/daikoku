@@ -1,0 +1,1034 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="b9a1ebd9-81a0-45d4-b417-c8686a697516" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/build.sbt" beforeDir="false" afterPath="$PROJECT_DIR$/build.sbt" afterDir="false" />
+    </list>
+    <list id="848636fc-538f-4b57-9525-b8e20a934f18" name="Changes by 77199M" comment="" />
+    <list id="3d7a0f62-b066-42ad-93e0-626a90b944df" name="Changes by 79966B" comment="" />
+    <list id="9db815f7-cf23-47a5-9df4-ba21b5d274dc" name="Changes by Musique" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="ExternalProjectsManager">
+    <system id="SBT">
+      <state>
+        <projects_view>
+          <tree_state>
+            <expand>
+              <path>
+                <item name="" type="6a2764b6:ExternalProjectsStructure$RootNode" />
+                <item name="daikoku" type="f1a62948:ProjectNode" />
+              </path>
+            </expand>
+            <select />
+          </tree_state>
+        </projects_view>
+      </state>
+    </system>
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Class" />
+        <option value="Scala Worksheet" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_BRANCH_BY_REPOSITORY">
+      <map>
+        <entry key="$PROJECT_DIR$/.." value="master" />
+      </map>
+    </option>
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;history&quot;: [
+    {
+      &quot;state&quot;: &quot;OPEN&quot;
+    }
+  ],
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;
+  }
+}</component>
+  <component name="GitHubPullRequestState">{
+  &quot;prStates&quot;: [
+    {
+      &quot;id&quot;: {
+        &quot;id&quot;: &quot;PR_kwDODUZuZM7JDrr6&quot;,
+        &quot;number&quot;: 980
+      },
+      &quot;lastSeen&quot;: 1773063033340
+    }
+  ]
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:MAIF/daikoku.git&quot;,
+    &quot;accountId&quot;: &quot;342bc82e-84a9-49d5-b31b-083e6e475943&quot;
+  }
+}</component>
+  <component name="HttpClientOnboardingState">{
+  &quot;isOnboardingCommentShown&quot;: true
+}</component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="cXCh63rp" />
+  </component>
+  <component name="PackageJsonUpdateNotifier">
+    <dismissed value="$PROJECT_DIR$/javascript/package.json" />
+  </component>
+  <component name="ProjectCodeStyleSettingsMigration">
+    <option name="version" value="2" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 1
+}</component>
+  <component name="ProjectId" id="2g8ID7tTUPXUAzXSYEy5K3zoKO2" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="1" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "HTTP Request.scratch_90 | GET request to example server.executor": "Run",
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Remote JVM Debug.debugger.executor": "Debug",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
+    "Scala REPL.Scala REPL.executor": "Run",
+    "ScalaTest.AdminApiControllerSpec.Admin API should A call to Api admin API must Conflict :: Name already exists.executor": "Run",
+    "ScalaTest.AdminApiControllerSpec.Admin API should A call to Api admin API must GET :: Ok.executor": "Run",
+    "ScalaTest.AdminApiControllerSpec.Admin API should A call to Api admin API must PATCH :: No Content.executor": "Run",
+    "ScalaTest.AdminApiControllerSpec.Admin API should A call to Api admin API must POST :: BadRequest.executor": "Run",
+    "ScalaTest.AdminApiControllerSpec.Admin API should A call to Usage plan admin API must GET :: Ok.executor": "Run",
+    "ScalaTest.ApiControllerSpec.Anyone can ask access for an api.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a api editor can transfer API ownership to another team (with all versions).executor": "Run",
+    "ScalaTest.ApiControllerSpec.a api editor can transfer API ownership to another team with in progress demand.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a deletion of a plan must delete all subscriptions.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a simple test can api-keys creation on otoroshi.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a subscription should be not available right now if plan's subscription process is manual.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a subscription should be possible just one time if the option is default.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can [BETTER] delete an api subscription from an api of his team.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can create usage plan with only otoroshiTarget entities for which access is authorized.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can delete an api of his team.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can delete an api subscription from an api of his team.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can not subscribe to an api with his personnal team if tenant enabled subscription security.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can not transfer child subscriptions to another team but parent subscription.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can not update a subscription to another api (even if it's own).executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can search a team.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can see his teams.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can setup validUntil date for a subscription to his api.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can transfer child subscriptions to another team which have already a subscription when child plan allow it.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can transfer child subscriptions to another team which have already a subscription when parent plan allow it.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can transfer subscriptions to another team.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can update a subscription to his api.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a team administrator can update an api of his team.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a tenant administrator can not initialize apis for a tenant for which he's not admin\na tenant administrator can not initialize apis from his tenant for a tenant for which he's not admin\na tenant administrator can initialize tenant apis\na tenant administrator can not initialize subscriptions for a tenant for which he's not admin\na tenant administrator can initialize tenant subscriptions\na tenant administrator can not manipulate api if tenant api creation security is enabled & team.apisCreationPermission is disabled\na tenant administrator can setup a client name pattern to customize created APIkey name.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a tenant administrator can not initialize apis for a tenant for which he's not admin.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a tenant administrator can setup a client name pattern to customize created APIkey name.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a user can can get his subscription for a private api if team is authorized.executor": "Run",
+    "ScalaTest.ApiControllerSpec.a user can subscribe to an api.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can [archive by admin] be disable entirely by disabling parent subscription.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be controlled by a security tenant in environment mode.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be deleted entirely by deleting the parent sub.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be disable by part by disabling child subscription by owner.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be disable by part by disabling child subscription.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be disable entirely by disabling parent subscription by admin.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be disable entirely by disabling parent subscription by owner.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be disable entirely by disabling parent subscription.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be exploded in parts by deleting the parent sub.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be kept in part by deleting the parent sub (first child become parent).executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can be transform in unique api key.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can match client id of this parent.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can not be controlled by a security tenant in environment mode.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can not be enabled on plan when aggregation environment on tenant is disabled.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can not be possible when environments are not the sames (& security activated).executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can not be used when the mode is disabled on plan\naggregate api keys can not be extended subscription that we have already a parent\naggregate api keys can not be enabled on plan when aggregation on tenant is disabled\naggregate api keys can match client id of this parent\naggregate api keys can be transformed in unique api key when the subscription hasn't parent\naggregate api keys can be transform in unique api key\naggregate api keys can failed when aggregated apikey has an otoroshi target different than parent\naggregate api keys can update aggregated APIkey do not erase authorizedEntities\naggregate api keys can update plan in aggregated APIkey do not erase authorizedEntities\naggregate api keys can be disable entirely by disabling parent subscription\naggregate api keys can be disable by part by disabling child subscription\naggregate api keys can be disable entirely by disabling parent subscription by owner\naggregate api keys can be disable by part by disabling child subscription by owner\naggregate api keys can be deleted entirely by deleting the parent sub\naggregate api keys can be kept in part by deleting the parent sub (first child become parent)\naggregate api keys can be exploded in parts by deleting the parent sub\naggregate api keys can be controlled by a security tenant in environment mode.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can test update.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can update aggregated APIkey do not erase authorizedEntities.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can update aggregated APIkey do not update change authorizedEntities.executor": "Run",
+    "ScalaTest.ApiControllerSpec.aggregate api keys can update plan in aggregated APIkey do not erase authorizedEntities.executor": "Run",
+    "ScalaTest.ApiControllerSpec.an admin api must cannot be updated except otoroshi target of admin plan.executor": "Run",
+    "ScalaTest.ApiControllerSpec.an api can have a lifecycle.executor": "Run",
+    "ScalaTest.ApiControllerSpec.an api can list all subscribed apis.executor": "Run",
+    "ScalaTest.ApiControllerSpec.executor": "Debug",
+    "ScalaTest.ApiLifeCycleSpec.API life cycle must be smart\nAPI life cycle must notify customer when API lifeCycle change needs to.executor": "Run",
+    "ScalaTest.ApiLifeCycleSpec.API life cycle must notify customer when API is deprecated.executor": "Run",
+    "ScalaTest.BasicUsageSpec (1).executor": "Run",
+    "ScalaTest.BasicUsageSpec.daikoku ldap module can check if email exists in ldap.executor": "Run",
+    "ScalaTest.BasicUsageSpec.daikoku ldap module can used fallback urls\ndaikoku ldap module can check if email exists in ldap.executor": "Run",
+    "ScalaTest.BasicUsageSpec.daikoku ldap module can used fallback urls.executor": "Run",
+    "ScalaTest.BasicUsageSpec.executor": "Run",
+    "ScalaTest.ConsumptionControllerSpec.a team admin can get otoroshi group consumption.executor": "Run",
+    "ScalaTest.ConsumptionControllerSpec.executor": "Run",
+    "ScalaTest.EnvironmentDisplayMode.a usage  plan must be deleted if associated env is deleted.executor": "Run",
+    "ScalaTest.EnvironmentDisplayMode.a usage  plan must have a custom name as an avalaible environment.executor": "Run",
+    "ScalaTest.EnvironmentDisplayMode.a usage  plan must run\na usage  plan must have a custom name as an avalaible environment\na usage  plan must be deleted if associated env is deleted.executor": "Run",
+    "ScalaTest.GraphQLControllerSpec.executor": "Run",
+    "ScalaTest.GraphQLControllerSpec.with graphql query a user can list all tags.executor": "Run",
+    "ScalaTest.GraphQLControllerSpec.with graphql query a user can list all visible apis - Admin.executor": "Run",
+    "ScalaTest.GraphQLControllerSpec.with graphql query a user can list all visible apis - Home page\nwith graphql query a user can list all tags.executor": "Run",
+    "ScalaTest.GraphQLControllerSpec.with graphql query a user can list all visible apis - Home page.executor": "Run",
+    "ScalaTest.GraphQLControllerSpec.with graphql query a user can wait 1 sec\nwith graphql query a user can list all visible apis - Admin.executor": "Run",
+    "ScalaTest.GraphQLControllerSpec.with graphql query a user can wait 1 sec\nwith graphql query a user can list all visible apis - Home page.executor": "Run",
+    "ScalaTest.GuestModeSpec.A guest user can access to his teams\nA guest user can access to a team\nA guest user can get visible apis\nA guest user can get visible apis of team\nA guest user can get one visible api\nA guest user can not update a team\nA guest user can not delete a team\nA guest user can not create/update/delete team\nA guest user can not create/update/delete user\nA guest user can not get/create/update/delete tenant\nA guest user can not create/update/delete api\nA guest user can not get/create/update/delete otoroshi\nA guest user can not import/export daikoku state.executor": "Run",
+    "ScalaTest.GuestModeSpec.A guest user can access to his teams.executor": "Run",
+    "ScalaTest.GuestModeSpec.A guest user can get one visible api.executor": "Run",
+    "ScalaTest.GuestModeSpec.A guest user can get visible apis of team.executor": "Run",
+    "ScalaTest.GuestModeSpec.A guest user can get visible apis.executor": "Run",
+    "ScalaTest.GuestModeSpec.A guest user can not create/update/delete api.executor": "Run",
+    "ScalaTest.GuestModeSpec.A guest user can not import/export daikoku state.executor": "Run",
+    "ScalaTest.MessagesControllerSpec.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a daikoku admin can accept notification - api access.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a daikoku admin can create comment in issue that notify subscribers of api.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a daikoku admin can create issue that notify subscribers of api.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a daikoku admin can read the count of untreated notifications of a team.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can accept notification - api access.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can accept notification - api subscription.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can read his count of notifications.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can read his notifications.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can read his untreated notifications.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can read notifications of his team.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can read the count of untreated notifications of his team.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can read untreated notifications of his team.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can receive a notification - api issue.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can reject notification - api access.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can reject notification - api subscription.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a team admin can reveive a notification - post created.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a user/api editor can not read the count of untreated notifications of his team.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a user/api editor can read his count of notifications.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a user/api editor can receive a return notification of a subscription request acceptation.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.a user/api editor can receive a return notification of a subscription request rejection.executor": "Run",
+    "ScalaTest.NotificationControllerSpec.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should be run after api or plan update.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly merge metadata in aggregated subscriptions when child has boolean values.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly sync customMetadata when all values are strings - v2.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly sync customMetadata when all values are strings.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly sync customMetadata when some values are booleans.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly sync customMetadata when some values are not just string.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly sync metadata with expression language.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly sync tags.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should correctly sync when customMetadata is absent or empty.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should preserve Otoroshi-native metadata not managed by Daikoku after sync.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.OtoroshiVerifierJob metadata sync should preserve other subscriptions metadata when one child plan is missing.executor": "Run",
+    "ScalaTest.OtoroshiSyncMetadataSpec.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after alone subscription archive.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after child subscription archive.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after child subscription creation.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after child subscription update by owner.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after made unique child subscription.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after parent subscription archive.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after subscription archive by owner.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after subscription archive.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after subscription update by api owner.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after susbcription creation.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should correctly sync customMetadata when all values are strings\nOtoroshiVerifierJob sync should correctly sync customMetadata when some values are not just string\nOtoroshiVerifierJob sync should correctly sync when customMetadata is absent or empty\nOtoroshiVerifierJob sync should correctly merge metadata in aggregated subscriptions when child has boolean values\nOtoroshiVerifierJob sync should preserve other subscriptions metadata when one child plan is missing\nOtoroshiVerifierJob sync should preserve Otoroshi-native metadata not managed by Daikoku after sync\nOtoroshiVerifierJob sync should correctly sync tags\nOtoroshiVerifierJob sync should correctly sync metadata with expression language\nOtoroshiVerifierJob sync should be run after api or plan update\nOtoroshiVerifierJob sync should be run after subscription archive by owner\nOtoroshiVerifierJob sync should be run after subscription archive\nOtoroshiVerifierJob sync should be run after subscription update by api owner\nOtoroshiVerifierJob sync should be run after child subscription update by owner\nOtoroshiVerifierJob sync should be run after made unique child subscription\nOtoroshiVerifierJob sync should be run after child subscription deletion\nOtoroshiVerifierJob sync should be run after subscription creation\nOtoroshiVerifierJob sync should be run after child subscription creation.executor": "Run",
+    "ScalaTest.OtoroshiSyncSpec.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a daikoku admin can create team even if teamCreationSecurity is active.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a daikoku admin can create, update or delete a team\na daikoku admin can not ask join a personal team\na daikoku admin can not add/remove member from a personal team\na daikoku admin can not update permission member of team admin\na daikoku admin can not update apikey visibility for team admin\na daikoku admin can update team api creation permission\na daikoku admin can not delete a tenant team\na daikoku admin can list all teams.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a daikoku admin can list all teams.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a daikoku admin can not ask join a personal team.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a personal team must be able to subscribe to an API adn delete it.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a personal team must be able to subscribe to an API and delete it.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a personal team must be able to subscribe to an API.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a personal team must not be updated.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a team administrator can invit members to his team.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a team must use only authorized otoroshi entities.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a tenant admin can create team even if teamCreationSecurity is active\na tenant admin can list members of a team\na tenant admin can update a team\na tenant admin can have full access to a team\na tenant admin can invit members to a team\na tenant admin can remove members to a team\na tenant admin can update permission's member in a team\na tenant admin can see a member of a team\na tenant admin can list a team members\na tenant admin can update api key visibility\na tenant admin can get addable and pending user for his team.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a tenant admin can create team even if teamCreationSecurity is active.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a tenant admin can list members of a team.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a user or api editor can create team if teamCreationSecurity is inactive.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a user or api editor can not create team even if teamCreationSecurity is active.executor": "Run",
+    "ScalaTest.TeamControllerSpec.a user or api editor can not update apikey visibility even in his personal team.executor": "Run",
+    "ScalaTest.TeamControllerSpec.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a daikoku admin can not remove an admin from a tenant if it's the last one.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a daikoku admin can remove an admin from a tenant.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can create a cms page.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can get the production content of a cms page by id.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can navigate to a cms page with only exact path.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can navigate to an unknown cms page.executor": "Debug",
+    "ScalaTest.TenantControllerSpec.a tenant admin can remove an admin from a tenant.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can setup defaut authorized otoroshi entities and merge it.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can setup defaut authorized otoroshi entities and replace it.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can setup defaut authorized otoroshi entities for future created teams.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can validate daikoku-apis helper.executor": "Debug",
+    "ScalaTest.TenantControllerSpec.a tenant admin can validate daikoku-json-apis helper.executor": "Run",
+    "ScalaTest.TenantControllerSpec.a tenant admin can validate daikoku-plans helper.executor": "Run",
+    "ScalaTest.TenantControllerSpec.executor": "Run",
+    "ScalaTest.TenantControllerSpec.test S3 can use s3 to store file.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer child subscriptions to another team but parent subscription\na tenant administrator can not transfer child subscriptions to another team which have already a subscription - parent\na tenant administrator can not transfer child subscriptions to another team which have already a subscription - child\na tenant administrator can transfer child subscriptions to another team which have already a subscription - parent\na tenant administrator can transfer child subscriptions to another team which have already a subscription - child.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer child subscriptions to another team but parent subscription\na tenant administrator can not transfer child subscriptions to another team which have already a subscription - parent\na tenant administrator can not transfer child subscriptions to another team which have already a subscription - child\na tenant administrator can transfer child subscriptions to another team which have already a subscription when plan allow it - parent\na tenant administrator can transfer child subscriptions to another team which have already a subscription when plan allow it - child\na tenant administrator can not transfer subscriptions to another team unauthorized on api - parent\na tenant administrator can not transfer subscriptions to another team unauthorized on plan - parent\na tenant administrator can not transfer subscriptions to another team unauthorized on child api\na tenant administrator can not transfer subscriptions to another team unauthorized on child plan.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer child subscriptions to another team but parent subscription\na tenant administrator can not transfer child subscriptions to another team which have already a subscription - parent\na tenant administrator can not transfer child subscriptions to another team which have already a subscription - child.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer child subscriptions to another team but parent subscription.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer child subscriptions to another team unauthorized on api - parent.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer child subscriptions to another team which have already a subscription - child.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer child subscriptions to another team which have already a subscription.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer subscriptions to another team unauthorized on child api.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer subscriptions to another team unauthorized on child plan.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can not transfer subscriptions to another team unauthorized on plan - parent.executor": "Run",
+    "ScalaTest.TestSpec.a tenant administrator can transfer child subscriptions to another team which have already a subscription - child.executor": "Run",
+    "ScalaTest.UserControllerSpec.a daikoku admin can list all tenant user.executor": "Run",
+    "ScalaTest.UserControllerSpec.a teamAdmin can create LDAP user.executor": "Run",
+    "codeWithMe.voiceChat.enabledByDefault": "false",
+    "deletionFromPopupRequiresConfirmation": "false",
+    "git-widget-placeholder": "fix#975/better-otoroshi-sync",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/76885K/Sources/daikoku/daikoku",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
+    "project.structure.last.edited": "Modules",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "preferences.pluginManager",
+    "ts.external.directory.path": "/Users/76885K/Sources/daikoku/daikoku/javascript/node_modules/typescript/lib",
+    "vue.rearranger.settings.migration": "true"
+  },
+  "keyToStringList": {
+    "DatabaseDriversLRU": [
+      "postgresql",
+      "redis"
+    ],
+    "com.intellij.ide.scratch.ScratchImplUtil$2/New Scratch File": [
+      "JSON",
+      "Scala Worksheet",
+      "TEXT",
+      "JavaScript"
+    ]
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="CopyFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+      <recent name="$PROJECT_DIR$/test/daikoku" />
+      <recent name="$PROJECT_DIR$/public/themes" />
+    </key>
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$/app/fr/maif" />
+      <recent name="$PROJECT_DIR$/javascript" />
+    </key>
+    <key name="CopyClassDialog.RECENTS_KEY">
+      <recent name="jobs" />
+    </key>
+  </component>
+  <component name="RunManager" selected="ScalaTest.ApiControllerSpec.a team administrator can create usage plan with only otoroshiTarget entities for which access is authorized">
+    <configuration default="true" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot">
+      <option name="SPRING_BOOT_MAIN_CLASS" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="Remote">
+      <option name="USE_SOCKET_TRANSPORT" value="true" />
+      <option name="SERVER_MODE" value="false" />
+      <option name="SHMEM_ADDRESS" />
+      <option name="HOST" value="localhost" />
+      <option name="PORT" value="5005" />
+      <option name="AUTO_RESTART" value="false" />
+      <method v="2" />
+    </configuration>
+    <configuration name="debugger" type="Remote">
+      <module name="daikoku" />
+      <option name="USE_SOCKET_TRANSPORT" value="true" />
+      <option name="SERVER_MODE" value="false" />
+      <option name="SHMEM_ADDRESS" />
+      <option name="HOST" value="localhost" />
+      <option name="PORT" value="5555" />
+      <option name="AUTO_RESTART" value="false" />
+      <RunnerSettings RunnerId="Debug">
+        <option name="DEBUG_PORT" value="5555" />
+        <option name="LOCAL" value="false" />
+      </RunnerSettings>
+      <method v="2" />
+    </configuration>
+    <configuration default="true" type="ScalaScriptConsoleRunConfiguration" factoryName="Scala Console" show_console_on_std_err="false" show_console_on_std_out="false">
+      <option name="allowRunningInParallel" value="false" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="environmentVariables">
+        <map />
+      </option>
+      <option name="javaOptions" value="" />
+      <option name="myConsoleArgs" value="-usejavacp" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="ApiControllerSpec.a team administrator can create usage plan with only otoroshiTarget entities for which access is authorized" type="ScalaTestRunConfiguration" factoryName="ScalaTest" temporary="true" nameIsGenerated="true" show_console_on_std_err="false" show_console_on_std_out="false">
+      <module name="daikoku" />
+      <option name="VMParameters" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="allowRunningInParallel" value="false" />
+      <option name="alternativeJrePath" value="temurin-21" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="classpathModifications">
+        <list />
+      </option>
+      <option name="defaultTargetName" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="testKind" value="Test name" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="javaOptions" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="jrePath" value="temurin-21" />
+      <option name="shortenClasspath" value="NONE" />
+      <option name="testClassPath" value="fr.maif.otoroshi.daikoku.tests.ApiControllerSpec" />
+      <option name="testName" value="a team administrator can create usage plan with only otoroshiTarget entities for which access is authorized" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="ApiControllerSpec.a team administrator can setup validUntil date for a subscription to his api" type="ScalaTestRunConfiguration" factoryName="ScalaTest" temporary="true" nameIsGenerated="true" show_console_on_std_err="false" show_console_on_std_out="false">
+      <module name="daikoku" />
+      <option name="VMParameters" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="allowRunningInParallel" value="false" />
+      <option name="alternativeJrePath" value="temurin-21" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="classpathModifications">
+        <list />
+      </option>
+      <option name="defaultTargetName" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="testKind" value="Test name" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="javaOptions" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="jrePath" value="temurin-21" />
+      <option name="shortenClasspath" value="NONE" />
+      <option name="testClassPath" value="fr.maif.otoroshi.daikoku.tests.ApiControllerSpec" />
+      <option name="testName" value="a team administrator can setup validUntil date for a subscription to his api" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="ApiControllerSpec.a team administrator can update a subscription to his api" type="ScalaTestRunConfiguration" factoryName="ScalaTest" temporary="true" nameIsGenerated="true" show_console_on_std_err="false" show_console_on_std_out="false">
+      <module name="daikoku" />
+      <option name="VMParameters" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="allowRunningInParallel" value="false" />
+      <option name="alternativeJrePath" value="temurin-21" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="classpathModifications">
+        <list />
+      </option>
+      <option name="defaultTargetName" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="testKind" value="Test name" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="javaOptions" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="jrePath" value="temurin-21" />
+      <option name="shortenClasspath" value="NONE" />
+      <option name="testClassPath" value="fr.maif.otoroshi.daikoku.tests.ApiControllerSpec" />
+      <option name="testName" value="a team administrator can update a subscription to his api" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after alone subscription archive" type="ScalaTestRunConfiguration" factoryName="ScalaTest" temporary="true" nameIsGenerated="true" show_console_on_std_err="false" show_console_on_std_out="false">
+      <module name="daikoku" />
+      <option name="VMParameters" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="allowRunningInParallel" value="false" />
+      <option name="alternativeJrePath" value="temurin-21" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="classpathModifications">
+        <list />
+      </option>
+      <option name="defaultTargetName" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="testKind" value="Test name" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="javaOptions" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="jrePath" value="temurin-21" />
+      <option name="shortenClasspath" value="NONE" />
+      <option name="testClassPath" value="fr.maif.otoroshi.daikoku.tests.OtoroshiSyncSpec" />
+      <option name="testName" value="OtoroshiVerifierJob sync should be run after alone subscription archive" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after parent subscription archive" type="ScalaTestRunConfiguration" factoryName="ScalaTest" temporary="true" nameIsGenerated="true" show_console_on_std_err="false" show_console_on_std_out="false">
+      <module name="daikoku" />
+      <option name="VMParameters" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="allowRunningInParallel" value="false" />
+      <option name="alternativeJrePath" value="temurin-21" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="classpathModifications">
+        <list />
+      </option>
+      <option name="defaultTargetName" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="testKind" value="Test name" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="javaOptions" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="jrePath" value="temurin-21" />
+      <option name="shortenClasspath" value="NONE" />
+      <option name="testClassPath" value="fr.maif.otoroshi.daikoku.tests.OtoroshiSyncSpec" />
+      <option name="testName" value="OtoroshiVerifierJob sync should be run after parent subscription archive" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="ScalaTestRunConfiguration" factoryName="ScalaTest" show_console_on_std_err="false" show_console_on_std_out="false">
+      <module name="daikoku" />
+      <option name="VMParameters" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="allowRunningInParallel" value="false" />
+      <option name="alternativeJrePath" value="temurin-21" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="classpathModifications">
+        <list />
+      </option>
+      <option name="defaultTargetName" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="testKind" value="Class" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <option name="envs">
+        <map>
+          <entry key="DOCKER_HOST" value="unix://$USER_HOME$/.colima/docker.sock" />
+        </map>
+      </option>
+      <option name="javaOptions" value="-Ddaikoku.mode=test -Ddaikoku.postgres.database=daikoku_test -Ddaikoku.otoroshi.sync.cron=true" />
+      <option name="jrePath" value="temurin-21" />
+      <option name="shortenClasspath" value="NONE" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration default="true" type="Specs2RunConfiguration" factoryName="Specs2" show_console_on_std_err="false" show_console_on_std_out="false">
+      <option name="VMParameters" value="" />
+      <option name="allowRunningInParallel" value="false" />
+      <option name="alternativeJrePath" />
+      <option name="alternativeJrePathEnabled" value="false" />
+      <option name="classpathModifications">
+        <list />
+      </option>
+      <option name="defaultTargetName" />
+      <option name="envFilePaths">
+        <list />
+      </option>
+      <option name="envs">
+        <map />
+      </option>
+      <option name="passParentEnvs" value="true" />
+      <option name="programParameters" value="" />
+      <option name="projectPathOnTarget" />
+      <option name="selectedOptions">
+        <list />
+      </option>
+      <option name="testKind" value="Class" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <option name="shortenClasspath" value="NONE" />
+      <option name="workingDirectory" value="$PROJECT_DIR$" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Remote JVM Debug.debugger" />
+      <item itemvalue="ScalaTest.ApiControllerSpec.a team administrator can create usage plan with only otoroshiTarget entities for which access is authorized" />
+      <item itemvalue="ScalaTest.ApiControllerSpec.a team administrator can setup validUntil date for a subscription to his api" />
+      <item itemvalue="ScalaTest.ApiControllerSpec.a team administrator can update a subscription to his api" />
+      <item itemvalue="ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after alone subscription archive" />
+      <item itemvalue="ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after parent subscription archive" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="ScalaTest.ApiControllerSpec.a team administrator can create usage plan with only otoroshiTarget entities for which access is authorized" />
+        <item itemvalue="ScalaTest.ApiControllerSpec.a team administrator can update a subscription to his api" />
+        <item itemvalue="ScalaTest.ApiControllerSpec.a team administrator can setup validUntil date for a subscription to his api" />
+        <item itemvalue="ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after parent subscription archive" />
+        <item itemvalue="ScalaTest.OtoroshiSyncSpec.OtoroshiVerifierJob sync should be run after alone subscription archive" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="ScalaProjectSettings">
+    <option name="disableInspections" value="true" />
+    <option name="intInjectionMapping">
+      <map>
+        <entry key="css" value="CSS" />
+        <entry key="fr" value="SQL" />
+        <entry key="fr0" value="SQL" />
+        <entry key="html" value="HTML" />
+        <entry key="java" value="JAVA" />
+        <entry key="js" value="JavaScript" />
+        <entry key="json" value="JSON" />
+        <entry key="json5" value="JSON5" />
+        <entry key="less" value="LESS" />
+        <entry key="md" value="Markdown" />
+        <entry key="protobuf" value="protobuf" />
+        <entry key="scala" value="Scala" />
+        <entry key="sql" value="SQL" />
+        <entry key="sqlu" value="SQL" />
+        <entry key="svg" value="SVG" />
+        <entry key="xhtml" value="XHTML" />
+        <entry key="xml" value="XML" />
+        <entry key="yaml" value="yaml" />
+      </map>
+    </option>
+    <option name="migrateConfigurationsNotificationShown" value="true" />
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-30f59d01ecdd-2fc7cc6b9a17-intellij.indexing.shared.core-IU-253.31033.145" />
+        <option value="bundled-js-predefined-d6986cc7102b-9b0f141eb926-JavaScript-IU-253.31033.145" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="b9a1ebd9-81a0-45d4-b417-c8686a697516" name="Changes" comment="" />
+      <created>1715072656611</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1715072656611</updated>
+      <workItem from="1715072657983" duration="568000" />
+      <workItem from="1715073234308" duration="721000" />
+      <workItem from="1715074924385" duration="10000000" />
+      <workItem from="1715603997574" duration="14000" />
+      <workItem from="1715691632139" duration="21000" />
+      <workItem from="1715691682676" duration="3485000" />
+      <workItem from="1715848936928" duration="2142000" />
+      <workItem from="1715935176546" duration="35605000" />
+      <workItem from="1716553066035" duration="19609000" />
+      <workItem from="1716965869628" duration="59807000" />
+      <workItem from="1717767035287" duration="2697000" />
+      <workItem from="1719228314626" duration="5132000" />
+      <workItem from="1719816755614" duration="32066000" />
+      <workItem from="1720076124482" duration="110955000" />
+      <workItem from="1721894706747" duration="14913000" />
+      <workItem from="1722003318348" duration="3387000" />
+      <workItem from="1722236901960" duration="24604000" />
+      <workItem from="1722345701793" duration="26551000" />
+      <workItem from="1722496535354" duration="20342000" />
+      <workItem from="1722845573413" duration="107575000" />
+      <workItem from="1724335664632" duration="2587000" />
+      <workItem from="1724659010808" duration="57672000" />
+      <workItem from="1725275410526" duration="7129000" />
+      <workItem from="1725519841594" duration="10800000" />
+      <workItem from="1725531440529" duration="1481000" />
+      <workItem from="1725534519863" duration="16587000" />
+      <workItem from="1725865384702" duration="11050000" />
+      <workItem from="1726037311473" duration="51905000" />
+      <workItem from="1728284624219" duration="600000" />
+      <workItem from="1728289834060" duration="16744000" />
+      <workItem from="1730361601685" duration="16896000" />
+      <workItem from="1730406575194" duration="15301000" />
+      <workItem from="1730725604682" duration="6069000" />
+      <workItem from="1730884612941" duration="146000" />
+      <workItem from="1731078428395" duration="9286000" />
+      <workItem from="1731510267420" duration="35436000" />
+      <workItem from="1732180832189" duration="4196000" />
+      <workItem from="1732314340117" duration="24800000" />
+      <workItem from="1732781480123" duration="10547000" />
+      <workItem from="1732867153152" duration="3484000" />
+      <workItem from="1733129646012" duration="48918000" />
+      <workItem from="1733501631024" duration="4000" />
+      <workItem from="1733501978409" duration="275000" />
+      <workItem from="1733504717767" duration="701000" />
+      <workItem from="1733736307617" duration="49561000" />
+      <workItem from="1734355047770" duration="4061000" />
+      <workItem from="1734430697436" duration="31774000" />
+      <workItem from="1736154262940" duration="17893000" />
+      <workItem from="1736240520054" duration="117295000" />
+      <workItem from="1738943514206" duration="42000" />
+      <workItem from="1738943564981" duration="29618000" />
+      <workItem from="1739542189694" duration="10233000" />
+      <workItem from="1739866405744" duration="63784000" />
+      <workItem from="1740386269358" duration="21771000" />
+      <workItem from="1740733402266" duration="6152000" />
+      <workItem from="1741593470255" duration="6726000" />
+      <workItem from="1741682551512" duration="37655000" />
+      <workItem from="1742309068868" duration="13845000" />
+      <workItem from="1742545504006" duration="14329000" />
+      <workItem from="1742823990302" duration="13324000" />
+      <workItem from="1742979268730" duration="54894000" />
+      <workItem from="1743668854578" duration="66029000" />
+      <workItem from="1744356383375" duration="16892000" />
+      <workItem from="1744634583205" duration="17455000" />
+      <workItem from="1744726957502" duration="8197000" />
+      <workItem from="1744793323870" duration="67814000" />
+      <workItem from="1745562455681" duration="158000" />
+      <workItem from="1745562697876" duration="287000" />
+      <workItem from="1745566390728" duration="14298000" />
+      <workItem from="1745588330151" duration="5210000" />
+      <workItem from="1746432261144" duration="20518000" />
+      <workItem from="1746536009220" duration="10886000" />
+      <workItem from="1747038939482" duration="13336000" />
+      <workItem from="1747122863272" duration="24236000" />
+      <workItem from="1747398895694" duration="106710000" />
+      <workItem from="1749031476886" duration="3324000" />
+      <workItem from="1749042983264" duration="94000" />
+      <workItem from="1749043140665" duration="10190000" />
+      <workItem from="1749114501663" duration="10435000" />
+      <workItem from="1749214212292" duration="10212000" />
+      <workItem from="1750073057053" duration="25000" />
+      <workItem from="1750073154513" duration="2540000" />
+      <workItem from="1750145418420" duration="32654000" />
+      <workItem from="1750664969273" duration="56020000" />
+      <workItem from="1751361786010" duration="62672000" />
+      <workItem from="1753188214025" duration="9166000" />
+      <workItem from="1753358273073" duration="299000" />
+      <workItem from="1753358605812" duration="8719000" />
+      <workItem from="1753431515930" duration="10415000" />
+      <workItem from="1753689256531" duration="71893000" />
+      <workItem from="1755524159646" duration="382000" />
+      <workItem from="1755524561109" duration="10525000" />
+      <workItem from="1755674825166" duration="22045000" />
+      <workItem from="1755847000818" duration="37709000" />
+      <workItem from="1757318086111" duration="54774000" />
+      <workItem from="1758293461888" duration="34878000" />
+      <workItem from="1758870566943" duration="41753000" />
+      <workItem from="1759235890337" duration="43473000" />
+      <workItem from="1759738742407" duration="14509000" />
+      <workItem from="1759828881865" duration="338000" />
+      <workItem from="1759829324896" duration="413000" />
+      <workItem from="1759829812695" duration="52969000" />
+      <workItem from="1760944005136" duration="1514000" />
+      <workItem from="1760953989007" duration="143000" />
+      <workItem from="1760954141638" duration="45857000" />
+      <workItem from="1761232112290" duration="1099000" />
+      <workItem from="1761642716410" duration="26057000" />
+      <workItem from="1761747552435" duration="16355000" />
+      <workItem from="1761830639180" duration="675000" />
+      <workItem from="1761831463734" duration="6052000" />
+      <workItem from="1761839355102" duration="3552000" />
+      <workItem from="1761899202982" duration="2637000" />
+      <workItem from="1761902082628" duration="8664000" />
+      <workItem from="1761917131303" duration="1234000" />
+      <workItem from="1761918458647" duration="62023000" />
+      <workItem from="1762423429739" duration="19406000" />
+      <workItem from="1762529875089" duration="2936000" />
+      <workItem from="1763042419744" duration="41950000" />
+      <workItem from="1763626537005" duration="8548000" />
+      <workItem from="1763669973806" duration="858000" />
+      <workItem from="1763728015480" duration="685000" />
+      <workItem from="1763971436547" duration="24559000" />
+      <workItem from="1764318226539" duration="9849000" />
+      <workItem from="1764582888936" duration="97697000" />
+      <workItem from="1765742612337" duration="13128000" />
+      <workItem from="1767606171756" duration="712000" />
+      <workItem from="1767607703596" duration="2206000" />
+      <workItem from="1767615006079" duration="57754000" />
+      <workItem from="1767889810351" duration="35270000" />
+      <workItem from="1768315109319" duration="4935000" />
+      <workItem from="1768467039707" duration="56415000" />
+      <workItem from="1769157039116" duration="10718000" />
+      <workItem from="1769413685926" duration="65216000" />
+      <workItem from="1770022752194" duration="32102000" />
+      <workItem from="1770641970361" duration="32377000" />
+      <workItem from="1770990317544" duration="2895000" />
+      <workItem from="1771232401247" duration="19546000" />
+      <workItem from="1771398310917" duration="33369000" />
+      <workItem from="1771518073763" duration="150000" />
+      <workItem from="1771518253765" duration="12172000" />
+      <workItem from="1771592778570" duration="13648000" />
+      <workItem from="1771833816869" duration="5433000" />
+      <workItem from="1771848126035" duration="83539000" />
+      <workItem from="1772527796598" duration="29615000" />
+      <workItem from="1773325531185" duration="30854000" />
+      <workItem from="1773647859449" duration="16510000" />
+      <workItem from="1773756137440" duration="4126000" />
+      <workItem from="1773760307877" duration="4956000" />
+      <workItem from="1773824710030" duration="676000" />
+      <workItem from="1773828714504" duration="6885000" />
+      <workItem from="1773841398272" duration="412000" />
+      <workItem from="1773842910436" duration="2823000" />
+      <workItem from="1773845775730" duration="112000" />
+      <workItem from="1773845904795" duration="610000" />
+      <workItem from="1773846562878" duration="2137000" />
+      <workItem from="1773849069825" duration="1531000" />
+      <workItem from="1773851541417" duration="244000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="UnknownFeatures">
+    <option featureType="dependencySupport" implementationName="javascript:npm:react" />
+    <option featureType="dependencySupport" implementationName="javascript:npm:prettier" />
+    <option featureType="dependencySupport" implementationName="executable:docker" />
+    <option featureType="com.intellij.fileTypeFactory" implementationName="*.conf" />
+    <option featureType="dependencySupport" implementationName="javascript:npm:vite" />
+    <option featureType="dependencySupport" implementationName="executable:kubectl" />
+    <option featureType="dependencySupport" implementationName="javascript:npm:graphql" />
+    <option featureType="dependencySupport" implementationName="executable:az" />
+  </component>
+  <component name="Vcs.Log.History.Properties">
+    <option name="COLUMN_ID_ORDER">
+      <list>
+        <option value="Default.Root" />
+        <option value="Default.Author" />
+        <option value="Default.Date" />
+        <option value="Default.Subject" />
+        <option value="GitHub.CommitStatus" />
+      </list>
+    </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="master" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="OPEN_GENERIC_TABS">
+      <map>
+        <entry key="639500ba-0fc9-4121-b147-3881c6284715" value="TOOL_WINDOW" />
+      </map>
+    </option>
+    <option name="RECENT_FILTERS">
+      <map>
+        <entry key="Branch">
+          <value>
+            <list>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="fix#975/better-otoroshi-sync" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="origin/feat#800/api-lifecycle-management" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="play3" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="master" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="feat#742/breadcrumb" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="feat/no-backoffice-for-api" />
+                </option>
+              </RecentGroup>
+              <RecentGroup>
+                <option name="FILTER_VALUES">
+                  <option value="feat/#511" />
+                </option>
+              </RecentGroup>
+            </list>
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="TAB_STATES">
+      <map>
+        <entry key="639500ba-0fc9-4121-b147-3881c6284715">
+          <value>
+            <State />
+          </value>
+        </entry>
+        <entry key="MAIN">
+          <value>
+            <State>
+              <option name="FILTERS">
+                <map>
+                  <entry key="branch">
+                    <value>
+                      <list>
+                        <option value="fix#975/better-otoroshi-sync" />
+                      </list>
+                    </value>
+                  </entry>
+                </map>
+              </option>
+            </State>
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="scala-line">
+          <url>file://$PROJECT_DIR$/app/jobs/OtoroshiVerifierJob.scala</url>
+          <line>258</line>
+          <option name="timeStamp" value="12" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="scala-line">
+          <url>file://$PROJECT_DIR$/app/jobs/OtoroshiVerifierJob.scala</url>
+          <line>386</line>
+          <option name="timeStamp" value="16" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="scala-line">
+          <url>file://$PROJECT_DIR$/app/jobs/OtoroshiVerifierJob.scala</url>
+          <line>811</line>
+          <option name="timeStamp" value="18" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="scala-line">
+          <url>file://$PROJECT_DIR$/app/jobs/OtoroshiVerifierJob.scala</url>
+          <line>498</line>
+          <option name="timeStamp" value="21" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+    <watches-manager>
+      <configuration name="Remote">
+        <watch expression="ctx.tenant" language="JAVA" />
+      </configuration>
+    </watches-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

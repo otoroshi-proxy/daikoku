@@ -418,7 +418,7 @@ class AuditActor(implicit
         }
         mailSend.value
       }
-      .runWith(Sink.ignore)(env.defaultMaterializer)
+      .runWith(Sink.ignore)(using env.defaultMaterializer)
 
   }
 
@@ -458,7 +458,7 @@ class AuditActor(implicit
     }
 
   lazy val (queue, done) =
-    stream.toMat(Sink.ignore)(Keep.both).run()(env.defaultMaterializer)
+    stream.toMat(Sink.ignore)(Keep.both).run()(using env.defaultMaterializer)
 
   override def receive: Receive = {
     case ge: TenantAuditEvent => {
@@ -503,7 +503,7 @@ class AuditActorSupervizer(
       logger.debug("Restarting analytics actor child")
       context.watch(
         context
-          .actorOf(AuditActor.props(env, messagesApi, translator), childName)
+          .actorOf(AuditActor.props(using env, messagesApi, translator), childName)
       )
     case evt => context.child(childName).map(_ ! evt)
   }
@@ -512,7 +512,7 @@ class AuditActorSupervizer(
     if (context.child(childName).isEmpty) {
       logger.debug(s"Starting new child $childName")
       val ref = context.actorOf(
-        AuditActor.props(env, messagesApi, translator),
+        AuditActor.props(using env, messagesApi, translator),
         childName
       )
       context.watch(ref)
@@ -796,7 +796,7 @@ class ElasticWritesAnalytics(config: ElasticAnalyticsConfig, env: Env) {
       .fold(builder) { h =>
         builder.withHttpHeaders("Authorization" -> h)
       }
-      .addHttpHeaders(config.headers.toSeq: _*)
+      .addHttpHeaders(config.headers.toSeq*)
   }
 
   def init(): Unit = {
@@ -893,7 +893,7 @@ class ElasticWritesAnalytics(config: ElasticAnalyticsConfig, env: Env) {
           "Content-Type" -> "application/x-ndjson"
         )
       }
-      .addHttpHeaders(config.headers.toSeq: _*)
+      .addHttpHeaders(config.headers.toSeq*)
     Source(event.toList)
       .map(_.toJson)
       .grouped(500)
@@ -927,7 +927,7 @@ class ElasticWritesAnalytics(config: ElasticAnalyticsConfig, env: Env) {
 
     EitherT(
       url(searchUri)
-        .addHttpHeaders(config.headers.toSeq: _*)
+        .addHttpHeaders(config.headers.toSeq*)
         .post(query)
         .map { resp =>
           resp.status match {
@@ -958,7 +958,7 @@ class ElasticReadsAnalytics(config: ElasticAnalyticsConfig, env: Env) {
       .fold(builder) { h =>
         builder.withHttpHeaders("Authorization" -> h)
       }
-      .addHttpHeaders(config.headers.toSeq: _*)
+      .addHttpHeaders(config.headers.toSeq*)
   }
 
   private def authHeader(): Option[String] = {
@@ -978,7 +978,7 @@ class ElasticReadsAnalytics(config: ElasticAnalyticsConfig, env: Env) {
 
     EitherT(
       url(searchUri)
-        .addHttpHeaders(config.headers.toSeq: _*)
+        .addHttpHeaders(config.headers.toSeq*)
         .post(query)
         .map { resp =>
           resp.status match {
@@ -1009,9 +1009,9 @@ class WebHookAnalytics(webhook: Webhook) {
   )(implicit env: Env, ec: ExecutionContext): Future[Option[JsValue]] =
     env.wsClient
       .url(webhook.url + path)
-      .withHttpHeaders(webhook.headers.toSeq: _*)
+      .withHttpHeaders(webhook.headers.toSeq*)
       .withQueryStringParameters(
-        defaultParams(service, from, to, page, size): _*
+        defaultParams(service, from, to, page, size)*
       )
       .get()
       .map(_.json)
@@ -1050,7 +1050,7 @@ class WebHookAnalytics(webhook: Webhook) {
       .getOrElse(webhook.url)
     val postResponse = env.wsClient
       .url(url)
-      .withHttpHeaders(headers: _*)
+      .withHttpHeaders(headers*)
       .post(JsArray(event.map(_.toJson)))
     postResponse.andThen {
       case Success(resp) => {

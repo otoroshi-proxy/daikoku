@@ -694,10 +694,10 @@ class NotificationController(
   }
 
   def acceptTeamInvitation(
-      tenant: Tenant,
-      team: TeamId,
-      invitedUserId: UserId,
-      sender: NotificationSender
+    tenant: Tenant,
+    team: TeamId,
+    invitedUserId: UserId,
+    sender: NotificationSender
   ): Future[Either[AppError, Unit]] = {
     import cats.data.*
     import cats.implicits.*
@@ -742,11 +742,11 @@ class NotificationController(
       _ <- EitherT.liftF(
         tenant.mailer.send(title, Seq(sender.email), body, tenant)
       )
-    } yield Right(())
+    } yield ()
 
     r.value
   }
-
+  
   def acceptApiSubscription(
       subscriptionDemandId: DemandId,
       subscriptionDemandStepId: SubscriptionDemandStepId,
@@ -756,9 +756,9 @@ class NotificationController(
       tenant: Tenant,
       user: User,
       sender: NotificationSender
-  )(implicit
-      ctx: DaikokuActionContext[JsValue]
-  ): Future[Either[AppError, Unit]] = {
+                           )(implicit
+                             ctx: DaikokuActionContext[JsValue]
+                           ): Future[Either[AppError, Unit]] = {
     import cats.data.*
     import cats.implicits.*
     import fr.maif.daikoku.utils.RequestImplicits.*

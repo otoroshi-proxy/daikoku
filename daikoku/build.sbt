@@ -5,7 +5,7 @@ organization := "fr.maif.otoroshi"
 maintainer := "oss@maif.fr"
 Universal / packageName := "daikoku"
 
-scalaVersion := "3.3.6"
+scalaVersion := "3.8.2"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -164,6 +164,7 @@ scalacOptions ++= Seq(
   "-Wconf:src=views/.*:silent",
   "-Wconf:msg=discarded non-Unit value:s",
 )
+
 
 //scalacOptions ++= {
 //  CrossVersion.partialVersion(scalaVersion.value) match {

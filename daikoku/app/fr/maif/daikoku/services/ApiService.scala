@@ -734,7 +734,7 @@ class ApiService(
         AppError.ApiNotLinked
       )
       apiKey <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(otoSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoSettings)
       )
 
       aggregatedSubs <- EitherT.liftF[Future, AppError, Seq[ApiSubscription]](
@@ -786,7 +786,7 @@ class ApiService(
             readOnly = subscription.customReadOnly.getOrElse(apiKey.readOnly),
             validUntil = subscription.validUntil.map(_.getMillis)
           )
-        )(otoSettings)
+        )(using otoSettings)
       )
       _ <- EitherT.liftF[Future, AppError, Boolean](
         env.dataStore.apiSubscriptionRepo
@@ -821,7 +821,7 @@ class ApiService(
       _ <- (shouldDeleteApiKey, maybeOtoroshiSettings) match {
         case (true, Some(otoorshiSettings)) =>
           otoroshiClient
-            .deleteApiKey(subscription.apiKey.clientId)(otoorshiSettings)
+            .deleteApiKey(subscription.apiKey.clientId)(using otoorshiSettings)
         case _ =>
           EitherT.pure[Future, AppError](Json.obj())
       }
@@ -887,7 +887,7 @@ class ApiService(
 
       // get previous apikey from otoroshi
       apk <- EitherT(
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(otoroshiSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
       )
 
       // get subscription team
@@ -1533,7 +1533,7 @@ class ApiService(
           )
           _ <- OptionT.liftF(
             deaggregateSubsAndDelete(subscription, childs, subscriberTeam)(
-              otoroshiSettings
+              using otoroshiSettings
             )
           )
           _ <- subscription.thirdPartySubscriptionInformations match {
@@ -1889,7 +1889,7 @@ class ApiService(
       response <- EitherT(
         env.wsClient
           .url(step.url)
-          .withHttpHeaders(step.headers.toSeq: _*)
+          .withHttpHeaders(step.headers.toSeq*)
           .post(
             Json.obj(
               "demand" -> demand.asJson,
@@ -2629,7 +2629,7 @@ class ApiService(
                     )
                   )
               )
-              result <- runSubscriptionProcess(demanId, tenant)(language, user)
+              result <- runSubscriptionProcess(demanId, tenant)(using language, user)
             } yield result
         }
     }
@@ -2940,7 +2940,7 @@ class ApiService(
           )
       )
       apk <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(otoroshiSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
       )
       newApk = apk.copy(
         clientName =
@@ -2950,7 +2950,7 @@ class ApiService(
           apk.metadata + ("daikoku_transfer_to_team_id" -> newTeam.id.value) + ("daikoku_transfer_to_team" -> newTeam.name)
       )
       _ <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.updateApiKey(newApk)(otoroshiSettings)
+        otoroshiClient.updateApiKey(newApk)(using otoroshiSettings)
       )
       _ <- EitherT.liftF[Future, AppError, Boolean](
         env.dataStore.notificationRepo

@@ -450,7 +450,7 @@ class DaikokuEnv(
 
   val auditActor: ActorRef =
     actorSystem.actorOf(
-      AuditActorSupervizer.props(this, messagesApi, interpreter)
+      AuditActorSupervizer.props(using this, messagesApi, interpreter)
     )
 
   private val daikokuConfig = new Config(configuration)
@@ -469,7 +469,7 @@ class DaikokuEnv(
     }
 
   private val s3assetsStore =
-    new AssetsDataStore(actorSystem)(actorSystem.dispatcher, materializer)
+    new AssetsDataStore(actorSystem)(using actorSystem.dispatcher, materializer)
 
   override def rawConfiguration: Configuration = configuration
 
@@ -519,7 +519,7 @@ class DaikokuEnv(
                 implicit val ec: ExecutionContext = defaultExecutionContext
                 wsClient
                   .url(path)
-                  .withHttpHeaders(config.init.data.headers.toSeq: _*)
+                  .withHttpHeaders(config.init.data.headers.toSeq*)
                   .withMethod("GET")
                   .withRequestTimeout(10.seconds)
                   .get()
@@ -741,7 +741,7 @@ class DaikokuEnv(
       .filter(v => v)
       .take(1)
       .toMat(Sink.ignore)(Keep.right)
-      .run()(materializer)
+      .run()(using materializer)
       .map(_ => {
         dataStore.reportsInfoRepo.count().map {
           case 0 =>
@@ -764,7 +764,7 @@ class DaikokuEnv(
       mat: Materializer,
       ec: ExecutionContext
   ): Seq[EssentialFilter] =
-    Seq(new LoginFilter(this)(mat, ec))
+    Seq(new LoginFilter(this)(using mat, ec))
 
   def expositionFilters(implicit
       mat: Materializer,
@@ -779,7 +779,7 @@ class DaikokuEnv(
             configuration
               .get[String]("daikoku.exposition.otoroshi.stateRespHeaderName"),
             this
-          )(mat, ec)
+          )(using mat, ec)
         )
       case _ => Seq.empty
     }

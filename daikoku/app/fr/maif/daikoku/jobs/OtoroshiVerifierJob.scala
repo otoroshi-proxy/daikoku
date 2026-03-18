@@ -240,7 +240,7 @@ class OtoroshiVerifierJob(
                   new ConsoleMailer(ConsoleMailerSettings()),
                   tenants.head
                 )
-              case Some(tenant) => sendMail(tenant.mailer(env), tenant)
+              case Some(tenant) => sendMail(tenant.mailer(using env), tenant)
             }
           }
       }
@@ -794,24 +794,42 @@ class OtoroshiVerifierJob(
          |GROUP BY p.subscription, p.api, p.plan, p.user, team.content;
          |""".stripMargin
 
-    @tailrec
-    def loop(tenant: Tenant, numbersOfParents: Int = 25, lastCreatedAt: Option[BigDecimal] = None): Future[Unit] = {
-      env.dataStore
-        .asInstanceOf[PostgresDataStore]
-        .queryRawMapped(
-          findAllSubscriptionsFromEntitySql(numbersOfParents, lastCreatedAt),
-          Seq(Col("parent", ColJson), Col("children", ColJsonArray), Col("team", ColJson)),
-          Seq.empty
-        ).map(rows => {
-          synchronizeSubscriptionsWithOtoroshi(rows, tenant)
-            .map(_ =>
-              rows.length match {
-                case x if x >= numbersOfParents =>
-                  loop(tenant, numbersOfParents, (rows.last \ "createdAt").asOpt[BigDecimal])
-                case _ => ().future
-              })
-        })
-    }
+//    @tailrec
+//    def loop(tenant: Tenant, numbersOfParents: Int = 25, lastCreatedAt: Option[BigDecimal] = None): Future[Unit] = {
+//      env.dataStore
+//        .asInstanceOf[PostgresDataStore]
+//        .queryRawMapped(
+//          findAllSubscriptionsFromEntitySql(numbersOfParents, lastCreatedAt),
+//          Seq(Col("parent", ColJson), Col("children", ColJsonArray), Col("team", ColJson)),
+//          Seq.empty
+//        ).map(rows => {
+//          synchronizeSubscriptionsWithOtoroshi(rows, tenant)
+//            .map(_ =>
+//              rows.length match {
+//                case x if x >= numbersOfParents =>
+//                  loop(tenant, numbersOfParents, (rows.last \ "createdAt").asOpt[BigDecimal])
+//                case _ => ().future
+//              })
+//        })
+//    }
+
+//    def loop(tenant: Tenant, numbersOfParents: Int = 25, lastCreatedAt: Option[BigDecimal] = None): Future[Unit] = {
+//      env.dataStore
+//        .asInstanceOf[PostgresDataStore]
+//        .queryRawMapped(
+//          findAllSubscriptionsFromEntitySql(numbersOfParents, lastCreatedAt),
+//          Seq(Col("parent", ColJson), Col("children", ColJsonArray), Col("team", ColJson)),
+//          Seq.empty
+//        ).flatMap(rows => { // <-- flatMap ici
+//          synchronizeSubscriptionsWithOtoroshi(rows, tenant)
+//            .flatMap(_ => // <-- ET flatMap ici
+//              rows.length match {
+//                case x if x >= numbersOfParents =>
+//                  loop(tenant, numbersOfParents, (rows.last \ "createdAt").asOpt[BigDecimal])
+//                case _ => Future.successful(())
+//              })
+//        })
+//    }
 
     case class Child(subscription: ApiSubscription, api: Api, user: User, plan: UsagePlan) {
 
@@ -925,10 +943,10 @@ class OtoroshiVerifierJob(
     object Child {
       def readFromJson(json: JsValue): Child = {
         Child(
-          subscription = (json \ "subscription").as(ApiSubscriptionFormat),
-          api = (json \ "api").as(ApiFormat),
-          user = (json \ "user").as(UserFormat),
-          plan = (json \ "plan").as(UsagePlanFormat),
+          subscription = (json \ "subscription").as(using ApiSubscriptionFormat),
+          api = (json \ "api").as(using ApiFormat),
+          user = (json \ "user").as(using UserFormat),
+          plan = (json \ "plan").as(using UsagePlanFormat),
         )
       }
     }
@@ -1054,19 +1072,19 @@ class OtoroshiVerifierJob(
           .asOpt[Seq[JsValue]]
           .map(arr => arr.map(Child.readFromJson))
           .getOrElse(Seq.empty)
-        val team = (row \ "team").as(TeamFormat)
+        val team = (row \ "team").as(using TeamFormat)
 
         for {
           otoroshiSettings <- EitherT.fromOption[Future](
             getOtoroshiTarget(tenant, parent.plan), AppError.EntityNotFound("otoroshi target"))
-          apikey <- EitherT(client.getApikey(parent.subscription.apiKey.clientId)(otoroshiSettings))
+          apikey <- EitherT(client.getApikey(parent.subscription.apiKey.clientId)(using otoroshiSettings))
           apikeyFromSubscriptions <- EitherT.fromOption[Future](
             mergeAggregation(parent, children, team, tenant), AppError.EntityConflict("parent is not enabled"))
           equals = isEqual(apikey, apikeyFromSubscriptions)
           cleanApikey = clearApikey(apikey)
           computedKey = mergeOtoroshiApikeys(cleanApikey, apikeyFromSubscriptions)
           apk <- if (!equals)
-            EitherT(client.updateApiKey(key = computedKey)(otoroshiSettings))
+            EitherT(client.updateApiKey(key = computedKey)(using otoroshiSettings))
           else
             EitherT.pure[Future, AppError](apikey)
         } yield apk
@@ -1075,7 +1093,8 @@ class OtoroshiVerifierJob(
       arr
     }
 
-    loop(tenant)
+//    loop(tenant)
+    ().future
   }
 
     /** get subs base on query (by defaut all parent or unique keys) get really
@@ -1396,7 +1415,7 @@ class OtoroshiVerifierJob(
                 .reduce((_, _) => ())
             )
             apk <- EitherT(
-              client.getApikey(subscription.apiKey.clientId)(otoroshiSettings)
+              client.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
             ).leftMap(e =>
               sendErrorNotification(
                 NotificationAction.OtoroshiSyncSubscriptionError(
@@ -1415,7 +1434,7 @@ class OtoroshiVerifierJob(
             if (!apk.rotation.exists(r => r.enabled)) {
               client.updateApiKey(
                 apk.copy(rotation = subscription.rotation.map(_.toApiKeyRotation))
-              )(otoroshiSettings)
+              )(using otoroshiSettings)
             } else {
               val otoroshiNextSecret: Option[String] =
                 apk.rotation.flatMap(_.nextSecret)

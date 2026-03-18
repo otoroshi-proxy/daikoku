@@ -205,7 +205,7 @@ class OtoroshiClient(env: Env) {
     ) {
       Future.failed(new RuntimeException(s"Bad group id"))
     } else {
-      getServiceGroup(groupId)(otoroshiSettings).flatMap(g => f).recoverWith {
+      getServiceGroup(groupId)(using otoroshiSettings).flatMap(g => f).recoverWith {
         case e => Future.failed(e)
       }
     }
@@ -216,7 +216,7 @@ class OtoroshiClient(env: Env) {
   ): Future[Either[AppError, ActualOtoroshiApiKey]] = {
     client(s"/apis/apim.otoroshi.io/v1/apikeys/$clientId").get().map { resp =>
       if (resp.status == 200) {
-        resp.json.validate(ActualOtoroshiApiKeyFormat) match {
+        resp.json.validate(using ActualOtoroshiApiKeyFormat) match {
           case JsSuccess(k, _) => Right(k)
           case e: JsError      => Left(OtoroshiError(JsError.toJson(e)))
         }
@@ -237,7 +237,7 @@ class OtoroshiClient(env: Env) {
   ): Future[Either[AppError, ActualOtoroshiApiKey]] = {
     client(s"/apis/apim.otoroshi.io/v1/apikeys").post(key.asJson).map { resp =>
       if (resp.status == 201 || resp.status == 200) {
-        resp.json.validate(ActualOtoroshiApiKeyFormat) match {
+        resp.json.validate(using ActualOtoroshiApiKeyFormat) match {
           case JsSuccess(k, _) => Right(k)
           case e: JsError      => Left(OtoroshiError(JsError.toJson(e)))
         }
@@ -260,7 +260,7 @@ class OtoroshiClient(env: Env) {
       .put(key.asJson)
       .map { resp =>
         if (resp.status == 200) {
-          resp.json.validate(ActualOtoroshiApiKeyFormat) match {
+          resp.json.validate(using ActualOtoroshiApiKeyFormat) match {
             case JsSuccess(k, _) => Right(k)
             case JsError(e) =>
               Left(
@@ -484,7 +484,7 @@ class OtoroshiClient(env: Env) {
           )
           _ <- EitherT.liftF(env.dataStore.tenantRepo.save(updatedTenant))
           r <- getSubscriptionLastUsage(subscriptions)(
-            updatedSettings,
+            using updatedSettings,
             updatedTenant
           )
         } yield r
@@ -500,7 +500,7 @@ class OtoroshiClient(env: Env) {
         if (resp.status == 200) {
           val config = resp.json.as[JsObject]
           val elasticReadConfig =
-            (config \ "elasticReadsConfig").asOpt(ElasticAnalyticsConfig.format)
+            (config \ "elasticReadsConfig").asOpt(using ElasticAnalyticsConfig.format)
           elasticReadConfig
         } else {
           None

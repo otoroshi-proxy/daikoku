@@ -424,7 +424,6 @@ trait UserRepo extends Repo[User, UserId]
 
 trait EvolutionRepo extends Repo[Evolution, DatastoreId]
 trait ReportsInfoRepo extends Repo[ReportsInfo, DatastoreId]
-trait JobInformationRepo extends Repo[JobInformation, DatastoreId]
 
 trait ApiSubscriptionTransferRepo
     extends TenantCapableRepo[ApiSubscriptionTransfer, DatastoreId]
@@ -473,6 +472,8 @@ trait ApiIssueRepo extends TenantCapableRepo[ApiIssue, ApiIssueId]
 
 trait ApiSubscriptionRepo
     extends TenantCapableRepo[ApiSubscription, ApiSubscriptionId]
+
+trait JobInformationRepo extends TenantCapableRepo[JobInformation, DatastoreId]
 
 trait ApiRepo extends TenantCapableRepo[Api, ApiId] {
   def findByVersion(tenant: Tenant, id: String, version: String)(implicit
@@ -626,9 +627,9 @@ trait DataStore {
       ec: ExecutionContext,
       mat: Materializer,
       env: Env
-  ): Source[ByteString, _]
+  ): Source[ByteString, ?]
 
-  def importFromStream(source: Source[ByteString, _]): Future[Unit]
+  def importFromStream(source: Source[ByteString, ?]): Future[Unit]
 
   def clear(): Future[Unit]
 

@@ -1,0 +1,12 @@
+<component name="libraryTable">
+  <library name="sbt: com.google.j2objc:j2objc-annotations:3.1:jar" type="java-imported" external-system-id="SBT">
+    <properties groupId="com.google.j2objc" artifactId="j2objc-annotations" version="3.1" baseVersion="3.1" />
+    <CLASSES>
+      <root url="jar://$USER_HOME$/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/google/j2objc/j2objc-annotations/3.1/j2objc-annotations-3.1.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="jar://$USER_HOME$/Library/Caches/Coursier/v1/https/repo1.maven.org/maven2/com/google/j2objc/j2objc-annotations/3.1/j2objc-annotations-3.1-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>
