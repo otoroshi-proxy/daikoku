@@ -6,7 +6,7 @@ import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.audit.{ApiKeyRotationEvent, JobEvent}
 import fr.maif.daikoku.domain.NotificationAction.{OtoroshiSyncApiError, OtoroshiSyncSubscriptionError}
 import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.json.ApiSubscriptionyRotationFormat
+import fr.maif.daikoku.domain.json.{ApiFormat, UserFormat, TeamFormat, UsagePlanFormat, ApiSubscriptionFormat, ApiSubscriptionyRotationFormat}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.utils.*
@@ -19,12 +19,17 @@ import org.joda.time.DateTime
 import play.api.Logger
 import play.api.i18n.MessagesApi
 import play.api.libs.json.*
+import fr.maif.daikoku.storage.drivers.postgres.{Col, ColJson, ColJsonArray, PostgresDataStore}
 
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success}
+import cats.implicits.*
+
+import scala.annotation.tailrec
+
 
 case class SyncAllSubscription()
 
@@ -732,6 +737,232 @@ class OtoroshiVerifierJob(
       }
       .runWith(Sink.ignore)(env.defaultMaterializer)
   }
+  
+  private def betterSynchronizeApikeys(
+                                        entity: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription,
+                                        tenant: Tenant
+                                      ): Future[Done] = {
+    
+    val predicate = entity match {
+      case apiId: ApiId => s"AND content ->> 'api' = ${apiId.value}"
+      case usagePlanId: UsagePlanId => s"AND content ->> 'plan' = ${usagePlanId.value}"
+      case subscriptionId: ApiSubscriptionId => s"where _id = ${subscriptionId.value}"
+      case _: SyncAllSubscription => ""
+    }
+    
+    
+    def findAllSubscriptionsFromEntitySql(limit: Int, createdAt: Option[BigDecimal] = None) = s"""
+         |WITH parents AS (
+         |    SELECT s.content as subscription, users.content as user, usage_plans.content as plan, apis.content as api
+         |    FROM api_subscriptions s
+         |    INNER JOIN apis ON apis._id = s.content ->> 'api'
+         |    INNER JOIN users ON users._id = s.content ->> 'by'
+         |    INNER JOIN usage_plans ON usage_plans._id = s.content ->> 'plan'
+         |    WHERE content ->> 'parent' IS NULL
+         |      ${createdAt.map(createdAt =>  s"AND (content ->> 'createdAt')::bigint > $createdAt").getOrElse("")}
+         |      $predicate
+         |    ORDER BY content ->> 'createdAt'
+         |    LIMIT $limit
+         |)
+         |
+         |SELECT json_build_object(
+         |               'subscription', p.subscription,
+         |               'api', p.api,
+         |               'user', p.user,
+         |               'plan', p.plan
+         |       ) AS parent, 
+         |       json_agg(
+         |        json_build_object(
+         |                'subscription', s.content,
+         |                'api', apis.content,
+         |                'user', users.content,
+         |                'plan', usage_plans.content
+         |        )) AS children,
+         |        team.content AS team
+         |FROM parents p
+         |INNER JOIN api_subscriptions s ON p.subscription ->> '_id' = s.content ->> 'parent'
+         |INNER JOIN apis ON apis._id = s.content ->> 'api'
+         |INNER JOIN users ON users._id = s.content ->> 'by'
+         |INNER JOIN usage_plans ON usage_plans._id = s.content ->> 'plan'
+         |INNER JOIN teams ON teams._id = s.content -> "team"
+         |GROUP BY p.subscription, p.api, p.plan, p.user, team.content;
+         |""".stripMargin
+    
+    @tailrec
+    def loop(limit: Int = 10, lastCreatedAt: Option[BigDecimal] = None): Future[Unit] = {
+      env.dataStore
+        .asInstanceOf[PostgresDataStore]
+        .queryRawMapped(
+          findAllSubscriptionsFromEntitySql(limit, lastCreatedAt),
+          Seq(Col("parent", ColJson), Col("children", ColJsonArray), Col("team", ColJson)),
+          Seq.empty
+        ).map(rows => {
+          synchronizeSubscriptionsWithOtoroshi(rows, tenant)
+            .map(_ =>
+              rows.length match {
+                case x if x >= limit =>
+                  loop(limit, (rows.last \ "createdAt").asOpt[BigDecimal])
+                case _ => ().future
+              })
+        })
+    }
+
+    case class Child(subscription: ApiSubscription, api: Api, user: User, plan: UsagePlan) {
+
+      def getContext(team: Team, tenant: Tenant) = {
+        val ctx: Map[String, String] = Map(
+          "user.id" -> user.id.value,
+          "user.name" -> user.name,
+          "user.email" -> user.email,
+          "api.id" -> api.id.value,
+          "api.name" -> api.name,
+          "team.id" -> team.id.value,
+          "team.name" -> team.name,
+          "tenant.id" -> tenant.id.value,
+          "tenant.name" -> tenant.name,
+          "client.id" -> subscription.apiKey.clientId,
+          "client.name" -> subscription.apiKey.clientName
+        ) ++
+          team.metadata.map(t => ("team.metadata." + t._1, t._2)) ++
+          user.metadata.map(t => ("user.metadata." + t._1, t._2)) ++
+          plan.metadata.map(t => ("plan.metadata." + t._1, t._2)) ++
+          api.metadata.map(t => ("api.metadata." + t._1, t._2))
+      }
+
+
+      def computeTags(team: Team, tenant: Tenant): Set[String] = {
+        val planTags = plan.otoroshiTarget
+          .flatMap(_.apikeyCustomization.tags.asOpt[Set[String]])
+          .getOrElse(Set.empty[String])
+
+        planTags.map(OtoroshiTarget.processValue(_, getContext(team, tenant)))
+      }
+
+      def computeMetadata(team: Team, tenant: Tenant): Map[String, String] = {
+        val planMeta = metadataObjectToMap(
+          plan.otoroshiTarget
+            .flatMap(
+              _.apikeyCustomization.metadata.asOpt[Map[String, JsValue]]
+            )
+            .getOrElse(Map.empty[String, JsValue])
+        )
+
+//        val metaFromDk = infos.apk.metadata
+//          .get("daikoku__metadata")
+//          .map(
+//            _.split('|').toSeq
+//              .map(_.trim)
+//              .map(key => key -> infos.apk.metadata.get(key).orNull)
+//          )
+//          .getOrElse(planMeta.map { case (a, b) =>
+//            a -> OtoroshiTarget.processValue(b, ctx)
+//          })
+//          .toMap
+
+
+        val customMetaFromSub = metadataObjectToMap(
+          subscription.customMetadata
+            .flatMap(_.asOpt[Map[String, JsValue]])
+            .getOrElse(Map.empty[String, JsValue])
+        )
+
+        val metadataFromSub = metadataObjectToMap(
+          subscription.metadata
+            .flatMap(_.asOpt[Map[String, JsValue]])
+            .getOrElse(Map.empty[String, JsValue])
+        )
+
+        val newMetaFromDk =
+          (planMeta ++ customMetaFromSub ++ metadataFromSub).map {
+            case (a, b) => a -> OtoroshiTarget.processValue(b, getContext(team, tenant))
+          }
+
+        newMetaFromDk
+      }
+
+
+//      val newMeta = infos.apk.metadata
+//        .removedAll(metaFromDk.keys) ++ newMetaFromDk ++ Map(
+//        "daikoku__metadata" -> newMetaFromDk.keys
+//          .mkString(" | "),
+//        "daikoku__tags" -> newTagsFromDk.mkString(" | ")
+//      )
+    }
+
+    object Child {
+      def readFromJson(json: JsValue): Child = {
+        Child(
+          subscription = (json \ "subscription").as(ApiSubscriptionFormat),
+          api = (json \ "api").as(ApiFormat),
+          user = (json \ "user").as(UserFormat),
+          plan = (json \ "plan").as(UsagePlanFormat),
+        )
+      }
+    }
+    
+    def getOtoroshiTarget(tenant: Tenant, usagePlan: UsagePlan): Option[OtoroshiSettings] = {
+      usagePlan.otoroshiTarget
+        .flatMap(target => tenant.otoroshiSettings.find(s => s.id == target.otoroshiSettings))
+    }
+    
+    def mergeAggregation(parent: Child, children: Seq[Child], team: Team, tenant: Tenant) = {
+      val maybeTarget: Option[OtoroshiTarget] = parent.plan.otoroshiTarget
+      val maybeCustomization: Option[ApikeyCustomization] = maybeTarget.map(_.apikeyCustomization)
+
+      val apikey = ActualOtoroshiApiKey(
+        clientId = parent.subscription.apiKey.clientId,
+        clientSecret = parent.subscription.apiKey.clientSecret,
+        clientName = parent.subscription.apiKey.clientName,
+        authorizedEntities = maybeTarget.flatMap(t => t.authorizedEntities).getOrElse(AuthorizedEntities()),
+        enabled = parent.subscription.enabled,
+        allowClientIdOnly = maybeCustomization.exists(_.clientIdOnly),
+        readOnly = maybeCustomization.exists(_.readOnly),
+        constrainedServicesOnly = maybeCustomization.exists(_.constrainedServicesOnly),
+        throttlingQuota = parent.plan.maxPerSecond.getOrElse(RemainingQuotas.MaxValue),
+        dailyQuota = parent.plan.maxPerDay.getOrElse(RemainingQuotas.MaxValue),
+        monthlyQuota = parent.plan.maxPerMonth.getOrElse(RemainingQuotas.MaxValue),
+        tags = parent.computeTags(team, tenant),
+        metadata = parent.computeMetadata(team, tenant),
+        restrictions = maybeCustomization.map(_.restrictions).getOrElse(ApiKeyRestrictions()),
+        rotation = parent.subscription.rotation,
+        validUntil = parent.subscription.validUntil,
+      )
+
+      children
+        .foldLeft(apikey){ case (acc, item) => acc}
+    }
+    
+    def synchronizeSubscriptionsWithOtoroshi(parentSubscriptionWithChildren: Seq[JsObject], tenant: Tenant): Future[Unit] = {
+      parentSubscriptionWithChildren.map(row => {
+        val parent = Child.readFromJson((row \ "parent").as[JsObject])
+        val children = (row \ "children")
+            .asOpt[Seq[JsValue]]
+            .map(arr => arr.map(Child.readFromJson))
+            .getOrElse(Seq.empty)
+        val team = (row \ "team").as(TeamFormat)
+
+        for {
+          otoroshiSettings <- EitherT.fromOption[Future](getOtoroshiTarget(tenant, parent.plan), AppError.EntityNotFound("otoroshi target"))
+          apikey <- EitherT(client.getApikey(parent.subscription.apiKey.clientId)(otoroshiSettings))
+          finalSubsbcription <- mergeAggregation(parent, children, team, tenant) //fold sur toutes les souscriptions pour n'en avoir qu'une seule
+//          computedKey <- computeKey(finalSubsbcription)
+          diff = compareKey(apikey, computeKey)
+          merge = merge(apikey, computedkey) //todo: merge avec les odnnée de l'ancienne apikey qu'on peut pas deviner ()
+        }  yield {
+          if (diff) {
+            push(computedKey) 
+          } else {
+            ().future
+          }
+        }
+      })
+    }
+
+
+    
+      
+
+  }
 
   /** get subs base on query (by defaut all parent or unique keys) get really
     * parent subs (in case of query as a pointer to childs) for each subs get
@@ -749,8 +980,6 @@ class OtoroshiVerifierJob(
   private def synchronizeApikeys(
       query: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription
   ): Future[Done] = {
-    import cats.implicits._
-
     val r = for {
       // Get all "base" subscriptions from provided query
       allSubscriptions <- EitherT.liftF[Future, AppError, Seq[ApiSubscription]](
@@ -1205,14 +1434,14 @@ class OtoroshiVerifierJob(
       case _: SyncAllSubscription => Json.obj()
     }
 
-    Future
-      .sequence(
-        Seq(
+//    Future
+//      .sequence(
+//        Seq(
           //checkRotation(query), //todo: sortir dans un autre job
           //verifyIfOtoroshiGroupsStillExists(),  //todo: sortir dans un autre job
           synchronizeApikeys(query)
-        )
-      )
+//        )
+//      )
       .map(_ => logger.info("Sync verification ended"))
   }
 }

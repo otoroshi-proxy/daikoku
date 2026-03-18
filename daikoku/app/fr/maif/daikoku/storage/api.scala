@@ -424,6 +424,7 @@ trait UserRepo extends Repo[User, UserId]
 
 trait EvolutionRepo extends Repo[Evolution, DatastoreId]
 trait ReportsInfoRepo extends Repo[ReportsInfo, DatastoreId]
+trait JobInformationRepo extends Repo[JobInformation, DatastoreId]
 
 trait ApiSubscriptionTransferRepo
     extends TenantCapableRepo[ApiSubscriptionTransfer, DatastoreId]
@@ -618,6 +619,8 @@ trait DataStore {
   def reportsInfoRepo: ReportsInfoRepo
 
   def apiSubscriptionTransferRepo: ApiSubscriptionTransferRepo
+
+  def JobInformationRepo: JobInformationRepo
 
   def exportAsStream(pretty: Boolean, exportAuditTrail: Boolean = true)(implicit
       ec: ExecutionContext,

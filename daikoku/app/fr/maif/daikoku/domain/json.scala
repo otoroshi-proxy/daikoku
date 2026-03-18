@@ -307,6 +307,16 @@ object json {
 
     override def writes(o: ApiId): JsValue = JsString(o.value)
   }
+  val JobNameFormat = new Format[JobName] {
+    override def reads(json: JsValue): JsResult[JobName] =
+      Try {
+        JsSuccess(JobName(json.as[String]))
+      } recover { case e =>
+        JsError(e.getMessage)
+      } get
+
+    override def writes(o: JobName): JsValue = JsString(o.value)
+  }
 
   val TenantModeFormat = new Format[TenantMode] {
     override def reads(json: JsValue): JsResult[TenantMode] =
@@ -4253,7 +4263,60 @@ object json {
         )
     }
 
-  val ApiSubscriptionDetailFormat = new Format[ApiSubscriptionDetail] {
+  val JobStatusFormat: Format[JobStatus] = new Format[JobStatus] {
+    override def reads(json: JsValue): JsResult[JobStatus] =
+      json.validate[String].map { str =>
+        JobStatus.valueOf(str)
+      }
+
+    override def writes(o: JobStatus): JsValue =
+      JsString(o.value)
+  }
+
+  val JobInformationFormat: Format[JobInformation] =
+    new Format[JobInformation] {
+      override def reads(json: JsValue): JsResult[JobInformation] =
+        Try {
+          JsSuccess(
+            JobInformation(
+              id = (json \ "_id").as(DatastoreIdFormat),
+              tenant = (json \ "_tenant").as(TenantIdFormat),
+              deleted = (json \ "_deleted").as[Boolean],
+              jobName = (json \ "jobName").as(JobNameFormat),
+              lockedBy = (json \ "lockedBy").as[String],
+              lockedAt = (json \ "lockedAt").as(DateTimeFormat),
+              expiresAt = (json \ "expiresAt").as(DateTimeFormat),
+              cursor = (json \ "cursor").as[String],
+              batchSize = (json \ "batchSize").as[Int],
+              totalProcessed = (json \ "totalProcessed").as[BigDecimal],
+              startedAt = (json \ "startedAt").as(DateTimeFormat),
+              lastBatchAt = (json \ "lastBatchAt").as(DateTimeFormat),
+              status = (json \ "status").as(JobStatusFormat)
+            )
+          )
+        } recover { case e =>
+          JsError(e.getMessage)
+        } get
+
+      override def writes(o: JobInformation): JsValue =
+        Json.obj(
+          "_id" -> o.id.asJson,
+          "_tenant" -> o.tenant.asJson,
+          "_deleted" -> o.deleted,
+          "jobName" -> o.jobName.asJson,
+          "lockedBy" -> o.lockedBy,
+          "lockedAt" -> DateTimeFormat.writes(o.lockedAt),
+          "expiresAt" -> DateTimeFormat.writes(o.expiresAt),
+          "cursor" -> o.cursor,
+          "batchSize" -> o.batchSize,
+          "totalProcessed" -> o.totalProcessed,
+          "startedAt" -> DateTimeFormat.writes(o.startedAt),
+          "lastBatchAt" -> DateTimeFormat.writes(o.lastBatchAt),
+          "status" -> o.status.value,
+        )
+    }
+
+  val ApiSubscriptionDetailFormat: Format[ApiSubscriptionDetail] = new Format[ApiSubscriptionDetail] {
     override def reads(json: JsValue): JsResult[ApiSubscriptionDetail] =
       Try {
         JsSuccess(

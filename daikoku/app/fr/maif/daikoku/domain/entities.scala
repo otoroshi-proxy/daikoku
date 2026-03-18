@@ -127,6 +127,12 @@ case class SubscriptionDemandStepId(value: String)
   def asJson: JsValue = JsString(value)
 }
 
+case class JobName(value: String)
+    extends ValueType
+    with CanJson[JobName] {
+  def asJson: JsValue = JsString(value)
+}
+
 case class Translation(
     id: DatastoreId,
     tenant: TenantId,
@@ -164,4 +170,28 @@ case class ReportsInfo(
     date: Option[Long] = None
 ) extends CanJson[ReportsInfo] {
   override def asJson: JsValue = json.ReportsInfoFormat.writes(this)
+}
+
+enum JobStatus(val value: String):
+  case Idle      extends JobStatus("idle")
+  case Running   extends JobStatus("running")
+  case Failed    extends JobStatus("failed")
+  case Completed extends JobStatus("completed")
+  
+case class JobInformation(
+    id: DatastoreId,
+    tenant: TenantId,
+    deleted: Boolean = false,
+    jobName: JobName,
+    lockedBy: String,
+    lockedAt: DateTime,
+    expiresAt: DateTime,
+    cursor: String,
+    batchSize: Int = 500,
+    totalProcessed: BigDecimal = BigDecimal(0),
+    startedAt: DateTime,
+    lastBatchAt: DateTime,
+    status: JobStatus = JobStatus.Idle
+) extends CanJson[JobInformation] {
+  override def asJson: JsValue = json.JobInformationFormat.writes(this)
 }
