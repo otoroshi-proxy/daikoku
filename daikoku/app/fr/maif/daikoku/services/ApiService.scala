@@ -982,7 +982,7 @@ class ApiService(
 //              )
 //            case None => EitherT.pure[Future, AppError](updatedSubscription)
 //          }
-          _ <- EitherT.right[AppError](otoroshiSynchronisator.run(updatedSubscription.id))
+          _ <- EitherT.right[AppError](otoroshiSynchronisator.run(updatedSubscription.id, tenant))
 //          apk <- EitherT(computeOtoroshiApiKey(parentSubscription))
 //          _ <- EitherT(otoroshiClient.updateApiKey(apk))
           _ <-
@@ -1495,7 +1495,7 @@ class ApiService(
                     )
 
                 // compute new tags, metadata...
-                _ <- otoroshiSynchronisator.run(newParent.id)
+                _ <- otoroshiSynchronisator.run(newParent.id, tenant)
                 // delete extracted OtoroshiApiKey into Otoroshi
                 // delete extracted subscription
                 - <-

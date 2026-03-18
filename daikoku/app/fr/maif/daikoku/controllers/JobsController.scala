@@ -4,9 +4,10 @@ import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.jobs
 import fr.maif.daikoku.utils.OtoroshiClient
 import org.apache.pekko.http.scaladsl.util.FastFuture
-import fr.maif.daikoku.jobs.{ApiKeyStatsJob, AuditTrailPurgeJob, OtoroshiVerifierJob}
+import fr.maif.daikoku.jobs.{ApiKeyStatsJob, AuditTrailPurgeJob, OtoroshiVerifierJob, SyncAllSubscription}
 import play.api.libs.json.Json
 import play.api.mvc.{AbstractController, ControllerComponents}
+import scala.concurrent.Future
 
 import scala.concurrent.ExecutionContext
 
@@ -26,7 +27,10 @@ class JobsController(
     Action.async { req =>
       req.getQueryString("key") match {
         case Some(key) if key == env.config.otoroshiSyncKey => {
-          otoroshiVerifierJob.run().map(_ => Ok(Json.obj("done" -> true)))
+          // TODO - manage errors
+          env.dataStore.tenantRepo.findAllNotDeleted()
+            .map(tenants => Future.sequence(tenants.map(tenant => otoroshiVerifierJob.run(SyncAllSubscription(), tenant))))
+            .map(_ => Ok(Json.obj("done" -> true)))
         }
         case _ =>
           FastFuture.successful(
