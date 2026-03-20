@@ -307,16 +307,6 @@ object json {
 
     override def writes(o: ApiId): JsValue = JsString(o.value)
   }
-  val JobNameFormat = new Format[JobName] {
-    override def reads(json: JsValue): JsResult[JobName] =
-      Try {
-        JsSuccess(JobName(json.as[String]))
-      } recover { case e =>
-        JsError(e.getMessage)
-      } get
-
-    override def writes(o: JobName): JsValue = JsString(o.value)
-  }
 
   val TenantModeFormat = new Format[TenantMode] {
     override def reads(json: JsValue): JsResult[TenantMode] =
@@ -4282,7 +4272,7 @@ object json {
               id = (json \ "_id").as(using DatastoreIdFormat),
               tenant = (json \ "_tenant").as(using TenantIdFormat),
               deleted = (json \ "_deleted").as[Boolean],
-              jobName = (json \ "jobName").as(using JobNameFormat),
+              jobName = JobName.valueOf((json \ "jobName").as[String]),
               lockedBy = (json \ "lockedBy").as[String],
               lockedAt = (json \ "lockedAt").as(using DateTimeFormat),
               expiresAt = (json \ "expiresAt").as(using DateTimeFormat),
@@ -4303,7 +4293,7 @@ object json {
           "_id" -> o.id.asJson,
           "_tenant" -> o.tenant.asJson,
           "_deleted" -> o.deleted,
-          "jobName" -> o.jobName.asJson,
+          "jobName" -> o.jobName.value,
           "lockedBy" -> o.lockedBy,
           "lockedAt" -> DateTimeFormat.writes(o.lockedAt),
           "expiresAt" -> DateTimeFormat.writes(o.expiresAt),

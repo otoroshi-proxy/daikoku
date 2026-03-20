@@ -1,20 +1,164 @@
 package fr.maif.daikoku.controllers
 
-import cats.syntax.option._
-import fr.maif.daikoku.actions.DaikokuAction
+import cats.syntax.option.*
+import com.google.common.base.Charsets
+import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionContext, tenantSecurity}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.sync.PublicUserAccess
-import fr.maif.daikoku.domain._
-import fr.maif.daikoku.env.Env
-import fr.maif.daikoku.login.AuthProvider
-import fr.maif.daikoku.utils.IdGenerator
-import fr.maif.daikoku.utils.StringImplicits._
+import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.env.{Env, LocalAdminApiConfig, OtoroshiAdminApiConfig}
+import fr.maif.daikoku.login.{AuthProvider, IdentityAttrs, TenantHelper}
+import fr.maif.daikoku.utils.{Errors, IdGenerator}
+import fr.maif.daikoku.utils.StringImplicits.*
+import com.auth0.jwt.JWT
 import org.joda.time.DateTime
 import org.mindrot.jbcrypt.BCrypt
+import play.api.Logger
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
 
-import scala.concurrent.ExecutionContext
+import java.util.Base64
+import scala.collection.concurrent.TrieMap
+import scala.concurrent.duration.DurationInt
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Success, Try}
+
+class DaikokuActionOrApiKey(val parser: BodyParser[AnyContent], env: Env)
+    extends ActionBuilder[DaikokuActionContext, AnyContent]
+    with ActionFunction[Request, DaikokuActionContext] {
+
+  implicit lazy val ec: ExecutionContext = env.defaultExecutionContext
+  private val logger = Logger("daikoku-action-or-apikey")
+
+  private val systemUser = User(
+    id = UserId("admin-api-user"),
+    tenants = Set.empty,
+    origins = Set(AuthProvider.Local),
+    name = "Admin API User",
+    email = "admin-api@daikoku.io",
+    isDaikokuAdmin = true,
+    lastTenant = None,
+    defaultLanguage = None,
+    personalToken = Some(IdGenerator.token(32)),
+  )
+
+  private def decodeBase64(encoded: String): String =
+    new String(Base64.getUrlDecoder.decode(encoded), Charsets.UTF_8)
+
+  private def extractUsernamePassword(header: String): Option[(String, String)] = {
+    val base64 = header.replace("Basic ", "").replace("basic ", "")
+    Option(base64)
+      .map(decodeBase64)
+      .map(_.split(":").toSeq)
+      .flatMap(a => a.headOption.flatMap(head => a.lastOption.map(last => (head, last))))
+  }
+
+  private def buildContext[A](request: Request[A], tenant: Tenant): DaikokuActionContext[A] = {
+    DaikokuActionContext(
+      request = request,
+      user = systemUser.copy(tenants = Set(tenant.id)),
+      tenant = tenant,
+      session = UserSession(
+        id = DatastoreId("admin-api-session"),
+        userId = systemUser.id,
+        userName = systemUser.name,
+        userEmail = systemUser.email,
+        impersonatorId = None,
+        impersonatorName = None,
+        impersonatorEmail = None,
+        impersonatorSessionId = None,
+        sessionId = UserSessionId("admin-api-session"),
+        created = DateTime.now(),
+        expires = DateTime.now().plusHours(1),
+        ttl = 3600.seconds
+      ),
+      impersonator = None,
+      isTenantAdmin = true,
+      apiCreationPermitted = true
+    )
+  }
+
+  private def tryApiKeyAuth[A](
+      request: Request[A],
+      block: DaikokuActionContext[A] => Future[Result]
+  ): Future[Result] = {
+    TenantHelper.withTenant(request, env) { tenant =>
+      env.config.adminApiConfig match {
+        case OtoroshiAdminApiConfig(headerName, algo) =>
+          request.headers.get(headerName) match {
+            case Some(value) =>
+              Try(JWT.require(algo).build().verify(value)) match {
+                case Success(decoded) if !decoded.getClaim("apikey").isNull =>
+                  block(buildContext(request, tenant))
+                case _ =>
+                  Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+              }
+            case _ =>
+              Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+          }
+        case LocalAdminApiConfig(_) =>
+          request.headers.get("Authorization") match {
+            case Some(auth) if auth.startsWith("Basic ") =>
+              extractUsernamePassword(auth) match {
+                case Some((clientId, clientSecret)) =>
+                  env.dataStore.apiSubscriptionRepo
+                    .forTenant(tenant)
+                    .findNotDeleted(Json.obj(
+                      "apiKey.clientId" -> clientId,
+                      "apiKey.clientSecret" -> clientSecret
+                    ))
+                    .map(_.length == 1)
+                    .flatMap {
+                      case true => block(buildContext(request, tenant))
+                      case _    => Errors.craftResponseResultF("Invalid api key", Results.Unauthorized)
+                    }
+                case None =>
+                  Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+              }
+            case _ =>
+              Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+          }
+      }
+    }
+  }
+
+  override def invokeBlock[A](
+      request: Request[A],
+      block: DaikokuActionContext[A] => Future[Result]
+  ): Future[Result] = {
+    // Try session auth first
+    (
+      request.attrs.get(IdentityAttrs.TenantKey),
+      request.attrs.get(IdentityAttrs.SessionKey),
+      request.attrs.get(IdentityAttrs.ImpersonatorKey),
+      request.attrs.get(IdentityAttrs.UserKey),
+      request.attrs.get(IdentityAttrs.TenantAdminKey)
+    ) match {
+      case (Some(tenant), _, _, Some(user), isTenantAdmin)
+          if !tenantSecurity.isDefaultMode(tenant, user.some, isTenantAdmin) =>
+        Errors.craftResponseResultF(
+          s"${tenant.tenantMode.get.toString} mode enabled",
+          Results.ServiceUnavailable
+        )
+      case (Some(tenant), Some(session), Some(imper), Some(user), Some(isTenantAdmin)) =>
+        if (user.tenants.contains(tenant.id)) {
+          tenantSecurity
+            .userCanCreateApi(tenant, user)(using env, ec)
+            .flatMap(permission =>
+              block(DaikokuActionContext(request, user, tenant, session, imper, isTenantAdmin, permission))
+            )
+        } else {
+          // No session for this tenant, try API key
+          tryApiKeyAuth(request, block)
+        }
+      // No session at all, try API key
+      case _ =>
+        tryApiKeyAuth(request, block)
+    }
+  }
+
+  override protected def executionContext: ExecutionContext = ec
+}
 
 class EntitiesController(
     DaikokuAction: DaikokuAction,
@@ -25,8 +169,10 @@ class EntitiesController(
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val ev: Env = env
 
+  private val DaikokuActionOrApiKey = new DaikokuActionOrApiKey(cc.parsers.default, env)
+
   def newTenant() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type Tenant"
@@ -55,7 +201,7 @@ class EntitiesController(
     }
 
   def newTeam() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type Team"
@@ -76,7 +222,7 @@ class EntitiesController(
     }
 
   def newOtoroshi() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type OtoroshiSettings"
@@ -95,7 +241,7 @@ class EntitiesController(
     }
 
   def newApi() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type Api"
@@ -125,7 +271,7 @@ class EntitiesController(
     }
 
   def newApiDocumentation() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type ApiDocumentation"
@@ -143,7 +289,7 @@ class EntitiesController(
     }
 
   def newApiDocumentationPage() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type ApiDocumentationPage"
@@ -162,7 +308,7 @@ class EntitiesController(
     }
 
   def newApiGroup() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type ApiGroup"
@@ -193,7 +339,7 @@ class EntitiesController(
     }
 
   def newUser() =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type User"
@@ -220,7 +366,7 @@ class EntitiesController(
     }
 
   def newIssue(): Action[AnyContent] =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type Issue"
@@ -252,7 +398,7 @@ class EntitiesController(
     }
 
   def newPlan(): Action[AnyContent] =
-    DaikokuAction.async { ctx =>
+    DaikokuActionOrApiKey.async { ctx =>
       PublicUserAccess(
         AuditTrailEvent(
           s"@{user.name} has asked for a template entity of type Plan"

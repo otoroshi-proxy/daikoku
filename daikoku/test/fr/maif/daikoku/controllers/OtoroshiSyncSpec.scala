@@ -3,10 +3,10 @@ package fr.maif.otoroshi.daikoku.tests
 import cats.implicits.catsSyntaxOptionId
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import fr.maif.otoroshi.daikoku.domain.ValidationStep.HttpRequest
-import fr.maif.otoroshi.daikoku.domain._
-import fr.maif.otoroshi.daikoku.tests.utils.DaikokuSpecHelper
-import fr.maif.otoroshi.daikoku.utils.LoggerImplicits.BetterLogger
+import fr.maif.daikoku.domain.ValidationStep.HttpRequest
+import fr.maif.daikoku.domain._
+import fr.maif.daikoku.tests.utils.DaikokuSpecHelper
+import fr.maif.daikoku.utils.LoggerImplicits.BetterLogger
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.IntegrationPatience
@@ -88,7 +88,7 @@ class OtoroshiSyncSpec()
       method = "POST",
       body = Json.obj().some
     )(tenant, session)
-    resp.status mustBe 200
+    resp.status.mustBe(200)
   }
 
   "OtoroshiVerifierJob sync" should {

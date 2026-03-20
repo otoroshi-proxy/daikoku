@@ -3,6 +3,7 @@
 .vscode
 .bsp
 .jvmopts
+.sbtopts
 *.swp
 node_modules
 .idea

@@ -221,10 +221,12 @@ class DaikokuComponentsInstances(context: Context)
     }
     options
   }
+  lazy val vertxInstance: io.vertx.core.Vertx = vertx()
+
   lazy val pgPool: Pool = PgBuilder.pool()
     .`with`(poolOptions)
     .connectingTo(options)
-    .using(vertx)
+    .using(vertxInstance)
     .build()
 
   //    statsJob.start()

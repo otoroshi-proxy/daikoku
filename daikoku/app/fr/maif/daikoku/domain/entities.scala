@@ -127,12 +127,6 @@ case class SubscriptionDemandStepId(value: String)
   def asJson: JsValue = JsString(value)
 }
 
-case class JobName(value: String)
-    extends ValueType
-    with CanJson[JobName] {
-  def asJson: JsValue = JsString(value)
-}
-
 case class Translation(
     id: DatastoreId,
     tenant: TenantId,
@@ -174,10 +168,15 @@ case class ReportsInfo(
 
 enum JobStatus(val value: String):
   case Idle      extends JobStatus("idle")
-  case Running   extends JobStatus("running")
-  case Failed    extends JobStatus("failed")
+  case Running extends JobStatus("running")
+  case Failed extends JobStatus("failed")
   case Completed extends JobStatus("completed")
-  
+
+enum JobName(val value: String):
+  case ApiKeySynchronization extends JobName("ApiKeySynchronization")
+  case ApiKeyRotationVerifier extends JobName("ApiKeyRotationVerifier")
+  case OtotoshiEntitiesVerifier extends JobName("OtotoshiEntitiesVerifier")
+
 case class JobInformation(
     id: DatastoreId,
     tenant: TenantId,

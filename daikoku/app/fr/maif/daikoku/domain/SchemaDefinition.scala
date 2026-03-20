@@ -4392,7 +4392,7 @@ object SchemaDefinition {
                       )
                   )
                   _ <- testApisTeam(apis, team)
-                  demands <- EitherT.liftF(
+                  demands <- EitherT.right[AppError](
                     dataStore.subscriptionDemandRepo
                       .forTenant(tenant)
                       .findWithPagination(

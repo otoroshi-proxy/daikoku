@@ -82,68 +82,7 @@ class StateController(
           .map(_ => Ok(Json.obj("done" -> true)))
       }
     }
-
-  def migrateStateToPostgres(): Action[AnyContent] =
-    DaikokuAction.async { ctx =>
-      DaikokuAdminOnly(
-        AuditTrailEvent(s"@{user.name} has migrated state to postgres")
-      )(ctx) {
-        // 1 - Check if postgres instance is present
-        // 2 - Switch all tenants in TenantMode.Maintenance
-        // 3 - Delete all user sessions except current one
-        // 4 - Create schema and tables
-        // 5 - Migrate data
-
-        env.dataStore match {
-          case _: PostgresDataStore =>
-            FastFuture.successful(
-              Ok(
-                Json.obj(
-                  "done" -> true,
-                  "message" -> "You're already on postgres"
-                )
-              )
-            )
-          case _ =>
-            val postgresStore =
-              new PostgresDataStore(env.rawConfiguration, env, pgPool)
-            (for {
-              _ <- postgresStore.checkIfTenantsTableExists()
-              _ <- env.dataStore.tenantRepo.findAllNotDeleted().map { tenants =>
-                tenants.map(tenant =>
-                  env.dataStore.tenantRepo
-                    .save(tenant.copy(tenantMode = TenantMode.Maintenance.some))
-                )
-              }
-              _ <- removeAllUserSessions(ctx)
-              _ <-
-                env.dataStore.notificationRepo
-                  .forAllTenant()
-                  .delete(
-                    Json.obj("status.status" -> Json.obj("$ne" -> "Pending"))
-                  )
-              _ <- postgresStore.checkDatabase()
-              source = env.dataStore.exportAsStream(pretty = false)
-              _ <- postgresStore.importFromStream(source)
-            } yield {
-              env.updateDataStore(postgresStore)
-              Ok(
-                Json.obj(
-                  "done" -> true,
-                  "message" -> "You're now running on postgres - Don't forget to switch your storage environment variable to postgres on the next reboot"
-                )
-              )
-            }).recoverWith {
-              case e: Throwable => {
-                postgresStore.stop()
-                FastFuture.successful(
-                  BadRequest(Json.obj("error" -> e.getMessage))
-                )
-              }
-            }
-        }
-      }
-    }
+  
   def getAnonymousState: Action[AnyContent] =
     DaikokuAction.async { ctx =>
       DaikokuAdminOnly(

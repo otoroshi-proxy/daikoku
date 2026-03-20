@@ -755,6 +755,15 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
     }
   }
 
+  def queryRawMappedStream(query: String, columns: Seq[Col], params: Seq[AnyRef] = Seq.empty, fetchSize: Int = 50)(implicit mat: org.apache.pekko.stream.Materializer): Source[JsObject, ?] = {
+    logger.debug(s"queryRawMappedStream($query)")
+
+    reactivePg.queryStreamSource(query, params, fetchSize) { row =>
+      val fields = columns.flatMap(col => readCol(row, col).map(col.name -> _))
+      Some(JsObject(fields))
+    }
+  }
+
   override def queryString(query: String, name: String, params: Seq[AnyRef])(
       implicit ec: ExecutionContext
   ): Future[Seq[String]] = {
