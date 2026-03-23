@@ -96,7 +96,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}/plan/${payPerUsePlanId.value}/consumption?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val eventualConsumptions =
         fr.maif.daikoku.domain.json.SeqConsumptionFormat
@@ -125,7 +125,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}/consumption?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val eventualConsumptions =
         fr.maif.daikoku.domain.json.SeqConsumptionFormat
@@ -154,7 +154,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamConsumerId.value}/consumptions?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val eventualConsumptions =
         fr.maif.daikoku.domain.json.SeqConsumptionFormat
@@ -182,7 +182,7 @@ class ConsumptionControllerSpec()
       val to = DateTime.now().withTimeAtStartOfDay().getMillis
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamOwnerId.value}/income?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       (resp.json \ 0 \ "billing" \ "total").as[BigDecimal] mustBe BigDecimal(30)
     }
@@ -204,7 +204,7 @@ class ConsumptionControllerSpec()
       val to = DateTime.now().withTimeAtStartOfDay().getMillis
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamConsumerId.value}/billings?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       (resp.json \ 0 \ "billing" \ "total").as[BigDecimal] mustBe BigDecimal(30)
@@ -314,14 +314,14 @@ class ConsumptionControllerSpec()
         path =
           s"/api/teams/${teamConsumerId.value}/subscription/${payperUserSub.id.value}/consumption/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
 
       val respConsumption = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamConsumerId.value}/subscription/${payperUserSub.id.value}/consumption?from=$threeDayAgo&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       respConsumption.status mustBe 200
 
       val maybeConsumption = json.SeqConsumptionFormat.reads(
@@ -403,14 +403,14 @@ class ConsumptionControllerSpec()
         path =
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}/consumption/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
 
       val respConsumption = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamConsumerId.value}/subscription/${payperUserSub.id.value}/consumption?from=$threeDayAgo&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       respConsumption.status mustBe 200
 
       val maybeConsumption = json.SeqConsumptionFormat.reads(
@@ -490,14 +490,14 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamConsumerId.value}/billing/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
 
       val respConsumption = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamConsumerId.value}/subscription/${payperUserSub.id.value}/consumption?from=$threeDayAgo&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       respConsumption.status mustBe 200
       val maybeConsumption = json.SeqConsumptionFormat.reads(
         (respConsumption.json \ "consumptions").as[JsArray]
@@ -577,14 +577,14 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamOwnerId.value}/income/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
 
       val respConsumption = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamConsumerId.value}/subscription/${payperUserSub.id.value}/consumption?from=$threeDayAgo&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       respConsumption.status mustBe 200
 
       val maybeConsumption = json.SeqConsumptionFormat.reads(
@@ -618,7 +618,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}/plan/${payPerUsePlanId.value}/consumption?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
 
@@ -640,7 +640,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}/consumption?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
 
@@ -662,7 +662,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${teamConsumerId.value}/consumptions?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
 
@@ -683,7 +683,7 @@ class ConsumptionControllerSpec()
       val to = DateTime.now().withTimeAtStartOfDay().getMillis
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamOwnerId.value}/income?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
 
@@ -704,7 +704,7 @@ class ConsumptionControllerSpec()
       val to = DateTime.now().withTimeAtStartOfDay().getMillis
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamConsumerId.value}/billings?from=$from&to=$to"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
 
     }
@@ -776,7 +776,7 @@ class ConsumptionControllerSpec()
         path =
           s"/api/teams/${teamConsumerId.value}/subscription/${payperUserSub.id.value}/consumption/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 403
     }
@@ -848,7 +848,7 @@ class ConsumptionControllerSpec()
         path =
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}/consumption/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 403
     }
@@ -919,7 +919,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamConsumerId.value}/billing/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 403
     }
@@ -990,7 +990,7 @@ class ConsumptionControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${teamOwnerId.value}/income/_sync",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 403
     }

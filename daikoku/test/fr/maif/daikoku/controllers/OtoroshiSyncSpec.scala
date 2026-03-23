@@ -1,11 +1,11 @@
-package fr.maif.otoroshi.daikoku.tests
+package fr.maif.daikoku.controllers
 
 import cats.implicits.catsSyntaxOptionId
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
 import fr.maif.daikoku.domain.ValidationStep.HttpRequest
 import fr.maif.daikoku.domain._
-import fr.maif.daikoku.tests.utils.DaikokuSpecHelper
+import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import fr.maif.daikoku.utils.LoggerImplicits.BetterLogger
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfter
@@ -26,7 +26,7 @@ class OtoroshiSyncSpec()
 
   val pwd = System.getProperty("user.dir")
 
-  override val container = GenericContainer(
+  override val container: GenericContainer = GenericContainer(
     "maif/otoroshi",
     exposedPorts = Seq(8080),
     fileSystemBind = Seq(
@@ -59,7 +59,7 @@ class OtoroshiSyncSpec()
         "Host" -> "otoroshi-api.oto.tools"
       ),
       port = container.mappedPort(8080)
-    )(tenant)
+    )(using tenant)
 //    logger.json(respPreVerifOtoParent.json, true)
     (respPreVerifOtoParent.json \ "metadata")
       .as[JsObject]
@@ -78,7 +78,7 @@ class OtoroshiSyncSpec()
         "Host" -> "otoroshi-api.oto.tools"
       ),
       port = container.mappedPort(8080)
-    )(tenant)
+    )(using tenant)
     respPreVerifOtoParent.json
   }
 
@@ -87,7 +87,7 @@ class OtoroshiSyncSpec()
       path = s"/api/jobs/otoroshi/_sync?key=secret",
       method = "POST",
       body = Json.obj().some
-    )(tenant, session)
+    )(using tenant, session)
     resp.status.mustBe(200)
   }
 
@@ -729,7 +729,7 @@ class OtoroshiSyncSpec()
             |    }
             |]
             |""".stripMargin).some
-      )(tenant, session)
+      )(using tenant, session)
       updateMetaInOto.status mustBe 200
 
       triggerSyncJob(session)
@@ -828,7 +828,7 @@ class OtoroshiSyncSpec()
           "Host" -> "otoroshi-api.oto.tools"
         ),
         port = container.mappedPort(8080)
-      )(tenant, session)
+      )(using tenant, session)
       logger.warn(Json.prettyPrint(respPreVerifOtoParent.json))
 
       val metadataJson = (respPreVerifOtoParent.json \ "metadata").as[JsObject]
@@ -999,7 +999,7 @@ class OtoroshiSyncSpec()
           s"/api/teams/${teamOwnerId.value}/apis/${parentApi.id.value}/${parentApi.currentVersion.value}",
         method = "PUT",
         body = Some(parentApi.copy(description = "new desc").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val metadata =
@@ -1029,7 +1029,7 @@ class OtoroshiSyncSpec()
             )
             .asJson
         )
-      )(tenant, session)
+      )(using tenant, session)
       respUpdatePlan.status mustBe 200
 
       val metadata2 =
@@ -1170,7 +1170,7 @@ class OtoroshiSyncSpec()
         path =
           s"/api/teams/${teamOwnerId.value}/subscriptions/${consumerChildDevSubscription.id.value}/_archiveByOwner",
         method = "PUT"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val apk =
@@ -1319,7 +1319,7 @@ class OtoroshiSyncSpec()
         path =
           s"/api/teams/${teamConsumerId.value}/subscriptions/${consumerChildDevSubscription.id.value}/_archive",
         method = "PUT"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val apk =
@@ -1469,7 +1469,7 @@ class OtoroshiSyncSpec()
         path =
           s"/api/teams/${teamConsumerId.value}/subscriptions/${consumerParentDevSubscription.id.value}/_archive",
         method = "PUT"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val apk = getApkFromOtoroshi(consumerParentDevSubscription.apiKey.clientId)
@@ -1566,7 +1566,7 @@ class OtoroshiSyncSpec()
         method = "PUT",
         body =
           Some(consumerSubscription.copy(customMaxPerDay = 200L.some).asJson)
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val metadata =
@@ -1715,7 +1715,7 @@ class OtoroshiSyncSpec()
         body = Some(
           consumerChildDevSubscription.copy(customMaxPerDay = 200L.some).asJson
         )
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val metadata = getApkMetadataFromOtoroshi(
@@ -1866,7 +1866,7 @@ class OtoroshiSyncSpec()
         path =
           s"/api/teams/${teamConsumerId.value}/subscriptions/${consumerChildDevSubscription.id.value}/_makeUnique",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       logger.json(resp.json)
 
@@ -2036,7 +2036,7 @@ class OtoroshiSyncSpec()
         path =
           s"/api/teams/${teamConsumerId.value}/subscriptions/${consumerChildDevSubscription.id.value}/_makeUnique",
         method = "POST"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val metadata = getApkMetadataFromOtoroshi(
@@ -2121,7 +2121,7 @@ class OtoroshiSyncSpec()
           s"/api/apis/${api.id.value}/plan/${plan.id.value}/team/${teamConsumer.id.value}/_subscribe",
         method = "POST",
         body = Json.obj().some
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val maybeSub = Await.result(

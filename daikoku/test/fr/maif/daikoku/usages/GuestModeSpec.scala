@@ -54,7 +54,7 @@ class GuestModeSpec()
                      |""".stripMargin
           )
         )
-      )(publicTenant)
+      )(using publicTenant)
 
       resp.status mustBe 200
       val myTeam =
@@ -84,7 +84,7 @@ class GuestModeSpec()
 
       val resp = httpJsonCallWithoutSessionBlocking(
         path = s"/api/teams/${teamOwnerId.value}"
-      )(publicTenant)
+      )(using publicTenant)
       resp.status mustBe 200
       val team =
         fr.maif.daikoku.domain.json.TeamFormat.reads(resp.json)
@@ -129,7 +129,7 @@ class GuestModeSpec()
             |""".stripMargin
           )
         )
-      )(publicTenant)
+      )(using publicTenant)
       resp.status mustBe 200
 
       val apis =
@@ -191,7 +191,7 @@ class GuestModeSpec()
             |""".stripMargin
           )
         )
-      )(publicTenant)
+      )(using publicTenant)
       logger.info(Json.stringify(resp.json))
       resp.status mustBe 200
       val apis =
@@ -222,7 +222,7 @@ class GuestModeSpec()
 
       val resp = httpJsonCallWithoutSessionBlocking(
         path = s"/api/me/visible-apis/${publicApi.id.value}"
-      )(publicTenant)
+      )(using publicTenant)
       resp.status mustBe 200
 
       (resp.json \ "_id").as[String] mustBe publicApi.id.value
@@ -243,7 +243,7 @@ class GuestModeSpec()
 
       val respError = httpJsonCallWithoutSessionBlocking(
         path = s"/api/me/visible-apis/${privateApi.id.value}"
-      )(publicTenant)
+      )(using publicTenant)
       respError.status mustBe 401
     }
 
@@ -258,7 +258,7 @@ class GuestModeSpec()
       val respDelete = httpJsonCallWithoutSessionBlocking(
         path = s"/api/teams/${teamOwnerId.value}",
         method = "DELETE"
-      )(tenant)
+      )(using tenant)
       respDelete.status mustBe 404
     }
     "not create/update/delete team" in {
@@ -272,20 +272,20 @@ class GuestModeSpec()
         path = s"/api/teams",
         method = "POST",
         body = Some(teamOwner.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respCreate.status mustBe 404
 
       val respUpdate = httpJsonCallWithoutSessionBlocking(
         path = s"/api/teams/${teamOwnerId.value}",
         method = "PUT",
         body = Some(teamOwner.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respUpdate.status mustBe 404
 
       val respDelete = httpJsonCallWithoutSessionBlocking(
         path = s"/api/teams/${teamOwnerId.value}",
         method = "DELETE"
-      )(tenant)
+      )(using tenant)
       respDelete.status mustBe 404
     }
     "not create/update/delete user" in {
@@ -299,20 +299,20 @@ class GuestModeSpec()
         path = s"/api/users",
         method = "POST",
         body = Some(userAdmin.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respCreate.status mustBe 404
 
       val respUpdate = httpJsonCallWithoutSessionBlocking(
         path = s"/api/users/${userTeamAdminId.value}",
         method = "PUT",
         body = Some(userAdmin.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respUpdate.status mustBe 404
 
       val respDelete = httpJsonCallWithoutSessionBlocking(
         path = s"/api/users/${userTeamAdminId.value}",
         method = "DELETE"
-      )(tenant)
+      )(using tenant)
       respDelete.status mustBe 404
     }
     "not get/create/update/delete tenant" in {
@@ -324,32 +324,32 @@ class GuestModeSpec()
 
       val respGetAllTenant = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenants"
-      )(tenant)
+      )(using tenant)
       respGetAllTenant.status mustBe 404
 
       val respGet = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenants/${tenant.id.value}"
-      )(tenant)
+      )(using tenant)
       respGet.status mustBe 404
 
       val respCreate = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenants",
         method = "POST",
         body = Some(tenant.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respCreate.status mustBe 404
 
       val respUpdate = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenants/${tenant.id.value}",
         method = "PUT",
         body = Some(tenant.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respUpdate.status mustBe 404
 
       val respDelete = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenant/${tenant.id.value}",
         method = "DELETE"
-      )(tenant)
+      )(using tenant)
       respDelete.status mustBe 404
     }
     "not create/update/delete api" in {
@@ -364,7 +364,7 @@ class GuestModeSpec()
         path = s"/api/teams/${teamOwnerId.value}/apis",
         method = "POST",
         body = Some(defaultApi.api.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respCreate.status mustBe 404
 
       val respUpdate = httpJsonCallWithoutSessionBlocking(
@@ -372,7 +372,7 @@ class GuestModeSpec()
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}",
         method = "PUT",
         body = Some(defaultApi.api.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respUpdate.status mustBe 404
 
       val respDelete = httpJsonCallWithoutSessionBlocking(
@@ -380,7 +380,7 @@ class GuestModeSpec()
           s"/api/teams/${teamOwnerId.value}/apis/${defaultApi.api.id.value}",
         method = "DELETE",
         body = Json.obj().some
-      )(tenant)
+      )(using tenant)
       respDelete.status mustBe 404
     }
     "not get/create/update/delete otoroshi" in {
@@ -393,12 +393,12 @@ class GuestModeSpec()
 
       val respGet = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenants/${tenant.id.value}/otoroshis"
-      )(tenant)
+      )(using tenant)
       respGet.status mustBe 404
 
       val respGetOne = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenants/${tenant.id.value}/otoroshis/default"
-      )(tenant)
+      )(using tenant)
       respGetOne.status mustBe 404
 
       val respCreate = httpJsonCallWithoutSessionBlocking(
@@ -411,7 +411,7 @@ class GuestModeSpec()
             "https://otoroshi.io"
           ).asJson
         )
-      )(tenant)
+      )(using tenant)
       respCreate.status mustBe 404
 
       val respUpdate = httpJsonCallWithoutSessionBlocking(
@@ -424,13 +424,13 @@ class GuestModeSpec()
             "https://otoroshi.io"
           ).asJson
         )
-      )(tenant)
+      )(using tenant)
       respUpdate.status mustBe 404
 
       val respDelete = httpJsonCallWithoutSessionBlocking(
         path = s"/api/tenants/${tenant.id.value}/otoroshis/default",
         method = "DELETE"
-      )(tenant)
+      )(using tenant)
       respDelete.status mustBe 404
     }
 
@@ -446,12 +446,12 @@ class GuestModeSpec()
         path = s"/api/state/import",
         method = "POST",
         body = Some(defaultApi.api.copy(name = "test").asJson)
-      )(tenant)
+      )(using tenant)
       respImp.status mustBe 404
 
       val respExp = httpJsonCallWithoutSessionBlocking(
         path = s"/api/state/export"
-      )(tenant)
+      )(using tenant)
       respExp.status mustBe 404
     }
   }

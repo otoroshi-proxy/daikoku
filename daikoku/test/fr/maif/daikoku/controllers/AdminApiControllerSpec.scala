@@ -47,7 +47,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = tenant.copy(id = TenantId("test")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -63,7 +63,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = tenant.copy(id = TenantId("test")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -83,7 +83,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = tenant.copy(domain = "https://daikoku.io").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respConflict.status mustBe 400
       }
@@ -103,7 +103,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = tenant.copy(domain = "https://daikoku.io").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -131,7 +131,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
 
@@ -147,7 +147,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/tenants/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -162,7 +162,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/tenants/${tenant.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe tenant.asJson
@@ -181,14 +181,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = tenant.copy(id = id, domain = domain).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/tenants/${id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "domain").as[String] mustBe domain
@@ -205,14 +205,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = tenant.copy(name = name).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/tenants/${tenant.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -233,14 +233,14 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/name", "value" -> name)
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/tenants/${tenant.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -257,14 +257,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/tenants/${id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/tenants/${id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -284,7 +284,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(id = UserId("test")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -301,7 +301,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -319,7 +319,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(email = userAdmin.email).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respConflict.status mustBe 400
       }
@@ -337,7 +337,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -363,7 +363,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -379,7 +379,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -395,7 +395,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe user.asJson
@@ -413,14 +413,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe user.asJson
@@ -438,14 +438,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(name = name).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -467,14 +467,14 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/name", "value" -> name)
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -490,14 +490,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/users/${user.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -517,7 +517,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -535,7 +535,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(tenant = TenantId("test")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -560,7 +560,7 @@ class AdminApiControllerSpec
             )
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -578,7 +578,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(tenant = TenantId("Not Found")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respConflict.status mustBe 400
       }
@@ -603,7 +603,7 @@ class AdminApiControllerSpec
             )
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respConflict.status mustBe 400
       }
@@ -621,7 +621,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -650,7 +650,7 @@ class AdminApiControllerSpec
                 .obj("op" -> "replace", "path" -> "/users", "value" -> newUsers)
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
 
@@ -667,7 +667,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/teams/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -683,7 +683,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/teams/${teamOwner.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe teamOwner.asJson
@@ -701,14 +701,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/teams/${teamOwner.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe teamOwner.asJson
@@ -726,14 +726,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(name = name).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/teams/${teamOwner.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -755,14 +755,14 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/name", "value" -> name)
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/teams/${teamOwner.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -778,14 +778,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/teams/${teamOwner.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/teams/${teamOwner.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -806,7 +806,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.api.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -827,7 +827,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.api.copy(tenant = TenantId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -840,7 +840,7 @@ class AdminApiControllerSpec
             .copy(possibleUsagePlans = Seq(UsagePlanId("unknown")))
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Usage Plan (unknown) not found"
@@ -866,7 +866,7 @@ class AdminApiControllerSpec
             )
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respDoc.status mustBe 400
         getMsg(respDoc) mustBe "Documentation page (unknown) not found"
@@ -876,7 +876,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.api.copy(team = TeamId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respTeam.status mustBe 400
         getMsg(respTeam) mustBe "Team not found"
@@ -887,7 +887,7 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription),
           body =
             defaultApi.api.copy(id = ApiId("foo"), name = "foo").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respName.status mustBe 400
         getMsg(respName) mustBe "Api name already exists"
@@ -900,7 +900,7 @@ class AdminApiControllerSpec
             .copy(defaultUsagePlan = UsagePlanId("unknown").some)
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respDefaultPlan.status mustBe 400
         getMsg(respDefaultPlan) mustBe "Default Usage Plan (unknown) not found"
@@ -910,7 +910,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.api.copy(parent = ApiId("unknown").some).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respParent.status mustBe 400
         getMsg(respParent) mustBe "Parent API not found"
@@ -921,7 +921,7 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription),
           body =
             defaultApi.api.copy(apis = Set(ApiId("unknown")).some).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respChildren.status mustBe 400
         getMsg(respChildren) mustBe "Children API (unknown) not found"
@@ -942,7 +942,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.api.asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -958,7 +958,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/apis/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -974,7 +974,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/apis/${defaultApi.api.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe defaultApi.api.asJson
@@ -994,14 +994,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.api.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/apis/${defaultApi.api.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe defaultApi.api.asJson
@@ -1023,14 +1023,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/apis/${defaultApi.api.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe updated.asJson
@@ -1054,14 +1054,14 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/name", "value" -> "foo")
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/apis/${defaultApi.api.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe updated.asJson
@@ -1077,14 +1077,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/apis/${defaultApi.api.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/apis/${defaultApi.api.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -1126,7 +1126,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respChildPatch.status mustBe 204
 
@@ -1136,7 +1136,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = childApi.copy(description = "foofoo").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respChildPut.status mustBe 204
 
@@ -1154,7 +1154,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
         respParentPatch.status mustBe 204
 
         // put parent is OK
@@ -1163,7 +1163,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.api.copy(description = "foofoo").asJson.some
-        )(tenant)
+        )(using tenant)
         respParentPut.status mustBe 204
 
         // PATCH an API with same name other api ==> KO
@@ -1180,7 +1180,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respOtherPatch.status mustBe 400
 
@@ -1190,7 +1190,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = otherApi.copy(name = defaultApi.api.name).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respOtherPut.status mustBe 400
 
@@ -1208,7 +1208,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respOtherOkPatch.status mustBe 204
 
@@ -1218,7 +1218,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = otherApi.copy(name = "test-test-test-test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respOtherOkPut.status mustBe 204
 
@@ -1231,7 +1231,7 @@ class AdminApiControllerSpec
             .copy(id = ApiId(IdGenerator.token), parent = None)
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respCreateKo.status mustBe 400
 
@@ -1250,7 +1250,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = some
-        )(tenant)
+        )(using tenant)
 
         respCreateVersionOK.status mustBe 201
 
@@ -1263,7 +1263,7 @@ class AdminApiControllerSpec
             .copy(id = ApiId(IdGenerator.token), name = "final_api_test")
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respCreateOk.status mustBe 201
       }
@@ -1300,7 +1300,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(by = user.id).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -1335,7 +1335,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(tenant = TenantId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respTenant.status mustBe 400
         getMsg(respTenant) mustBe "Tenant not found"
@@ -1346,7 +1346,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(plan = UsagePlanId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Plan not found"
 
@@ -1356,7 +1356,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(team = TeamId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
         respTeam.status mustBe 400
         getMsg(respTeam) mustBe "Team not found"
 
@@ -1366,7 +1366,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(by = UserId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
         respBy.status mustBe 400
         getMsg(respBy) mustBe "By not found"
 
@@ -1377,7 +1377,7 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription),
           body =
             sub.copy(parent = ApiSubscriptionId("notFound").some).asJson.some
-        )(tenant)
+        )(using tenant)
         respParent.status mustBe 400
         getMsg(respParent) mustBe "Parent subscription not found"
       }
@@ -1411,7 +1411,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(tenant = TenantId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respTenant.status mustBe 400
         getMsg(respTenant) mustBe "Tenant not found"
@@ -1422,7 +1422,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(plan = UsagePlanId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Plan not found"
 
@@ -1432,7 +1432,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(team = TeamId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
         respTeam.status mustBe 400
         getMsg(respTeam) mustBe "Team not found"
 
@@ -1442,7 +1442,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(by = UserId("notFound")).asJson.some
-        )(tenant)
+        )(using tenant)
         respBy.status mustBe 400
         getMsg(respBy) mustBe "By not found"
 
@@ -1453,7 +1453,7 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription),
           body =
             sub.copy(parent = ApiSubscriptionId("notFound").some).asJson.some
-        )(tenant)
+        )(using tenant)
         respParent.status mustBe 400
         getMsg(respParent) mustBe "Parent subscription not found"
       }
@@ -1471,7 +1471,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -1513,7 +1513,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respTenant.status mustBe 400
         getMsg(respTenant) mustBe "Tenant not found"
@@ -1532,7 +1532,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Plan not found"
 
@@ -1550,7 +1550,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
         respTeam.status mustBe 400
         getMsg(respTeam) mustBe "Team not found"
 
@@ -1565,7 +1565,7 @@ class AdminApiControllerSpec
                 .obj("op" -> "replace", "path" -> "/by", "value" -> "notFound")
             )
             .some
-        )(tenant)
+        )(using tenant)
         respBy.status mustBe 400
         getMsg(respBy) mustBe "By not found"
 
@@ -1583,7 +1583,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
         respParent.status mustBe 400
         getMsg(respParent) mustBe "Parent subscription not found"
       }
@@ -1615,7 +1615,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscriptions/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -1647,7 +1647,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscriptions/${sub.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe sub.asJson
@@ -1681,14 +1681,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscriptions/${sub.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe sub.asJson
@@ -1722,14 +1722,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = sub.copy(adminCustomName = name.some).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscriptions/${sub.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "adminCustomName").as[String] mustBe name
@@ -1771,14 +1771,14 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscriptions/${sub.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "adminCustomName").as[String] mustBe name
@@ -1810,14 +1810,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/subscriptions/${sub.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscriptions/${sub.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -1848,7 +1848,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = page.copy(content = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -1875,7 +1875,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe page.asJson
@@ -1904,14 +1904,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = page.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe page.asJson
@@ -1940,14 +1940,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = page.copy(content = name).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "content").as[String] mustBe name
@@ -1984,14 +1984,14 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "content").as[String] mustBe content
@@ -2018,14 +2018,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/pages/${page.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -2056,7 +2056,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = notif.copy(sender = userAdmin.asNotificationSender).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -2085,7 +2085,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = notif.copy(tenant = TenantId("test")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -2114,7 +2114,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = notif.copy(tenant = tenant2.id).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respConflict.status mustBe 400
       }
@@ -2143,7 +2143,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = notif.copy(sender = user.asNotificationSender).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -2180,7 +2180,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
 
@@ -2208,7 +2208,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/notifications/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -2235,7 +2235,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/notifications/${notif.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe notif.asJson
@@ -2265,17 +2265,17 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = notif.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/notifications/${notif.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.NotificationFormat) mustBe notif
+        verif.json.as(using json.NotificationFormat) mustBe notif
       }
       "PUT :: No Content" in {
         val notif = Notification(
@@ -2302,17 +2302,17 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updatedNotif.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/notifications/${notif.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.NotificationFormat) mustBe updatedNotif
+        verif.json.as(using json.NotificationFormat) mustBe updatedNotif
       }
       "PATCH :: No Content" in {
         val notif = Notification(
@@ -2346,17 +2346,17 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/notifications/${notif.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.NotificationFormat) mustBe notif.copy(sender =
+        verif.json.as(using json.NotificationFormat) mustBe notif.copy(sender =
           user.asNotificationSender
         )
       }
@@ -2382,14 +2382,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/notifications/${notif.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/notifications/${notif.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -2426,7 +2426,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = session.copy(ttl = 1.hour).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "User not found"
@@ -2496,7 +2496,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(email = userAdmin.email).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respConflict.status mustBe 400
       }
@@ -2514,7 +2514,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -2540,7 +2540,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
       }
@@ -2567,7 +2567,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
         resp.status mustBe 204
       }
 
@@ -2592,7 +2592,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
         resp.status mustBe 409
       }
 
@@ -2613,7 +2613,7 @@ class AdminApiControllerSpec
               "personalEmail" -> userAdminEmail
             )
             .some
-        )(tenant)
+        )(using tenant)
         resp.status mustBe 409
       }
 
@@ -2634,7 +2634,7 @@ class AdminApiControllerSpec
               "tenants" -> Json.arr(Json.obj("email" -> userAdminEmail))
             )
             .some
-        )(tenant)
+        )(using tenant)
         resp.status mustBe 409
       }
 
@@ -2655,7 +2655,7 @@ class AdminApiControllerSpec
               "email" -> userAdminEmail
             )
             .some
-        )(tenant)
+        )(using tenant)
         resp.status mustBe 204
       }
 
@@ -2670,7 +2670,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -2686,7 +2686,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe user.asJson
@@ -2704,14 +2704,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe user.asJson
@@ -2729,14 +2729,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = user.copy(name = name).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -2758,14 +2758,14 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/name", "value" -> name)
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         (verif.json.as[JsObject] \ "name").as[String] mustBe name
@@ -2781,14 +2781,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/users/${user.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/users/${user.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -2863,7 +2863,7 @@ class AdminApiControllerSpec
             .copy(from = DateTime.now().minusDays(1).withTimeAtStartOfDay())
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -2934,7 +2934,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(tenant = TenantId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respTenant.status mustBe 400
         getMsg(respTenant) mustBe "Tenant not found"
@@ -2945,7 +2945,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(api = ApiId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respApi.status mustBe 400
         getMsg(respApi) mustBe "Api not found"
@@ -2956,7 +2956,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(plan = UsagePlanId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Plan not found"
@@ -2967,7 +2967,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(from = DateTime.now().plusDays(2)).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respDate.status mustBe 400
         getMsg(respDate) mustBe "From date must be before to date"
@@ -3039,7 +3039,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(tenant = TenantId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respTenant.status mustBe 400
         getMsg(respTenant) mustBe "Tenant not found"
@@ -3050,7 +3050,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(api = ApiId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respApi.status mustBe 400
         getMsg(respApi) mustBe "Api not found"
@@ -3061,7 +3061,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(plan = UsagePlanId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Plan not found"
@@ -3072,7 +3072,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = consumption.copy(from = DateTime.now().plusDays(2)).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respDate.status mustBe 400
         getMsg(respDate) mustBe "From date must be before to date"
@@ -3152,7 +3152,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respTenant.status mustBe 400
         getMsg(respTenant) mustBe "Tenant not found"
@@ -3171,7 +3171,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respApi.status mustBe 400
         getMsg(respApi) mustBe "Api not found"
@@ -3190,7 +3190,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Plan not found"
@@ -3210,7 +3210,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respDate.status mustBe 400
         getMsg(respDate) mustBe "From date must be before to date"
@@ -3279,7 +3279,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/consumptions/${consumption.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe consumption.asJson
@@ -3350,7 +3350,7 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription),
           method = "POST",
           body = consumption.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
         resp.json mustBe consumption.asJson
@@ -3420,14 +3420,14 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription),
           method = "PUT",
           body = consumption.copy(hits = 100).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val respVerif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/consumptions/${consumption.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         respVerif.status mustBe 200
         (respVerif.json \ "hits").as[Long] mustBe 100
@@ -3499,14 +3499,14 @@ class AdminApiControllerSpec
           body = Json
             .arr(Json.obj("op" -> "replace", "path" -> "/hits", "value" -> 100))
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val respVerif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/consumptions/${consumption.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         respVerif.status mustBe 200
         (respVerif.json \ "hits").as[Long] mustBe 100
@@ -3575,7 +3575,7 @@ class AdminApiControllerSpec
           path = s"/admin-api/consumptions/${consumption.id.value}",
           headers = getAdminApiHeader(adminApiSubscription),
           method = "DELETE"
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
       }
@@ -3647,7 +3647,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = message.copy(tenant = TenantId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -3658,7 +3658,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = message.copy(sender = UserId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respUser.status mustBe 400
         getMsg(respUser) mustBe "Sender (unknown) not found"
@@ -3672,7 +3672,7 @@ class AdminApiControllerSpec
             .copy(participants = Set(user.id, UserId("unknown")))
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respParticipant.status mustBe 400
         getMsg(respParticipant) mustBe "Participant (unknown) not found"
@@ -3683,7 +3683,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = message.copy(sender = userApiEditor.id).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotIn.status mustBe 400
         getMsg(respNotIn) mustBe "Sender must included in participants"
@@ -3717,7 +3717,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = message.copy(tenant = TenantId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -3728,7 +3728,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = message.copy(sender = UserId("unknown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respUser.status mustBe 400
         getMsg(respUser) mustBe "Sender (unknown) not found"
@@ -3744,7 +3744,7 @@ class AdminApiControllerSpec
             )
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respParticipant.status mustBe 400
         getMsg(respParticipant) mustBe "Participant (unknown) not found"
@@ -3755,7 +3755,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = message.copy(sender = userApiEditor.id).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotIn.status mustBe 400
         getMsg(respNotIn) mustBe "Sender must included in participants"
@@ -3774,7 +3774,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -3815,7 +3815,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -3834,7 +3834,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respUser.status mustBe 400
         getMsg(respUser) mustBe "Sender (unknown) not found"
@@ -3854,7 +3854,7 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         respParticipant.status mustBe 400
         getMsg(respParticipant) mustBe "Participant (unknown) not found"
@@ -3885,7 +3885,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/messages/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -3915,7 +3915,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/messages/${message.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe message.asJson
@@ -3947,14 +3947,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = message.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/messages/${message.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe message.asJson
@@ -3989,17 +3989,17 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/messages/${message.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.MessageFormat) mustBe updated
+        verif.json.as(using json.MessageFormat) mustBe updated
       }
       "PATCH :: No Content" in {
         val message = Message(
@@ -4045,17 +4045,17 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/messages/${message.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.MessageFormat) mustBe updated
+        verif.json.as(using json.MessageFormat) mustBe updated
       }
       "DELETE :: Ok" in {
         val message = Message(
@@ -4082,14 +4082,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/messages/${message.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/messages/${message.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -4131,7 +4131,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = issue.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -4171,7 +4171,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = issue.copy(tenant = TenantId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -4181,7 +4181,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = issue.copy(by = UserId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respBy.status mustBe 400
         getMsg(respBy) mustBe "By not found"
@@ -4201,7 +4201,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -4231,7 +4231,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/messages/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -4269,7 +4269,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/issues/${issue.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe issue.asJson
@@ -4309,14 +4309,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = issue.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/issues/${issue.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe issue.asJson
@@ -4356,17 +4356,17 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/issues/${issue.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.ApiIssueFormat) mustBe updated
+        verif.json.as(using json.ApiIssueFormat) mustBe updated
       }
       "PATCH :: No Content" in {
         val issue = ApiIssue(
@@ -4407,17 +4407,17 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/title", "value" -> "foo")
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/issues/${issue.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.ApiIssueFormat) mustBe updated
+        verif.json.as(using json.ApiIssueFormat) mustBe updated
       }
       "DELETE :: Ok" in {
         val issue = ApiIssue(
@@ -4452,14 +4452,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/issues/${issue.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/issues/${issue.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -4488,7 +4488,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = post.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -4515,7 +4515,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = post.copy(tenant = TenantId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -4543,7 +4543,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = teamOwner.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -4568,7 +4568,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/posts/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -4593,7 +4593,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/posts/${post.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe post.asJson
@@ -4620,14 +4620,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = post.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/posts/${post.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe post.asJson
@@ -4654,17 +4654,17 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/posts/${post.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.ApiPostFormat) mustBe updated
+        verif.json.as(using json.ApiPostFormat) mustBe updated
       }
       "PATCH :: No Content" in {
         val post = ApiPost(
@@ -4692,17 +4692,17 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/title", "value" -> "foo")
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/posts/${post.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.ApiPostFormat) mustBe updated
+        verif.json.as(using json.ApiPostFormat) mustBe updated
       }
       "DELETE :: Ok" in {
         val post = ApiPost(
@@ -4724,14 +4724,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/posts/${post.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/posts/${post.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -4765,7 +4765,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = page.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -4797,7 +4797,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = page.copy(tenant = TenantId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -4830,7 +4830,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = page.copy(name = "test").asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -4860,7 +4860,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/cms-pages/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -4890,7 +4890,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/cms-pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe page.asJson
@@ -4922,14 +4922,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = page.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/cms-pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe page.asJson
@@ -4961,17 +4961,17 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/cms-pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.CmsPageFormat) mustBe updated
+        verif.json.as(using json.CmsPageFormat) mustBe updated
       }
       "PATCH :: No Content" in {
         val page = CmsPage(
@@ -5004,17 +5004,17 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/name", "value" -> "foo")
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/cms-pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.CmsPageFormat) mustBe updated
+        verif.json.as(using json.CmsPageFormat) mustBe updated
       }
       "DELETE :: Ok" in {
         val page = CmsPage(
@@ -5041,14 +5041,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/cms-pages/${page.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/cms-pages/${page.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -5100,7 +5100,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = translation.copy(tenant = TenantId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -5127,7 +5127,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = translation.asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -5142,7 +5142,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/translations/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -5166,7 +5166,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/translations/${translation.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe translation.asJson
@@ -5192,14 +5192,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = translation.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/translations/${translation.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe translation.asJson
@@ -5225,17 +5225,17 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/translations/${translation.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.TranslationFormat) mustBe updated
+        verif.json.as(using json.TranslationFormat) mustBe updated
       }
       "PATCH :: No Content" in {
         val translation = Translation(
@@ -5262,17 +5262,17 @@ class AdminApiControllerSpec
               Json.obj("op" -> "replace", "path" -> "/value", "value" -> "foo")
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/translations/${translation.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
-        verif.json.as(json.TranslationFormat) mustBe updated
+        verif.json.as(using json.TranslationFormat) mustBe updated
       }
       "DELETE :: Ok" in {
         val translation = Translation(
@@ -5293,14 +5293,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/translations/${translation.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/translations/${translation.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -5321,7 +5321,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = defaultApi.plans.head.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -5365,7 +5365,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = plan.copy(tenant = TenantId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -5389,7 +5389,7 @@ class AdminApiControllerSpec
             )
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respOto.status mustBe 400
         getMsg(respOto) mustBe "Otoroshi setting not found"
@@ -5414,7 +5414,7 @@ class AdminApiControllerSpec
             )
             .asJson
             .some
-        )(tenant)
+        )(using tenant)
 
         respPayment.status mustBe 400
         getMsg(respPayment) mustBe "Payment setting not found"
@@ -5459,7 +5459,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = plan.asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -5475,7 +5475,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -5517,7 +5517,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/${plan.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json.as[JsObject] - "testing" - "swagger" mustBe plan.asJson
@@ -5563,14 +5563,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = plan.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/${plan.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json.as[JsObject] - "testing" - "swagger" mustBe plan.asJson
@@ -5615,14 +5615,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/${plan.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json.as[JsObject] - "testing" - "swagger" mustBe updated.asJson
@@ -5675,14 +5675,14 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/${plan.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json.as[JsObject] - "testing" - "swagger" mustBe updated.asJson
@@ -5725,14 +5725,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/usage-plans/${plan.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/${plan.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }
@@ -5775,7 +5775,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 409
       }
@@ -5816,7 +5816,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.copy(tenant = TenantId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 400
         getMsg(resp) mustBe "Tenant not found"
@@ -5826,7 +5826,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.copy(api = ApiId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respApi.status mustBe 400
         getMsg(respApi) mustBe "Api not found"
@@ -5836,7 +5836,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.copy(plan = UsagePlanId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respPlan.status mustBe 400
         getMsg(respPlan) mustBe "Plan not found"
@@ -5846,7 +5846,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.copy(team = TeamId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respTeam.status mustBe 400
         getMsg(respTeam) mustBe "Team not found"
@@ -5856,7 +5856,7 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.copy(from = UserId("unkown")).asJson.some
-        )(tenant)
+        )(using tenant)
 
         respFrom.status mustBe 400
         getMsg(respFrom) mustBe "From not found"
@@ -5897,7 +5897,7 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.asJson.some
-        )(tenant)
+        )(using tenant)
 
         respNotFound.status mustBe 404
       }
@@ -5914,7 +5914,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/unknown",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 404
       }
@@ -5952,7 +5952,7 @@ class AdminApiControllerSpec
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscription-demands/${demand.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
         resp.json mustBe demand.asJson
@@ -5995,14 +5995,14 @@ class AdminApiControllerSpec
           method = "POST",
           headers = getAdminApiHeader(adminApiSubscription),
           body = demand.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 201
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscription-demands/${demand.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe demand.asJson
@@ -6045,14 +6045,14 @@ class AdminApiControllerSpec
           method = "PUT",
           headers = getAdminApiHeader(adminApiSubscription),
           body = updated.asJson.some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscription-demands/${demand.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe updated.asJson
@@ -6102,14 +6102,14 @@ class AdminApiControllerSpec
               )
             )
             .some
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 204
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscription-demands/${demand.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 200
         verif.json mustBe updated.asJson
@@ -6147,14 +6147,14 @@ class AdminApiControllerSpec
           path = s"/admin-api/subscription-demands/${demand.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/subscription-demands/${demand.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
-        )(tenant)
+        )(using tenant)
 
         verif.status mustBe 404
       }

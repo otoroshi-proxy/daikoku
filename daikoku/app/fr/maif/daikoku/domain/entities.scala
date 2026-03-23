@@ -175,7 +175,7 @@ enum JobStatus(val value: String):
 enum JobName(val value: String):
   case ApiKeySynchronization extends JobName("ApiKeySynchronization")
   case ApiKeyRotationVerifier extends JobName("ApiKeyRotationVerifier")
-  case OtotoshiEntitiesVerifier extends JobName("OtotoshiEntitiesVerifier")
+  case OtoroshiEntitiesVerifier extends JobName("OtoroshiEntitiesVerifier")
 
 case class JobInformation(
     id: DatastoreId,

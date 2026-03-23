@@ -50,7 +50,7 @@ class UserControllerSpec()
       )
       val session = loginWithBlocking(daikokuAdmin, tenant)
 
-      val resp = httpJsonCallBlocking("/api/admin/users")(tenant, session)
+      val resp = httpJsonCallBlocking("/api/admin/users")(using tenant, session)
       resp.status mustBe 200
       val users = resp.json
         .as[JsArray]
@@ -76,7 +76,7 @@ class UserControllerSpec()
 
       val resp =
         httpJsonCallBlocking(s"/api/admin/users/${user.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       resp.status mustBe 200
@@ -97,12 +97,12 @@ class UserControllerSpec()
         path = s"/api/admin/users/${userTeamUserId.value}",
         method = "PUT",
         body = Some(user.copy(name = "test").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respUpdate.status mustBe 200
 
       val resp = httpJsonCallBlocking(
         s"/api/admin/users/${userTeamUserId.value}"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val eventualUser =
         fr.maif.daikoku.domain.json.UserFormat.reads(resp.json)
@@ -133,16 +133,16 @@ class UserControllerSpec()
         httpJsonCallBlocking(
           path = s"/api/admin/users/${userTeamUserId.value}",
           method = "DELETE"
-        )(tenant, session)
+        )(using tenant, session)
       respUpdate.status mustBe 200
 
       val resp = httpJsonCallBlocking(
         s"/api/admin/users/${userTeamUserId.value}"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 404
 
       val respTestTeam =
-        httpJsonCallBlocking(s"/api/teams/user-team")(tenant, session)
+        httpJsonCallBlocking(s"/api/teams/user-team")(using tenant, session)
       respTestTeam.status mustBe 404
     }
 
@@ -158,12 +158,12 @@ class UserControllerSpec()
           path = s"/api/admin/users",
           method = "POST",
           body = Some(user.asJson)
-        )(tenant, session)
+        )(using tenant, session)
       respCreate.status mustBe 201
 
       val resp = httpJsonCallBlocking(
         s"/api/admin/users/${userTeamUserId.value}"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val respReCreate =
@@ -171,7 +171,7 @@ class UserControllerSpec()
           path = s"/api/admin/users",
           method = "POST",
           body = Some(user.asJson)
-        )(tenant, session)
+        )(using tenant, session)
       respReCreate.status mustBe 409
     }
 
@@ -185,7 +185,7 @@ class UserControllerSpec()
       val resp =
         httpJsonCallBlocking(
           s"/api/admin/users/${userTeamUserId.value}/_impersonate"
-        )(tenant, session)
+        )(using tenant, session)
       resp.status mustBe 303
       // todo: test it
     }
@@ -202,12 +202,12 @@ class UserControllerSpec()
           path = s"/api/admin/users/${user.id.value}/_admin",
           method = "PUT",
           body = Some(Json.obj("isDaikokuAdmin" -> true))
-        )(tenant, session)
+        )(using tenant, session)
       resp.status mustBe 200
 
       val respVerif = httpJsonCallBlocking(
         s"/api/admin/users/${user.id.value}"
-      )(tenant, session)
+      )(using tenant, session)
       respVerif.status mustBe 200
       val eventualUser =
         fr.maif.daikoku.domain.json.UserFormat.reads(resp.json)
@@ -220,11 +220,11 @@ class UserControllerSpec()
           path = s"/api/admin/users/${user.id.value}/_admin",
           method = "PUT",
           body = Some(Json.obj("isDaikokuAdmin" -> false))
-        )(tenant, session)
+        )(using tenant, session)
       resp2.status mustBe 200
       val respRemove = httpJsonCallBlocking(
         s"/api/admin/users/${user.id.value}"
-      )(tenant, session)
+      )(using tenant, session)
       respRemove.status mustBe 200
       val eventualUser2 =
         fr.maif.daikoku.domain.json.UserFormat.reads(resp2.json)
@@ -245,7 +245,7 @@ class UserControllerSpec()
       )
       val session = loginWithBlocking(randomUser, tenant)
 
-      val resp = httpJsonCallBlocking("/api/admin/users")(tenant, session)
+      val resp = httpJsonCallBlocking("/api/admin/users")(using tenant, session)
       resp.status mustBe 403
     }
 
@@ -259,7 +259,7 @@ class UserControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/admin/users/${daikokuAdmin.id.value}"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 401
     }
 
@@ -276,7 +276,7 @@ class UserControllerSpec()
         path = s"/api/admin/users/${daikokuAdmin.id.value}",
         method = "PUT",
         body = Some(userNotRandomUser.copy(name = "test").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respUpdate.status mustBe 401
     }
 
@@ -290,10 +290,10 @@ class UserControllerSpec()
         path = s"/api/admin/users/${randomUser.id.value}",
         method = "PUT",
         body = Some(randomUser.copy(name = "test").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respUpdate.status mustBe 200
 
-      val resp = httpJsonCallBlocking(path = s"/api/me")(tenant, session)
+      val resp = httpJsonCallBlocking(path = s"/api/me")(using tenant, session)
       resp.status mustBe 200
       val eventualUser =
         fr.maif.daikoku.domain.json.UserFormat.reads(resp.json)
@@ -313,7 +313,7 @@ class UserControllerSpec()
         httpJsonCallBlocking(
           path = s"/api/admin/users/${daikokuAdmin.id.value}",
           method = "DELETE"
-        )(tenant, session)
+        )(using tenant, session)
       respDelete.status mustBe 401
     }
 
@@ -328,12 +328,12 @@ class UserControllerSpec()
         httpJsonCallBlocking(
           path = s"/api/admin/users/${randomUser.id.value}",
           method = "DELETE"
-        )(tenant, session)
+        )(using tenant, session)
       respDelete.status mustBe 401
 
       val respDelete2 =
         httpJsonCallBlocking(path = s"/api/me", method = "DELETE")(
-          tenant,
+          using tenant,
           session
         )
       respDelete2.status mustBe 200
@@ -341,7 +341,7 @@ class UserControllerSpec()
       val sessionAdmin = loginWithBlocking(daikokuAdmin, tenant)
       val resp = httpJsonCallBlocking(
         s"/api/admin/users/${randomUser.id.value}"
-      )(tenant, sessionAdmin)
+      )(using tenant, sessionAdmin)
       resp.status mustBe 404
     }
 
@@ -357,7 +357,7 @@ class UserControllerSpec()
           path = s"/api/admin/users",
           method = "POST",
           body = Some(user.asJson)
-        )(tenant, session)
+        )(using tenant, session)
       respCreate.status mustBe 401
     }
 
@@ -371,7 +371,7 @@ class UserControllerSpec()
       val resp =
         httpJsonCallBlocking(
           s"/api/admin/users/${daikokuAdmin.id.value}/_impersonate"
-        )(tenant, session)
+        )(using tenant, session)
       resp.status mustBe 401
     }
 
@@ -387,7 +387,7 @@ class UserControllerSpec()
           path = s"/api/admin/users/${userAdmin.id.value}/_admin",
           method = "PUT",
           body = Some(Json.obj("isDaikokuAdmin" -> true))
-        )(tenant, session)
+        )(using tenant, session)
       resp.status mustBe 401
     }
 
@@ -429,7 +429,7 @@ class UserControllerSpec()
             "teamId" -> defaultAdminTeam.id.value
           )
         )
-      )(tenant, session)
+      )(using tenant, session)
 
       logger.json(resp.json)
       resp.status mustBe 201

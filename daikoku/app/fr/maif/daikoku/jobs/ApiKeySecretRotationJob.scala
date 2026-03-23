@@ -1,0 +1,335 @@
+package fr.maif.daikoku.jobs
+
+import cats.data.EitherT
+import fr.maif.daikoku.audit.ApiKeyRotationEvent
+import fr.maif.daikoku.controllers.AppError
+import fr.maif.daikoku.domain.json.ApiSubscriptionyRotationFormat
+import fr.maif.daikoku.domain.{ApiId, ApiSubscription, ApiSubscriptionId, DatastoreId, JobInformation, JobName, JobStatus, Notification, NotificationAction, NotificationId, NotificationType, Tenant, UsagePlan, UsagePlanId}
+import fr.maif.daikoku.env.Env
+import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient, Time, Translator}
+import org.apache.pekko.stream.Materializer
+import org.joda.time.DateTime
+import play.api.Logger
+import play.api.i18n.MessagesApi
+import play.api.libs.json.{JsArray, JsNull, JsObject, JsValue, Json}
+import cats.implicits.*
+
+import scala.concurrent.{ExecutionContext, Future}
+
+class ApiKeySecretRotationJob(
+                               client: OtoroshiClient,
+                               env: Env,
+                               translator: Translator,
+                               messagesApi: MessagesApi
+                             ) {
+  private val rotationlogger = Logger("APIkey-Rotation-Synchronizer")
+
+  implicit val ec: ExecutionContext = env.defaultExecutionContext
+  implicit val mat: Materializer = env.defaultMaterializer
+  implicit val ev: Env = env
+  implicit val me: MessagesApi = messagesApi
+  implicit val tr: Translator = translator
+
+  //FIXME: better perf
+  private def checkRotation(query: JsObject) = {
+    for {
+      allSubscriptions <-
+        env.dataStore.apiSubscriptionRepo
+          .forAllTenant()
+          .findNotDeleted(query)
+      // Get just parent sub (childs will be processed after)
+      subscriptions <-
+        env.dataStore.apiSubscriptionRepo
+          .forAllTenant()
+          .findNotDeleted(
+            Json.obj(
+              "_id" -> Json.obj(
+                "$in" -> JsArray(
+                  Set
+                    .from(
+                      allSubscriptions
+                        .map(s => s.parent.map(_.asJson).getOrElse(s.id.asJson))
+                    )
+                    .toSeq
+                )
+              ),
+              "rotation.enabled" -> true
+            )
+          )
+    } yield {
+      implicit val language: String = "en"
+      subscriptions.map(subscription =>
+        for {
+          tenant <- EitherT.fromOptionF(
+            env.dataStore.tenantRepo.findByIdNotDeleted(subscription.tenant),
+            JobUtils.sendErrorNotification(
+              NotificationAction.OtoroshiSyncSubscriptionError(
+                subscription,
+                "Tenant does not exist anymore"
+              ),
+              subscription.team,
+              subscription.tenant
+            )
+          )
+          tenantAdminTeam <- EitherT.fromOptionF(
+            env.dataStore.teamRepo
+              .forTenant(tenant)
+              .findOne(Json.obj("type" -> "Admin")),
+            ()
+          )
+          api <- EitherT.fromOptionF(
+            env.dataStore.apiRepo
+              .forAllTenant()
+              .findOneNotDeleted(
+                Json.obj(
+                  "_id" -> subscription.api.value
+                  //                  "state" -> ApiState.publishedJsonFilter
+                )
+              ),
+            JobUtils.sendErrorNotification(
+              NotificationAction.OtoroshiSyncSubscriptionError(
+                subscription,
+                "API does not exist anymore"
+              ),
+              tenantAdminTeam.id,
+              subscription.tenant
+            )
+          )
+          plan <- EitherT.fromOptionF[Future, Unit, UsagePlan](
+            env.dataStore.usagePlanRepo
+              .forTenant(tenant)
+              .findById(subscription.plan),
+            JobUtils.sendErrorNotification(
+              NotificationAction.OtoroshiSyncSubscriptionError(
+                subscription,
+                "Usage plan does not exist anymore"
+              ),
+              api.team,
+              api.tenant
+            )
+          )
+          otoroshiTarget <- EitherT.fromOption[Future](
+            plan.otoroshiTarget,
+            JobUtils.sendErrorNotification(
+              NotificationAction.OtoroshiSyncSubscriptionError(
+                subscription,
+                "No Otoroshi target specified"
+              ),
+              api.team,
+              api.tenant
+            )
+          )
+          otoroshiSettings <- EitherT.fromOption[Future](
+            tenant.otoroshiSettings
+              .find(_.id == otoroshiTarget.otoroshiSettings),
+            Seq(api.team, tenantAdminTeam.id)
+              .map(team =>
+                JobUtils.sendErrorNotification(
+                  NotificationAction.OtoroshiSyncSubscriptionError(
+                    subscription,
+                    "Otoroshi settings does not exist anymore"
+                  ),
+                  team,
+                  api.tenant
+                )
+              )
+              .reduce((_, _) => ())
+          )
+          apk <- EitherT(
+            client.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
+          ).leftMap(e =>
+            JobUtils.sendErrorNotification(
+              NotificationAction.OtoroshiSyncSubscriptionError(
+                subscription,
+                s"Unable to fetch apikey from otoroshi: ${
+                  Json
+                    .stringify(AppError.toJson(e))
+                }"
+              ),
+              api.team,
+              api.tenant,
+              Some(otoroshiSettings.host)
+            )
+          )
+        } yield {
+          if (!apk.rotation.exists(r => r.enabled)) {
+            client.updateApiKey(
+              apk.copy(rotation = subscription.rotation.map(_.toApiKeyRotation))
+            )(using otoroshiSettings)
+          } else {
+            val otoroshiNextSecret: Option[String] =
+              apk.rotation.flatMap(_.nextSecret)
+            val otoroshiActualSecret: String = apk.clientSecret
+            val daikokuActualSecret: String = subscription.apiKey.clientSecret
+            val pendingRotation: Boolean =
+              subscription.rotation.exists(_.pendingRotation)
+
+            var notification: Option[Notification] = None
+            var newSubscription: Option[ApiSubscription] = None
+
+            if (
+              !pendingRotation && otoroshiNextSecret.isDefined && otoroshiActualSecret == daikokuActualSecret
+            ) {
+              rotationlogger.info(
+                s"rotation state updated to Pending for ${apk.clientName}"
+              )
+              newSubscription = subscription
+                .copy(
+                  rotation =
+                    subscription.rotation.map(_.copy(pendingRotation = true)),
+                  apiKey = subscription.apiKey
+                    .copy(clientSecret = otoroshiNextSecret.get)
+                )
+                .some
+              notification = Notification(
+                id = NotificationId(IdGenerator.token(32)),
+                tenant = tenant.id,
+                team = Some(subscription.team),
+                sender = JobUtils.jobUser.asNotificationSender,
+                action = NotificationAction.ApiKeyRotationInProgressV2(
+                  subscription = subscription.id,
+                  api = api.id,
+                  plan = plan.id
+                ),
+                notificationType = NotificationType.AcceptOnly
+              ).some
+
+              ApiKeyRotationEvent(subscription = subscription.id)
+                .logJobEvent(
+                  tenant,
+                  JobUtils.jobUser,
+                  Json.obj("token" -> subscription.integrationToken)
+                )
+
+            } else if (pendingRotation && otoroshiNextSecret.isEmpty) {
+              rotationlogger.info(
+                s"rotation state updated to Ended for ${apk.clientName}"
+              )
+              notification = Notification(
+                id = NotificationId(IdGenerator.token(32)),
+                tenant = tenant.id,
+                team = Some(subscription.team),
+                sender = JobUtils.jobUser.asNotificationSender,
+                action = NotificationAction.ApiKeyRotationEndedV2(
+                  subscription = subscription.id,
+                  api = api.id,
+                  plan = plan.id
+                ),
+                notificationType = NotificationType.AcceptOnly
+              ).some
+              newSubscription = subscription
+                .copy(
+                  rotation =
+                    subscription.rotation.map(_.copy(pendingRotation = true)),
+                  apiKey = subscription.apiKey
+                    .copy(clientSecret = otoroshiActualSecret)
+                )
+                .some
+
+              ApiKeyRotationEvent(subscription = subscription.id)
+                .logJobEvent(
+                  tenant,
+                  JobUtils.jobUser,
+                  Json.obj("token" -> subscription.integrationToken)
+                )
+            }
+
+            (newSubscription, notification) match {
+              case (Some(subscription), Some(notification)) =>
+                for {
+                  _ <-
+                    env.dataStore.apiSubscriptionRepo
+                      .forTenant(subscription.tenant)
+                      .save(subscription)
+                  aggSubs <-
+                    env.dataStore.apiSubscriptionRepo
+                      .forTenant(subscription.tenant)
+                      .findNotDeleted(
+                        Json.obj("parent" -> subscription.id.asJson)
+                      )
+                  _ <-
+                    env.dataStore.apiSubscriptionRepo
+                      .forTenant(subscription.tenant)
+                      .updateManyByQuery(
+                        Json.obj(
+                          "_id" -> Json
+                            .obj("$in" -> JsArray(aggSubs.map(_.id.asJson)))
+                        ),
+                        Json.obj(
+                          "$set" -> Json.obj(
+                            "rotation" -> subscription.rotation
+                              .map(ApiSubscriptionyRotationFormat.writes)
+                              .getOrElse(JsNull)
+                              .as[JsValue]
+                          )
+                        )
+                      )
+                  _ <-
+                    env.dataStore.notificationRepo
+                      .forTenant(subscription.tenant)
+                      .save(notification)
+                } yield ()
+              case (_, _) =>
+                rotationlogger.info(s"no need to update rotation for ${apk.clientName}")
+            }
+          }
+        }
+      )
+    }
+  }
+
+
+  def run(entryPoint: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(), tenant: Tenant): Future[Unit] = {
+    rotationlogger.info(s"run apikey rotation check with entry point as $entryPoint")
+    
+    val query = entryPoint match {
+      case apiId: ApiId => Json.obj("api" -> apiId.asJson)
+      case usagePlanId: UsagePlanId => Json.obj("plan" -> usagePlanId.asJson)
+      case subscriptionId: ApiSubscriptionId => Json.obj("_id" -> subscriptionId.asJson)
+      case _: SyncAllSubscription => Json.obj()
+    }
+
+    val jobRepo = env.dataStore.JobInformationRepo.forTenant(tenant)
+    val jobId = DatastoreId(s"sync-${IdGenerator.token(16)}")
+    val now = DateTime.now()
+    
+
+    Time.concurrentTime(
+      jobRepo
+        .findOneNotDeleted(Json.obj(
+          "jobName" -> JobName.ApiKeyRotationVerifier.value,
+          "status" -> JobStatus.Running.value))
+        .flatMap {
+          case Some(_) =>
+            rotationlogger.info("can't run another ApiKeyRotationVerifier, already one is running")
+            Future.successful(())
+          case None =>
+            val jobInfo = JobInformation(
+              id = jobId,
+              tenant = tenant.id,
+              jobName = JobName.ApiKeyRotationVerifier,
+              lockedBy = "apikey-rotation-verifier-job",
+              lockedAt = now,
+              expiresAt = now.plusHours(1),
+              cursor = "",
+              startedAt = now,
+              lastBatchAt = now,
+              status = JobStatus.Running
+            )
+            jobRepo.save(jobInfo).flatMap { _ =>
+              checkRotation(query)
+                .flatMap { _ =>
+                  rotationlogger.info("verify rotation ended")
+                  jobRepo.save(jobInfo.copy(status = JobStatus.Completed, lastBatchAt = DateTime.now()))
+                    .map(_ => ())
+                }
+                .recoverWith { case e =>
+                  rotationlogger.error(s"verify rotation failed: ${e.getMessage}", e)
+                  jobRepo.save(jobInfo.copy(status = JobStatus.Failed, lastBatchAt = DateTime.now()))
+                    .map(_ => ())
+                }
+            }
+        }, "Rotation verifying run"
+    )
+  }
+}

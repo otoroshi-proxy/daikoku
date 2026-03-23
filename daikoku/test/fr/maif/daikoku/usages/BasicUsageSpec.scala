@@ -152,7 +152,7 @@ class BasicUsageSpec()
           path = "/api/auth/ldap/_check",
           method = "POST",
           body = Some(authProviderSettings)
-        )(tenant, session)
+        )(using tenant, session)
 
       resp.status mustBe 200
     }
@@ -176,7 +176,7 @@ class BasicUsageSpec()
 
       var resp = httpJsonCallBlocking(
         path = s"/api/teams/${defaultAdminTeam.id.value}/ldap/users/$validEmail"
-      )(tenant, session)
+      )(using tenant, session)
 
       logger.warn(Json.prettyPrint(resp.json))
       resp.status mustBe 200
@@ -184,7 +184,7 @@ class BasicUsageSpec()
       resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${defaultAdminTeam.id.value}/ldap/users/$unknownEmail"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 400
     }
