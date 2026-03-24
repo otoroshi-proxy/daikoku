@@ -2,13 +2,21 @@ package fr.maif.daikoku.controllers
 
 import cats.data.EitherT
 import cats.implicits.{catsSyntaxOptionId, toTraverseOps}
-import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionContext, DaikokuActionMaybeWithGuest, DaikokuActionMaybeWithoutUser}
+import fr.maif.daikoku.actions.{
+  DaikokuAction,
+  DaikokuActionContext,
+  DaikokuActionMaybeWithGuest,
+  DaikokuActionMaybeWithoutUser
+}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.controllers.AppError.*
 import fr.maif.daikoku.controllers.authorizations.async.*
 import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.NotificationAction.{ApiAccess, ApiSubscriptionDemand}
+import fr.maif.daikoku.domain.NotificationAction.{
+  ApiAccess,
+  ApiSubscriptionDemand
+}
 import fr.maif.daikoku.domain.UsagePlanVisibility.Private
 import fr.maif.daikoku.domain.json.*
 import fr.maif.daikoku.env.Env
@@ -3371,7 +3379,7 @@ class ApiController(
         ctx.setCtxValue("search", search)
 
         val searchAsRegex =
-          Json.obj("$regex" -> s".*$search.*", "$options" -> "-i")
+          Json.obj("$regex" -> s".*${RegexUtil.cleanRegex(search)}.*", "$options" -> "-i")
         val teamUsersFilter =
           if (ctx.user.isDaikokuAdmin) Json.obj()
           else Json.obj("users.userId" -> ctx.user.id.value)
