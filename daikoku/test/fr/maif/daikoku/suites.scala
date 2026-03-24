@@ -646,7 +646,7 @@ object testUtils {
     )(implicit tenant: Tenant): Future[WSResponse] = {
       val builder = daikokuComponents.env.wsClient
         .url(s"$baseUrl:$port$path")
-        .withHttpHeaders((headers ++ Map("Host" -> hostHeader)).toSeq: _*)
+        .withHttpHeaders((Map("Host" -> tenant.domain) ++ headers).toSeq: _*)
         .withFollowRedirects(false)
         .withRequestTimeout(10.seconds)
         .withMethod(method)

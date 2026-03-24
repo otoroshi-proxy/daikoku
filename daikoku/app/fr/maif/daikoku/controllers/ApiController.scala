@@ -1730,11 +1730,11 @@ class ApiController(
               ),
             AppError.ForbiddenAction
           )
-          plan <- EitherT.fromOptionF(
+          _ <- EitherT.fromOptionF(
             env.dataStore.usagePlanRepo
               .forTenant(ctx.tenant)
               .findById(subscription.plan),
-            AppError.ApiNotFound
+            AppError.PlanNotFound
           )
           subToSave = subscription.copy(
             customMetadata = (body \ "customMetadata").asOpt[JsObject],
@@ -1745,9 +1745,13 @@ class ApiController(
             adminCustomName = (body \ "adminCustomName").asOpt[String],
             validUntil = (body \ "validUntil").asOpt(DateTimeFormat),
           )
-          result <-
-            EitherT(apiService.updateSubscription(ctx.tenant, subToSave, plan))
-        } yield Ok(result))
+          _ <- EitherT.right[AppError](
+            env.dataStore.apiSubscriptionRepo
+              .forTenant(ctx.tenant.id)
+              .save(subToSave))
+
+          _ <- EitherT.right[AppError](otoroshiSynchronisator.verify(Json.obj("_id" -> subscription.id.asJson)))
+        } yield Ok(subToSave.asJson))
           .leftMap(_.render())
           .merge
       }
@@ -5082,7 +5086,7 @@ class ApiController(
             env.dataStore.usagePlanRepo.forTenant(ctx.tenant).save(updatedPlan)
           )
           _ <- EitherT.liftF(
-            otoroshiSynchronisator.verify(Json.obj("api" -> api.id.value))
+            otoroshiSynchronisator.verify(Json.obj("plan" -> updatedPlan.id.value))
           )
           _ <- runDemandUpdate(oldPlan, updatedPlan, api)
           //FIXME: attention, peut etre il y en a qui sont blocked de base
