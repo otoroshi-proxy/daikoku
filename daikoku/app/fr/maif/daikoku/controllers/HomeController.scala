@@ -91,15 +91,12 @@ class HomeController(
     }
 
   def health(): Action[AnyContent] = {
-    // Souci sur les Daikoku action, si l'on est pas connecté, je ne peux faire aucun appel
-    // Il nous faut une Daikoku Action qui fonctionne par qui que ce soit
     Action.async { ctx =>
       val datastoreHealth: Future[String] = env.dataStore match {
         case dataStore: PostgresDataStore =>
           dataStore
             .checkDatabase()
             .map(_ => "UP")
-            .recover { case _ => "DOWN" }
       }
       env.dataStore.tenantRepo
         .findAll()
@@ -108,69 +105,53 @@ class HomeController(
             .zip(
               Future.sequence(
                 tenantList.map { (tenant: Tenant) =>
-                  tenant.tenantMode match {
-                    case Some(tenantMatch) =>
-                      tenantMatch match {
-                        case TenantMode.Maintenance =>
-                          for {
-                            mailerHealth: String <- tenant.mailer
-                              .testConnection(tenant) map (b =>
-                              if (b) "UP" else "DOWN"
-                            )
+                  for {
+                    mailerHealth: String <- tenant.mailer
+                      .testConnection(tenant) map (b =>
+                      if (b) "UP" else "DOWN"
+                      )
 
-                            s3HealthFuture: Future[String] =
-                              tenant.bucketSettings match {
-                                // TODO  : est ce que DK en a besoin, ou il est juste absent
-                                case None =>
-                                  Future.successful("ABSENT")
-                                case Some(cfg: S3Configuration) =>
-                                  env.assetsStore.checkBucket()(cfg).map {
-                                    case BucketAccess.AccessDenied  => "DOWN"
-                                    case BucketAccess.AccessGranted => "UP"
-                                    case BucketAccess.NotExists     => "NONE"
-                                  }
-                              }
-                            s3Health: String <- s3HealthFuture
-
-                            otoroshiHealth: String <- {
-                              val checks: Set[Future[String]] =
-                                tenant.otoroshiSettings.map { otoSettings =>
-                                  OtoroshiClient(env)
-                                    .getServices()(otoroshiSettings =
-                                      otoSettings
-                                    )
-                                    .map { _ =>
-                                      "UP"
-                                    }
-                                    .recover { case _ => "DOWN" }
-                                }
-                              Future.sequence(checks).map { results =>
-                                if (results.forall(_ == "UP")) "UP"
-                                else
-                                  s"DOWN (${results.count(_ != "UP")}/${results.size} en échec)"
-                              }
-                            }
-
-                          } yield Json.obj(
-                            "tenantName" -> tenant.name,
-                            "tenantMode" -> tenantMatch.name,
-                            "status" -> Json.obj(
-                              "mailer" -> mailerHealth,
-                              "S3" -> s3Health,
-                              "otoroshi" -> otoroshiHealth
-                            )
-                          )
-                        case _ =>
-                          Future.successful(
-                            Json.obj(
-                              "tenantName" -> tenant.name,
-                              "tenantMode" -> tenantMatch.name
-                            )
-                          )
+                    s3HealthFuture: Future[String] =
+                      tenant.bucketSettings match {
+                        case None =>
+                          Future.successful("ABSENT")
+                        case Some(cfg: S3Configuration) =>
+                          env.assetsStore.checkBucket()(cfg).map {
+                            case BucketAccess.AccessDenied => "DOWN"
+                            case BucketAccess.AccessGranted => "UP"
+                            case BucketAccess.NotExists => "NONE"
+                          }
                       }
-                    case None =>
-                      Future.successful(Json.obj("mode" -> "no tenant mode"))
-                  }
+                    s3Health: String <- s3HealthFuture
+
+                    otoroshiHealth: String <- {
+                      val checks: Set[Future[String]] =
+                        tenant.otoroshiSettings.map { otoSettings =>
+                          OtoroshiClient(env)
+                            .getServices()(otoroshiSettings =
+                              otoSettings
+                            )
+                            .map { _ =>
+                              "UP"
+                            }
+                            .recover { case _ => "DOWN" }
+                        }
+                      Future.sequence(checks).map { results =>
+                        if (results.forall(_ == "UP")) "UP"
+                        else
+                          s"DOWN (${results.count(_ != "UP")}/${results.size} en échec)"
+                      }
+                    }
+
+                  } yield Json.obj(
+                    "tenantName" -> tenant.name,
+                    "tenantMode" -> tenant.tenantMode.map(_.name).getOrElse(TenantMode.Default.name),
+                    "status" -> Json.obj(
+                      "mailer" -> mailerHealth,
+                      "S3" -> s3Health,
+                      "otoroshi" -> otoroshiHealth
+                    )
+                  )
                 }
               )
             )
@@ -182,6 +163,7 @@ class HomeController(
               }
               Ok(Json.obj("datastore" -> datastore) ++ resultObj)
             }
+            .recover { case _ => Ok(Json.obj("datastore" -> "DOWN")) }
         )
     }
   }

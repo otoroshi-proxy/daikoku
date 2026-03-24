@@ -107,7 +107,7 @@ class LoginController(
                             .flatMap {
                               case Some(user) if user.isDaikokuAdmin =>
                                 Future.successful(Some(user))
-                              case Some(user) => {
+                              case Some(user) =>
                                 env.dataStore.teamRepo
                                   .forTenant(tenant)
                                   .exists(
@@ -120,18 +120,10 @@ class LoginController(
                                     if (isTenantAdmin) {
                                       Some(user)
                                     } else {
-                                      // todo retourner la page de maintenance avec une erreur affichée
-                                      throw new RuntimeException(
-                                        "Incorrect login / password or user is not admin"
-                                      )
+                                      None
                                     }
                                   })
-                              }
-                              case None =>
-                                // todo retourner la page de maintenance avec une erreur affichée
-                                throw new RuntimeException(
-                                  "Incorrect login / password or user is not admin"
-                                )
+                              case None => None.future
                             }
                         )
                       case _ =>
@@ -784,7 +776,7 @@ class LoginController(
         .merge
     }
 
-  def validateAccountCreationAttempt() = {
+  def validateAccountCreationAttempt(): Action[AnyContent] = {
     DaikokuUnauthenticatedAction.async { ctx =>
       (for {
         encryptedToken <- EitherT.fromOption[Future][AppError, String](
