@@ -3,10 +3,10 @@ package fr.maif.daikoku.controllers
 import cats.implicits.catsSyntaxOptionId
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import fr.maif.otoroshi.daikoku.domain.ValidationStep.HttpRequest
-import fr.maif.otoroshi.daikoku.domain._
-import fr.maif.otoroshi.daikoku.tests.utils.DaikokuSpecHelper
-import fr.maif.otoroshi.daikoku.utils.LoggerImplicits.BetterLogger
+import fr.maif.daikoku.domain.ValidationStep.HttpRequest
+import fr.maif.daikoku.domain._
+import fr.maif.daikoku.testUtils.DaikokuSpecHelper
+import fr.maif.daikoku.utils.LoggerImplicits.BetterLogger
 import org.joda.time.DateTime
 import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.IntegrationPatience
@@ -26,12 +26,12 @@ class OtoroshiSyncSpec()
 
   val pwd = System.getProperty("user.dir")
 
-  override val container = GenericContainer(
+  override val container: GenericContainer = GenericContainer(
     "maif/otoroshi",
     exposedPorts = Seq(8080),
     fileSystemBind = Seq(
       FileSystemBind(
-        s"$pwd/test/daikoku/otoroshi.json",
+        s"$pwd/test/fr/maif/daikoku/otoroshi.json",
         "/home/user/otoroshi.json",
         BindMode.READ_ONLY
       )

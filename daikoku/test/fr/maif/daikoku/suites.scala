@@ -6,6 +6,7 @@ import com.themillhousegroup.scoup.Scoup
 import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.TeamPermission.*
 import fr.maif.daikoku.domain.UsagePlan.*
+import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider
 import fr.maif.daikoku.modules.DaikokuComponentsInstances
 import fr.maif.daikoku.utils.IdGenerator
@@ -646,10 +647,11 @@ object testUtils {
     )(implicit tenant: Tenant): Future[WSResponse] = {
       val builder = daikokuComponents.env.wsClient
         .url(s"$baseUrl:$port$path")
-        .withHttpHeaders((Map("Host" -> tenant.domain) ++ headers).toSeq: _*)
+        .withHttpHeaders((Map("Host" -> hostHeader) ++ headers).toSeq: _*)
         .withFollowRedirects(false)
         .withRequestTimeout(10.seconds)
         .withMethod(method)
+      AppLogger.warn(s"$baseUrl:$port$path")
       body.map(b => builder.withBody(b)).getOrElse(builder).execute()
     }
 
