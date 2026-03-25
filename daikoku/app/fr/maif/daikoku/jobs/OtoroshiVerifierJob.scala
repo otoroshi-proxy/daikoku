@@ -11,6 +11,8 @@ import fr.maif.daikoku.domain.json.{
   OtoroshiTargetFormat,
   TeamFormat
 }
+import fr.maif.daikoku.domain.NotificationAction.{OtoroshiSyncApiError, OtoroshiSyncSubscriptionError}
+import fr.maif.daikoku.audit.{ApiKeyRotationEvent, JobEvent}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.storage.drivers.postgres.{
   Col,
@@ -19,6 +21,8 @@ import fr.maif.daikoku.storage.drivers.postgres.{
   PostgresDataStore
 }
 import fr.maif.daikoku.utils.*
+import fr.maif.daikoku.utils.future.EnhancedObject
+import org.apache.pekko.Done
 import org.apache.pekko.actor.Cancellable
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.Sink
@@ -261,6 +265,52 @@ case class SyncInformation(
                             tenantAdminTeam: Team
                           )
 
+object LongExtensions {
+  implicit class HumanReadableExtension(duration: Long) {
+    final def toHumanReadable: String = {
+      val units = Seq(
+        TimeUnit.DAYS,
+        TimeUnit.HOURS,
+        TimeUnit.MINUTES,
+        TimeUnit.SECONDS,
+        TimeUnit.MILLISECONDS
+      )
+
+      val timeStrings = units
+        .foldLeft((Seq.empty[String], duration))({
+          case ((humanReadable, rest), unit) =>
+            val name = unit.toString.toLowerCase()
+            val result = unit.convert(rest, TimeUnit.NANOSECONDS)
+            val diff = rest - TimeUnit.NANOSECONDS.convert(result, unit)
+            val str = result match {
+              case 0    => humanReadable
+              case 1    => humanReadable :+ s"1 ${name.init}" // Drop last 's'
+              case more => humanReadable :+ s"$more $name"
+            }
+            (str, diff)
+        })
+        ._1
+
+      timeStrings.size match {
+        case 0 => ""
+        case 1 => timeStrings.head
+        case _ => timeStrings.init.mkString(", ") + " and " + timeStrings.last
+      }
+    }
+  }
+}
+
+case class SyncInformation(
+    parent: ApiSubscription,
+    childs: Seq[ApiSubscription],
+    team: Team,
+    parentApi: Api,
+    apk: ActualOtoroshiApiKey,
+    otoroshiSettings: OtoroshiSettings,
+    tenant: Tenant,
+    tenantAdminTeam: Team
+)
+
 class OtoroshiVerifierJob(
                            client: OtoroshiClient,
     env: Env,
@@ -329,7 +379,7 @@ class OtoroshiVerifierJob(
     Option(ref.get()).foreach(_.cancel())
   }
 
-  
+
   private def subscriptionFields(alias: String) =
     s"""json_build_object(
        |  '_id', $alias.content -> '_id',
@@ -600,10 +650,10 @@ class OtoroshiVerifierJob(
       }
 
   }
-  
+
     // checkRotation(query), //todo: sortir dans un autre job
     // verifyIfOtoroshiGroupsStillExists(),  //todo: sortir dans un autre job
-    
+
     def run(entryPoint: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(), tenant: Tenant, parallelism: Int = 25): Future[Unit] = {
       synclogger.info(s"run apikey synchronisation with entry point as $entryPoint")
 

@@ -31,7 +31,7 @@ class OtoroshiSyncSpec()
     exposedPorts = Seq(8080),
     fileSystemBind = Seq(
       FileSystemBind(
-        s"$pwd/test/daikoku/otoroshi.json",
+        s"$pwd/test/fr/maif/daikoku/otoroshi.json",
         "/home/user/otoroshi.json",
         BindMode.READ_ONLY
       )
