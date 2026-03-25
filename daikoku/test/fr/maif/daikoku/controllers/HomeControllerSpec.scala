@@ -2,11 +2,13 @@ package fr.maif.daikoku.controllers
 
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.lifecycle.and
-import com.dimafeng.testcontainers.scalatest.TestContainersForAll
+import com.dimafeng.testcontainers.scalatest.{
+  TestContainersForAll,
+  TestContainersForEach
+}
 import com.dimafeng.testcontainers.GenericContainer
 import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
-import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
@@ -17,16 +19,12 @@ import play.api.libs.json.{JsObject, Json}
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
 
-class HomeControllerSpec()
-    extends PlaySpec
-    with DaikokuSpecHelper
-    with IntegrationPatience
-    with BeforeAndAfter
-    with TestContainersForAll {
+trait HomeControllerContainers {
+  type Containers = GenericContainer and GenericContainer
 
-  override type Containers = GenericContainer and GenericContainer
+  val pwd = System.getProperty("user.dir")
 
-  override def startContainers(): Containers = {
+  def createContainers(): Containers = {
     val containerOto = GenericContainer
       .Def(
         dockerImage = "maif/otoroshi",
@@ -49,12 +47,6 @@ class HomeControllerSpec()
       .start()
     containerOto and containerMailer
   }
-
-  before {
-    startContainers()
-  }
-
-  val pwd = System.getProperty("user.dir")
 
   def healthResult(
       tenantMode: TenantMode = TenantMode.Default,
@@ -80,6 +72,17 @@ class HomeControllerSpec()
       )
     )
   )
+}
+
+/** Tests that do NOT stop containers — shared instance for the whole suite */
+class HomeControllerSpec()
+    extends PlaySpec
+    with DaikokuSpecHelper
+    with IntegrationPatience
+    with HomeControllerContainers
+    with TestContainersForAll {
+
+  override def startContainers(): Containers = createContainers()
 
   "in TenantMode Default, anyone" can {
     "not check tenant health detailed without access_key" in withContainers {
@@ -112,14 +115,104 @@ class HomeControllerSpec()
           teams = Seq(defaultAdminTeam),
           apis = Seq(adminApi)
         )
-        val otoroshiPort = otoroshi.mappedPort(8080).toString
-        val respAvecMailer = httpJsonCallWithoutSessionBlocking(
+        val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/health/details"
         )(using tenant)
-        respAvecMailer.status mustBe 401
+        resp.status mustBe 401
     }
 
-    "check tenant health detailed (with an access_key)" in withContainers {
+    "check daikoku health simple without access_key" in withContainers {
+      case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
+        setupEnvBlocking(
+          tenants = Seq(
+            tenant.copy(
+              mailerSettings = SimpleSMTPSettings(
+                host = "localhost",
+                port = mailer.mappedPort(1025).toString,
+                fromTitle = "testMailerSMTP",
+                fromEmail = "noreply@test.io",
+                template = None,
+                username = None,
+                password = None
+              ).some,
+              otoroshiSettings = Set(
+                OtoroshiSettings(
+                  id = containerizedOtoroshi,
+                  url =
+                    s"http://otoroshi.oto.tools:${otoroshi.mappedPort(8080)}",
+                  host = "otoroshi-api.oto.tools",
+                  clientSecret = otoroshiAdminApiKey.clientSecret,
+                  clientId = otoroshiAdminApiKey.clientId
+                )
+              )
+            )
+          ),
+          users = Seq(daikokuAdmin, tenantAdmin, user),
+          teams = Seq(defaultAdminTeam),
+          apis = Seq(adminApi)
+        )
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/health"
+        )(using tenant)
+        resp.status mustBe 200
+        resp.json mustBe Json.obj("status" -> "ready")
+    }
+
+    "check daikoku health like otoroshi" in withContainers {
+      case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
+        setupEnvBlocking(
+          tenants = Seq(
+            tenant.copy(
+              mailerSettings = SimpleSMTPSettings(
+                host = "localhost",
+                port = mailer.mappedPort(1025).toString,
+                fromTitle = "testMailerSMTP",
+                fromEmail = "noreply@test.io",
+                template = None,
+                username = None,
+                password = None
+              ).some,
+              otoroshiSettings = Set(
+                OtoroshiSettings(
+                  id = containerizedOtoroshi,
+                  url =
+                    s"http://otoroshi.oto.tools:${otoroshi.mappedPort(8080)}",
+                  host = "otoroshi-api.oto.tools",
+                  clientSecret = otoroshiAdminApiKey.clientSecret,
+                  clientId = otoroshiAdminApiKey.clientId
+                )
+              )
+            )
+          ),
+          users = Seq(daikokuAdmin, tenantAdmin, user),
+          teams = Seq(defaultAdminTeam),
+          apis = Seq(adminApi)
+        )
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/health",
+          headers = Map("Otoroshi-Health-Check-Logic-Test" -> "100")
+        )(using tenant)
+        resp.status mustBe 200
+        val healthCheckResponse =
+          resp.header("Otoroshi-Health-Check-Logic-Test-Result")
+        healthCheckResponse.isDefined mustBe true
+        healthCheckResponse.get mustBe "142"
+    }
+  }
+}
+
+/** Tests that stop containers to verify "Down" status — fresh containers per test */
+class HomeControllerFailoverSpec()
+    extends PlaySpec
+    with DaikokuSpecHelper
+    with IntegrationPatience
+    with HomeControllerContainers
+    with TestContainersForEach {
+
+  override def startContainers(): Containers = createContainers()
+
+  "in TenantMode Default, anyone" can {
+    "check tenant health detailed with services going down" in withContainers {
       case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
         setupEnvBlocking(
           tenants = Seq(
@@ -150,13 +243,14 @@ class HomeControllerSpec()
           apis = Seq(adminApi)
         )
         val otoroshiPort = otoroshi.mappedPort(8080).toString
+
         val respAvecMailer = httpJsonCallWithoutSessionBlocking(
           path = s"/health/details?access_key=secret"
         )(using tenant)
         respAvecMailer.status mustBe 200
         respAvecMailer.json mustBe healthResult(otoroshiPort = otoroshiPort)
-        mailer.stop()
 
+        mailer.stop()
         val respSansMailer = httpJsonCallWithoutSessionBlocking(
           path = s"/health/details?access_key=secret"
         )(using tenant)
@@ -176,10 +270,8 @@ class HomeControllerSpec()
         )
     }
 
-    "check tenant health detailed even in maintenance mode" in withContainers {
+    "check tenant health detailed in maintenance mode with services going down" in withContainers {
       case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
-        otoroshi.start()
-        mailer.start()
         setupEnvBlocking(
           tenants = Seq(
             tenant.copy(
@@ -210,6 +302,7 @@ class HomeControllerSpec()
           apis = Seq(adminApi)
         )
         val otoroshiPort = otoroshi.mappedPort(8080).toString
+
         val respAvecMailer = httpJsonCallWithoutSessionBlocking(
           path = s"/health/details?access_key=secret"
         )(using tenant)
@@ -218,8 +311,8 @@ class HomeControllerSpec()
           tenantMode = TenantMode.Maintenance,
           otoroshiPort = otoroshiPort
         )
-        mailer.stop()
 
+        mailer.stop()
         val respSansMailer = httpJsonCallWithoutSessionBlocking(
           path = s"/health/details?access_key=secret"
         )(using tenant)
@@ -239,89 +332,6 @@ class HomeControllerSpec()
           mailerStatus = ServiceStatus.Down,
           otoroshiStatus = ServiceStatus.Down
         )
-    }
-
-    "check daikoku health simple without access_key" in withContainers {
-      case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
-        otoroshi.start()
-        mailer.start()
-        setupEnvBlocking(
-          tenants = Seq(
-            tenant.copy(
-              mailerSettings = SimpleSMTPSettings(
-                host = "localhost",
-                port = mailer.mappedPort(1025).toString,
-                fromTitle = "testMailerSMTP",
-                fromEmail = "noreply@test.io",
-                template = None,
-                username = None,
-                password = None
-              ).some,
-              otoroshiSettings = Set(
-                OtoroshiSettings(
-                  id = containerizedOtoroshi,
-                  url =
-                    s"http://otoroshi.oto.tools:${otoroshi.mappedPort(8080)}",
-                  host = "otoroshi-api.oto.tools",
-                  clientSecret = otoroshiAdminApiKey.clientSecret,
-                  clientId = otoroshiAdminApiKey.clientId
-                )
-              )
-            )
-          ),
-          users = Seq(daikokuAdmin, tenantAdmin, user),
-          teams = Seq(defaultAdminTeam),
-          apis = Seq(adminApi)
-        )
-        val otoroshiPort = otoroshi.mappedPort(8080).toString
-        val resp = httpJsonCallWithoutSessionBlocking(
-          path = s"/health"
-        )(using tenant)
-        resp.status mustBe 200
-        resp.json mustBe Json.obj("status" -> "ready")
-    }
-
-    "check daikoku health like ototoshi" in withContainers {
-      case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
-        otoroshi.start()
-        mailer.start()
-        setupEnvBlocking(
-          tenants = Seq(
-            tenant.copy(
-              mailerSettings = SimpleSMTPSettings(
-                host = "localhost",
-                port = mailer.mappedPort(1025).toString,
-                fromTitle = "testMailerSMTP",
-                fromEmail = "noreply@test.io",
-                template = None,
-                username = None,
-                password = None
-              ).some,
-              otoroshiSettings = Set(
-                OtoroshiSettings(
-                  id = containerizedOtoroshi,
-                  url =
-                    s"http://otoroshi.oto.tools:${otoroshi.mappedPort(8080)}",
-                  host = "otoroshi-api.oto.tools",
-                  clientSecret = otoroshiAdminApiKey.clientSecret,
-                  clientId = otoroshiAdminApiKey.clientId
-                )
-              )
-            )
-          ),
-          users = Seq(daikokuAdmin, tenantAdmin, user),
-          teams = Seq(defaultAdminTeam),
-          apis = Seq(adminApi)
-        )
-        val otoroshiPort = otoroshi.mappedPort(8080).toString
-        val resp = httpJsonCallWithoutSessionBlocking(
-          path = s"/health",
-          headers = Map("Otoroshi-Health-Check-Logic-Test" -> "100")
-        )(using tenant)
-        resp.status mustBe 200
-        val healthCheckResponse = resp.header("Otoroshi-Health-Check-Logic-Test-Result")
-        healthCheckResponse.isDefined mustBe true
-        healthCheckResponse.get mustBe "142"
     }
   }
 }
