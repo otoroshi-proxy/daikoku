@@ -11,6 +11,7 @@ import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
 import cats.implicits.catsSyntaxOptionId
+import play.api.libs.json.Json
 
 import scala.concurrent.Await
 import scala.concurrent.duration.DurationInt
@@ -52,48 +53,156 @@ class HomeControllerSpec()
     startContainers()
   }
 
-  val pwd = System.getProperty("user.dir");
+  val pwd = System.getProperty("user.dir")
 
-  "a daikoku admin" can {
+  def healthResult(
+      tenantMode: TenantMode = TenantMode.Default,
+      datastoreStatus: ServiceStatus = ServiceStatus.Up,
+      mailerStatus: ServiceStatus = ServiceStatus.Up,
+      s3Status: ServiceStatus = ServiceStatus.Absent,
+      otoroshiStatus: ServiceStatus = ServiceStatus.Up,
+      otoroshiPort: String
+  ) = Json.obj(
+    "datastore" -> datastoreStatus.value,
+    "Test Corp." -> Json.obj(
+      "tenantMode" -> tenantMode.name,
+      "status" -> Json.obj(
+        "mailer" -> mailerStatus.value,
+        "S3" -> s3Status.value,
+        "otoroshi" -> Json.arr(
+          Json.obj(
+            s"http://otoroshi.oto.tools:$otoroshiPort (otoroshi-api.oto.tools)" -> otoroshiStatus.value
+          )
+        )
+      )
+    )
+  )
+
+  "in TenantMode Default, anyone with a key" can {
     "check tenant health " in withContainers {
 
       case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
-        println(otoroshi.mappedPort(8080))
-        println(mailer.mappedPort(1025))
-
         setupEnvBlocking(
           tenants = Seq(
-            tenant.copy(mailerSettings =
-              SimpleSMTPSettings(
-                host = "http://localhost",
+            tenant.copy(
+              mailerSettings = SimpleSMTPSettings(
+                host = "localhost",
                 port = mailer.mappedPort(1025).toString,
                 fromTitle = "testMailerSMTP",
                 fromEmail = "noreply@test.io",
                 template = None,
                 username = None,
                 password = None
-              ).some
+              ).some,
+              otoroshiSettings = Set(
+                OtoroshiSettings(
+                  id = containerizedOtoroshi,
+                  url =
+                    s"http://otoroshi.oto.tools:${otoroshi.mappedPort(8080)}",
+                  host = "otoroshi-api.oto.tools",
+                  clientSecret = otoroshiAdminApiKey.clientSecret,
+                  clientId = otoroshiAdminApiKey.clientId
+                )
+              )
             )
           ),
           users = Seq(daikokuAdmin, tenantAdmin, user),
           teams = Seq(defaultAdminTeam),
           apis = Seq(adminApi)
         )
-
+        val otoroshiPort = otoroshi.mappedPort(8080).toString
         val session = loginWithBlocking(daikokuAdmin, tenant)
-        println(tenant)
         val respAvecMailer = httpJsonCallBlocking(
           path = s"/health"
         )(tenant, session)
         respAvecMailer.status mustBe 200
-        respAvecMailer.json.toString mustBe "{\"datastore\":\"UP\",\"Test Corp.\":{\"tenantMode\":\"Default\"}}"
+        respAvecMailer.json mustBe healthResult(otoroshiPort = otoroshiPort)
         mailer.stop()
 
         val respSansMailer = httpJsonCallBlocking(
           path = s"/health"
         )(tenant, session)
-        println(respSansMailer.json.toString)
-        respAvecMailer.json.toString mustBe "{\"datastore\":\"UP\",\"Test Corp.\":{\"tenantMode\":\"Default\"}}"
+        respSansMailer.json mustBe healthResult(
+          otoroshiPort = otoroshiPort,
+          mailerStatus = ServiceStatus.Down
+        )
+
+        otoroshi.stop()
+        val respSansOto = httpJsonCallBlocking(
+          path = s"/health"
+        )(tenant, session)
+        respSansOto.json mustBe healthResult(
+          otoroshiPort = otoroshiPort,
+          mailerStatus = ServiceStatus.Down,
+          otoroshiStatus = ServiceStatus.Down
+        )
+    }
+
+    "check tenant health even in maintenance mode" in withContainers {
+
+      case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
+        otoroshi.start()
+        mailer.start()
+        setupEnvBlocking(
+          tenants = Seq(
+            tenant.copy(
+              mailerSettings = SimpleSMTPSettings(
+                host = "localhost",
+                port = mailer.mappedPort(1025).toString,
+                fromTitle = "testMailerSMTP",
+                fromEmail = "noreply@test.io",
+                template = None,
+                username = None,
+                password = None
+              ).some,
+              otoroshiSettings = Set(
+                OtoroshiSettings(
+                  id = containerizedOtoroshi,
+                  url =
+                    s"http://otoroshi.oto.tools:${otoroshi.mappedPort(8080)}",
+                  host = "otoroshi-api.oto.tools",
+                  clientSecret = otoroshiAdminApiKey.clientSecret,
+                  clientId = otoroshiAdminApiKey.clientId
+                )
+              ),
+              tenantMode = TenantMode.Maintenance.some
+            )
+          ),
+          users = Seq(daikokuAdmin, tenantAdmin, user),
+          teams = Seq(defaultAdminTeam),
+          apis = Seq(adminApi)
+        )
+        val otoroshiPort = otoroshi.mappedPort(8080).toString
+        val session = loginWithBlocking(daikokuAdmin, tenant)
+        val respAvecMailer = httpJsonCallBlocking(
+          path = s"/health"
+        )(tenant, session)
+        respAvecMailer.status mustBe 200
+        respAvecMailer.json mustBe healthResult(
+          tenantMode = TenantMode.Maintenance,
+          otoroshiPort = otoroshiPort
+        )
+        mailer.stop()
+
+        val respSansMailer = httpJsonCallBlocking(
+          path = s"/health"
+        )(tenant, session)
+        respSansMailer.json mustBe healthResult(
+          tenantMode = TenantMode.Maintenance,
+          otoroshiPort = otoroshiPort,
+          mailerStatus = ServiceStatus.Down
+        )
+
+        otoroshi.stop()
+        val respSansOto = httpJsonCallBlocking(
+          path = s"/health"
+        )(tenant, session)
+        respSansOto.json mustBe healthResult(
+          tenantMode = TenantMode.Maintenance,
+          otoroshiPort = otoroshiPort,
+          mailerStatus = ServiceStatus.Down,
+          otoroshiStatus = ServiceStatus.Down
+        )
     }
   }
 }

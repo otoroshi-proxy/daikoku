@@ -175,8 +175,8 @@ class CmsApiController(
 
   def health() =
     CmsApiAction.async { ctx =>
-      ctx.request.headers.get("Otoroshi-Health-Check-Logic-Test") match {
-        // todo: better health check
+      ctx.request.headers.get("Otoroshi-" +
+        "Health-Check-Logic-Test") match {
         case Some(value) =>
           Ok.withHeaders(
             "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString

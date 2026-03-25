@@ -3,12 +3,7 @@ package fr.maif.daikoku.controllers
 import cats.implicits.catsSyntaxOptionId
 import controllers.Assets
 import fr.maif.daikoku.BuildInfo
-import fr.maif.daikoku.actions.{
-  DaikokuAction,
-  DaikokuActionMaybeWithGuest,
-  DaikokuUnauthenticatedAction,
-  DaikokuUnauthenticatedActionContext
-}
+import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionMaybeWithGuest, DaikokuUnauthenticatedAction, DaikokuUnauthenticatedActionContext}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.async.TenantAdminOnly
 import fr.maif.daikoku.domain.*
@@ -27,7 +22,14 @@ import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.matching.Regex
 import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
+import io.vertx.core.json.JsonObject
 import org.apache.pekko.stream.connectors.s3.BucketAccess
+
+enum ServiceStatus(val value: String):
+  case Up extends ServiceStatus("UP")
+  case Down extends ServiceStatus("DOWN")
+  case Absent extends ServiceStatus("ABSENT")
+
 
 class HomeController(
     DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
@@ -91,12 +93,13 @@ class HomeController(
     }
 
   def health(): Action[AnyContent] = {
+    //FIXME: protect access with any key
     Action.async { ctx =>
       val datastoreHealth: Future[String] = env.dataStore match {
         case dataStore: PostgresDataStore =>
           dataStore
             .checkDatabase()
-            .map(_ => "UP")
+            .map(_ => ServiceStatus.Up.value)
       }
       env.dataStore.tenantRepo
         .findAll()
@@ -106,50 +109,46 @@ class HomeController(
               Future.sequence(
                 tenantList.map { (tenant: Tenant) =>
                   for {
-                    mailerHealth: String <- tenant.mailer
+                    mailerHealth <- tenant.mailer
                       .testConnection(tenant) map (b =>
-                      if (b) "UP" else "DOWN"
+                      if (b) ServiceStatus.Up else ServiceStatus.Down
                       )
 
-                    s3HealthFuture: Future[String] =
+                    s3HealthFuture =
                       tenant.bucketSettings match {
                         case None =>
-                          Future.successful("ABSENT")
+                          Future.successful(ServiceStatus.Absent)
                         case Some(cfg: S3Configuration) =>
                           env.assetsStore.checkBucket()(cfg).map {
-                            case BucketAccess.AccessDenied => "DOWN"
-                            case BucketAccess.AccessGranted => "UP"
-                            case BucketAccess.NotExists => "NONE"
+                            case BucketAccess.AccessDenied => ServiceStatus.Down
+                            case BucketAccess.AccessGranted => ServiceStatus.Up
+                            case BucketAccess.NotExists => ServiceStatus.Absent
                           }
                       }
-                    s3Health: String <- s3HealthFuture
+                    s3Health <- s3HealthFuture
 
-                    otoroshiHealth: String <- {
-                      val checks: Set[Future[String]] =
+                    otoroshiHealth <- {
+                      val checks =
                         tenant.otoroshiSettings.map { otoSettings =>
                           OtoroshiClient(env)
-                            .getServices()(otoroshiSettings =
+                            .getApikey(otoSettings.clientId)(otoroshiSettings =
                               otoSettings
                             )
                             .map { _ =>
-                              "UP"
+                              (otoSettings, ServiceStatus.Up)
                             }
-                            .recover { case _ => "DOWN" }
+                            .recover { case _ => (otoSettings, ServiceStatus.Down)}
                         }
-                      Future.sequence(checks).map { results =>
-                        if (results.forall(_ == "UP")) "UP"
-                        else
-                          s"DOWN (${results.count(_ != "UP")}/${results.size} en échec)"
-                      }
+                      Future.sequence(checks)
                     }
 
                   } yield Json.obj(
                     "tenantName" -> tenant.name,
                     "tenantMode" -> tenant.tenantMode.map(_.name).getOrElse(TenantMode.Default.name),
                     "status" -> Json.obj(
-                      "mailer" -> mailerHealth,
-                      "S3" -> s3Health,
-                      "otoroshi" -> otoroshiHealth
+                      "mailer" -> mailerHealth.value,
+                      "S3" -> s3Health.value,
+                      "otoroshi" -> JsArray(otoroshiHealth.map(oto => Json.obj(s"${oto._1.url} (${oto._1.host})" -> oto._2.value )).toSeq)
                     )
                   )
                 }

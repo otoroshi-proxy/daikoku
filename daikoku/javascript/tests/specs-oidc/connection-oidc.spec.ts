@@ -31,9 +31,6 @@ test('Se connecter et se déconnecter via OIDC', async ({ page }) => {
 
   await page.getByRole('button', { name: 'user menu' }).click();
   await logout(page);
-  // await page.getByRole('img', { name: 'user menu' }).click();
-  // await expect(page.locator('.navbar-top .dropdown-menu')).not.toContainText(JIM.email);
-  // await expect(page.getByRole('link', { name: 'Paramètres Daikoku' })).toBeHidden();
 });
 
 test('Se connecter avec un user sans role et un userRole defini', async ({ page }) => {
@@ -87,12 +84,8 @@ test('Se connecter avec un user inconnu', async ({ page }) => {
       }
     ])
   })
-
-
   await page.goto(ACCUEIL);
   await loginOidcAs(TOBY, page);
-
-
   await expect(page.getByText('Error Invalid username or')).toBeVisible();
 });
 
@@ -115,8 +108,37 @@ test('Health check', async ({ page }) => {
       }
     }
   )
-
   await page.goto(ACCUEIL);
   await loginOidcAs(MICHAEL, page);
 
 });
+
+test('Health check without SMTP', async ({ page }) => {
+    await page.route('**:25**', (route) => {
+    route.abort('connectionrefused');
+  });
+
+  const resultHealth = await (fetch(`http://localhost:${exposedPort}/health`, {
+    method: 'GET',
+    headers: {
+      "content-type": "application/json",
+      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
+    }
+  }).then(r => r.json()))
+
+
+  console.log(resultHealth)
+  expect(resultHealth).toEqual(
+    {
+      datastore: 'UP',
+      'Dunder Mifflin': {
+        tenantMode: 'Default',
+        status: { mailer: 'UP', S3: 'ABSENT', otoroshi: 'UP' }
+      }
+    }
+  )
+  await page.goto(ACCUEIL);
+  await loginOidcAs(MICHAEL, page);
+
+});
+
