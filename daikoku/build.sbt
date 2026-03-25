@@ -152,6 +152,7 @@ dependencyOverrides ++= Seq(
 )
 
 Test / fork := true
+Test / javaOptions += "-Dconfig.resource=application.test.conf"
 
 scalacOptions ++= Seq(
   "-feature",

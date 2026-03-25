@@ -59,4 +59,5 @@ trust-all = ${?DAIKOKU_POSTGRES_SSL_TRUST_ALL}
 containerized = ${?IS_CONTAINERIZED}
 anonymous-report-enabled = ${?DAIKOKU_ANONYMOUS_REPORTING_ENABLED}
 timeout = ${?DAIKOKU_ANONYMOUS_REPORTING_TIMEOUT}
+health.accessKey = ${?DAIKOKU_HEALTH_ACCESS_KEY}
 ```

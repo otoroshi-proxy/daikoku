@@ -48,6 +48,7 @@ GET     /notifications/*path                            fr.maif.daikoku.controll
 GET     /apis/*path                                     fr.maif.daikoku.controllers.HomeController.indexWithPath(path)
 GET     /consumptions/*path                             fr.maif.daikoku.controllers.HomeController.indexWithPath(path)
 GET     /health                                         fr.maif.daikoku.controllers.HomeController.health()
+GET     /health/details                                 fr.maif.daikoku.controllers.HomeController.healthDetailed()
 GET     /api/versions/_daikoku                          fr.maif.daikoku.controllers.HomeController.getDaikokuVersion()
 GET     /api/me/context                                 fr.maif.daikoku.controllers.HomeController.getConnectedUser()
 

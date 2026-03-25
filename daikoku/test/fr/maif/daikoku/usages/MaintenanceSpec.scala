@@ -1,9 +1,9 @@
-package fr.maif.daikoku.controllers
+package fr.maif.daikoku.usages
 
 import cats.implicits.catsSyntaxOptionId
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import fr.maif.daikoku.domain.TeamPermission.{TeamUser}
+import fr.maif.daikoku.domain.TeamPermission.TeamUser
 import fr.maif.daikoku.domain.{
   ApiId,
   OtoroshiSettings,
@@ -19,7 +19,7 @@ import fr.maif.daikoku.utils.IdGenerator
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
-import play.api.libs.json.{JsObject}
+import play.api.libs.json.JsObject
 
 class MaintenanceSpec()
     extends PlaySpec
@@ -48,7 +48,7 @@ class MaintenanceSpec()
     )
   )
 
-  lazy val authProviderSettings = LdapConfig(
+  lazy val authProviderSettings: JsObject = LdapConfig(
     serverUrls = Seq(
       s"ldap://localhost:${container.mappedPort(389)}"
     ),
