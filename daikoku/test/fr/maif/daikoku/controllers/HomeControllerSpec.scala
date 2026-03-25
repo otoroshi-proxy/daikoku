@@ -243,6 +243,8 @@ class HomeControllerSpec()
 
     "check daikoku health simple without access_key" in withContainers {
       case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
+        otoroshi.start()
+        mailer.start()
         setupEnvBlocking(
           tenants = Seq(
             tenant.copy(
@@ -281,6 +283,8 @@ class HomeControllerSpec()
 
     "check daikoku health like ototoshi" in withContainers {
       case (otoroshi: GenericContainer) and (mailer: GenericContainer) =>
+        otoroshi.start()
+        mailer.start()
         setupEnvBlocking(
           tenants = Seq(
             tenant.copy(
