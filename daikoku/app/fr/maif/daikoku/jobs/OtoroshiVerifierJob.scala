@@ -265,52 +265,6 @@ case class SyncInformation(
                             tenantAdminTeam: Team
                           )
 
-object LongExtensions {
-  implicit class HumanReadableExtension(duration: Long) {
-    final def toHumanReadable: String = {
-      val units = Seq(
-        TimeUnit.DAYS,
-        TimeUnit.HOURS,
-        TimeUnit.MINUTES,
-        TimeUnit.SECONDS,
-        TimeUnit.MILLISECONDS
-      )
-
-      val timeStrings = units
-        .foldLeft((Seq.empty[String], duration))({
-          case ((humanReadable, rest), unit) =>
-            val name = unit.toString.toLowerCase()
-            val result = unit.convert(rest, TimeUnit.NANOSECONDS)
-            val diff = rest - TimeUnit.NANOSECONDS.convert(result, unit)
-            val str = result match {
-              case 0    => humanReadable
-              case 1    => humanReadable :+ s"1 ${name.init}" // Drop last 's'
-              case more => humanReadable :+ s"$more $name"
-            }
-            (str, diff)
-        })
-        ._1
-
-      timeStrings.size match {
-        case 0 => ""
-        case 1 => timeStrings.head
-        case _ => timeStrings.init.mkString(", ") + " and " + timeStrings.last
-      }
-    }
-  }
-}
-
-case class SyncInformation(
-    parent: ApiSubscription,
-    childs: Seq[ApiSubscription],
-    team: Team,
-    parentApi: Api,
-    apk: ActualOtoroshiApiKey,
-    otoroshiSettings: OtoroshiSettings,
-    tenant: Tenant,
-    tenantAdminTeam: Team
-)
-
 class OtoroshiVerifierJob(
                            client: OtoroshiClient,
     env: Env,
