@@ -24,18 +24,14 @@ class JobsController(
 
   def otoroshiSyncJob() =
     Action.async { req =>
-      if (env.config.otoroshiSyncByCron) {
-        req.getQueryString("key") match {
-          case Some(key) if key == env.config.otoroshiSyncKey => {
-            otoroshiVerifierJob.verify().map(_ => Ok(Json.obj("done" -> true)))
-          }
-          case _ =>
-            FastFuture.successful(
-              Ok(Json.obj("error" -> "you're not authorized here !"))
-            )
+      req.getQueryString("key") match {
+        case Some(key) if key == env.config.otoroshiSyncKey => {
+          otoroshiVerifierJob.verify().map(_ => Ok(Json.obj("done" -> true)))
         }
-      } else {
-        FastFuture.successful(NotFound(Json.obj("error" -> "API not found")))
+        case _ =>
+          FastFuture.successful(
+            Ok(Json.obj("error" -> "you're not authorized here !"))
+          )
       }
     }
 

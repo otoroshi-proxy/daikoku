@@ -6,6 +6,7 @@ import com.themillhousegroup.scoup.Scoup
 import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.TeamPermission.*
 import fr.maif.daikoku.domain.UsagePlan.*
+import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider
 import fr.maif.daikoku.modules.DaikokuComponentsInstances
 import fr.maif.daikoku.utils.IdGenerator
@@ -651,6 +652,7 @@ object testUtils {
         .withFollowRedirects(false)
         .withRequestTimeout(10.seconds)
         .withMethod(method)
+      AppLogger.warn(s"$baseUrl:$port$path")
       body.map(b => builder.withBody(b)).getOrElse(builder).execute()
     }
 
