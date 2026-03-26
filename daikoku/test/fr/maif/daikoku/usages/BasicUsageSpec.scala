@@ -177,8 +177,7 @@ class BasicUsageSpec()
       var resp = httpJsonCallBlocking(
         path = s"/api/teams/${defaultAdminTeam.id.value}/ldap/users/$validEmail"
       )(tenant, session)
-
-      logger.warn(Json.prettyPrint(resp.json))
+      logger.warn(Json.stringify(resp.json))
       resp.status mustBe 200
 
       resp = httpJsonCallBlocking(

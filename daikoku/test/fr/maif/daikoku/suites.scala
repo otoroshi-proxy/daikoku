@@ -425,10 +425,11 @@ object testUtils {
 
     def waitForDaikokuSetup(): Future[Unit] = {
       val maxRetries = 10
-      val retryDelay = 100.millis
+      val baseDelay = 50.millis
 
       def checkStatus(attempt: Int): Future[Unit] = {
-        httpJsonCallWithoutSession(path = "/status")(tenant)
+        val currentDelay = baseDelay * Math.pow(2, attempt - 1).toLong
+        httpJsonCallWithoutSession(path = "/health")(tenant)
           .flatMap { response =>
             (response.json \ "status").asOpt[String] match {
               case Some("ready") =>
@@ -436,13 +437,13 @@ object testUtils {
 
               case _ if attempt < maxRetries =>
                 logger.info(
-                  s"Daikoku is no ready (attempt $attempt/$maxRetries), retry in ${retryDelay.toMillis}ms..."
+                  s"Daikoku is not ready (attempt $attempt/$maxRetries), retry in ${currentDelay.toMillis}ms..."
                 )
                 Future.unit
                   .flatMap(_ =>
                     scala.concurrent.Future(
-                      Thread.sleep(retryDelay.toMillis)
-                    ) // Attente entre les appels
+                      Thread.sleep(currentDelay.toMillis)
+                    )
                   )
                   .flatMap(_ => checkStatus(attempt + 1))
 
@@ -646,7 +647,7 @@ object testUtils {
     )(implicit tenant: Tenant): Future[WSResponse] = {
       val builder = daikokuComponents.env.wsClient
         .url(s"$baseUrl:$port$path")
-        .withHttpHeaders((Map("Host" -> tenant.domain) ++ headers).toSeq: _*)
+        .withHttpHeaders((Map("Host" -> hostHeader) ++ headers).toSeq: _*)
         .withFollowRedirects(false)
         .withRequestTimeout(10.seconds)
         .withMethod(method)
@@ -903,20 +904,20 @@ object testUtils {
         otoroshiPort: Int,
         apks: Seq[JsValue] = Seq(parentApkAsJson, parent2ApkAsJson)
     ) = {
-      val apikeys = daikokuComponents.env.wsClient
-        .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
-        .withHttpHeaders(
-          Map(
-            "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
-            "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
-            "Host" -> "otoroshi-api.oto.tools"
-          ).toSeq: _*
-        )
-        .withFollowRedirects(false)
-        .withRequestTimeout(10.seconds)
-        .withMethod("GET")
-        .execute()
-        .map(_.json.as[JsArray].value.toSeq)
+//      val apikeys = daikokuComponents.env.wsClient
+//        .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
+//        .withHttpHeaders(
+//          Map(
+//            "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
+//            "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
+//            "Host" -> "otoroshi-api.oto.tools"
+//          ).toSeq: _*
+//        )
+//        .withFollowRedirects(false)
+//        .withRequestTimeout(10.seconds)
+//        .withMethod("GET")
+//        .execute()
+//        .map(_.json.as[JsArray].value.toSeq)
 
       def fetchApiKeysWithRetry(
           maxRetries: Int = 3,
@@ -924,7 +925,7 @@ object testUtils {
       ): Future[Seq[JsValue]] = {
         def fetchOnce(): Future[JsValue] = {
           daikokuComponents.env.wsClient
-            .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
+            .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
             .withHttpHeaders(
               "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
               "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
@@ -933,7 +934,7 @@ object testUtils {
             .withFollowRedirects(false)
             .withRequestTimeout(10.seconds)
             .get()
-            .map(_.json)
+            .map(r  => r.json)
         }
 
         def loop(attempt: Int): Future[Seq[JsValue]] = {
@@ -968,8 +969,7 @@ object testUtils {
       }
 
       for {
-        _ <-
-          Source
+        _ <- Source
             .futureSource(fetchApiKeysWithRetry().map(Source(_)))
             .mapAsync(5)(apk => {
               val clientId = (apk \ "clientId").as[String]
@@ -999,7 +999,7 @@ object testUtils {
         _ <- Future.sequence(
           apks.map(apk =>
             daikokuComponents.env.wsClient
-              .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
+              .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
               .withHttpHeaders(
                 Map(
                   "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
