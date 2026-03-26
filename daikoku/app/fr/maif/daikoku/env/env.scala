@@ -323,6 +323,8 @@ class Config(val underlying: Configuration) {
   lazy val otoroshiSyncKey: String = underlying
     .getOptional[String]("daikoku.otoroshi.sync.key")
     .getOrElse("secret")
+  lazy val detailedHealthAccessKey: Option[String] = underlying
+    .getOptional[String]("daikoku.health.accessKey")
   lazy val otoroshiGroupNamePrefix: Option[String] =
     underlying.getOptional[String]("daikoku.otoroshi.groups.namePrefix")
   lazy val otoroshiGroupIdPrefix: Option[String] =

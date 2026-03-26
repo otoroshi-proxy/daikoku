@@ -130,6 +130,7 @@ class GuestModeSpec()
           )
         )
       )(publicTenant)
+      logger.warn(Json.stringify(resp.json))
       resp.status mustBe 200
 
       val apis =

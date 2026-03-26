@@ -2,7 +2,6 @@ import { FormEvent, useContext, useEffect, useRef, useState } from 'react';
 import * as Services from '../../services/index';
 import { I18nContext } from '../../contexts';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { isError } from '../../types';
 
 export function LoginPage() {
   const { Translation, translate } = useContext(I18nContext);
@@ -18,7 +17,6 @@ export function LoginPage() {
     loginError: null,
   });
 
-  const [action, setAction] = useState<string>();
   const [loading, setLoading] = useState(false);
 
   const onChange = (e) => {
@@ -29,23 +27,12 @@ export function LoginPage() {
     });
   };
 
-  useEffect(() => {
-    Services.getAuthContext(provider!)
-      .then(context => {
-        if (!isError(context)) {
-          setAction(context.action)
-        }
-      })
-  }, [])
-
-
   const submit = (e: FormEvent<HTMLElement>) => {
     setLoading(true);
 
     e.preventDefault();
     const { username, password } = state;
-
-    if (action)
+    const action = `/auth/${provider}/callback`;
       Services.login(username, password, action, searchParams.get('redirect'))
         .then((res) => {
           if (res.status === 400) {

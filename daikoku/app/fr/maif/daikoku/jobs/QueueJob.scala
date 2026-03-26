@@ -3,6 +3,7 @@ package fr.maif.daikoku.jobs
 import cats.data.{EitherT, OptionT}
 import fr.maif.daikoku.controllers.{AppError, PaymentClient}
 import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.domain.OperationStatus
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.services.ApiService
 import org.apache.pekko.actor.Cancellable
@@ -224,7 +225,9 @@ class QueueJob(
             .deleteLogically(
               Json.obj(
                 "_id" -> Json.obj(
-                  "$in" -> JsArray(api.documentation.docIds().map(JsString.apply))
+                  "$in" -> JsArray(
+                    api.documentation.docIds().map(JsString.apply)
+                  )
                 )
               )
             )
@@ -425,7 +428,7 @@ class QueueJob(
     )
 
     (for {
-      _ <- EitherT.liftF(
+      _ <- EitherT.right[AppError](
         env.dataStore.operationRepo
           .forTenant(o.tenant)
           .save(o.copy(status = OperationStatus.InProgress))
@@ -475,7 +478,7 @@ class QueueJob(
     )
 
     (for {
-      _ <- EitherT.liftF(
+      _ <- EitherT.right[AppError](
         env.dataStore.operationRepo
           .forTenant(o.tenant)
           .save(o.copy(status = OperationStatus.InProgress))

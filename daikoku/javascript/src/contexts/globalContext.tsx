@@ -98,7 +98,7 @@ export const GlobalContextProvider = (props: PropsWithChildren) => {
   });
   const notificationCountQuery = useQuery({
     queryKey: ['notification-count'],
-    queryFn: () => Services.myUnreadNotificationsCount(),
+    queryFn: () => Services.myUnreadNotificationsCount()
   });
 
   useEffect(() => {

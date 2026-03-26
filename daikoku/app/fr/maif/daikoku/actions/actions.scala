@@ -5,18 +5,14 @@ import com.auth0.jwt.JWT
 import com.google.common.base.Charsets
 import fr.maif.daikoku.controllers.CmsApiActionContext
 import fr.maif.daikoku.domain.TeamPermission.{Administrator, ApiEditor}
-import fr.maif.daikoku.domain._
-import fr.maif.daikoku.env.{
-  Env,
-  LocalCmsApiConfig,
-  OtoroshiCmsApiConfig
-}
+import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.env.{Env, LocalCmsApiConfig, OtoroshiCmsApiConfig}
 import fr.maif.daikoku.login.{IdentityAttrs, TenantHelper}
 import fr.maif.daikoku.utils.Errors
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import play.api.Logger
 import play.api.libs.json.Json
-import play.api.mvc._
+import play.api.mvc.*
 
 import java.util.Base64
 import scala.collection.concurrent.TrieMap
@@ -56,22 +52,28 @@ object tenantSecurity {
     }
   }
 
-  def isDefaultMode(
+  def canAccessInCurrentMode(
       tenant: Tenant,
       user: Option[User],
-      isTenantAdmin: Option[Boolean]
+      isMaybeTenantAdmin: Option[Boolean],
+      path: String
   ): Boolean = {
-    tenant.tenantMode match {
-      case None => true
-      case Some(value) =>
-        value match {
-          case TenantMode.Maintenance | TenantMode.Construction =>
-            user.exists(_.isDaikokuAdmin) || isTenantAdmin.getOrElse(false)
-          case _ => true
-        }
+
+    val isDaikokuAdmin = user.exists(_.isDaikokuAdmin)
+    val isTenantAdmin = isMaybeTenantAdmin.contains(true)
+    val whiteListRoutes =
+      Seq("/_/customization", "/api/translations/_all", "/api/me/context", 
+        "/auth/Local/provider", "/auth/LDAP/provider", "/auth/OAuth2/provider","/auth/Otoroshi/provider")
+    if (isDaikokuAdmin || isTenantAdmin) {
+      true
+    } else {
+      tenant.tenantMode match {
+        case Some(TenantMode.Maintenance | TenantMode.Construction) =>
+          whiteListRoutes.exists(route => route.startsWith(path))
+        case _ => true
+      }
     }
   }
-
 }
 
 case class DaikokuTenantActionContext[A](
@@ -108,7 +110,7 @@ case class DaikokuInternalActionMaybeWithoutUserContext[A](
   }
 }
 
-case class DaikokuActionMaybeWithoutUserContext[A](
+case class DaikokuUnauthenticatedActionContext[A](
     request: Request[A],
     user: Option[User],
     tenant: Tenant,
@@ -260,7 +262,12 @@ class DaikokuAction(val parser: BodyParser[AnyContent], env: Env)
       request.attrs.get(IdentityAttrs.TenantAdminKey)
     ) match {
       case (Some(tenant), _, _, Some(user), isTenantAdmin)
-          if !tenantSecurity.isDefaultMode(tenant, user.some, isTenantAdmin) =>
+          if !tenantSecurity.canAccessInCurrentMode(
+            tenant,
+            user.some,
+            isTenantAdmin,
+            request.path
+          ) =>
         Errors.craftResponseResultF(
           s"${tenant.tenantMode.get.toString} mode enabled",
           Results.ServiceUnavailable
@@ -324,8 +331,13 @@ class DaikokuActionMaybeWithGuest(val parser: BodyParser[AnyContent], env: Env)
       request.attrs.get(IdentityAttrs.UserKey),
       request.attrs.get(IdentityAttrs.TenantAdminKey)
     ) match {
-      case (Some(tenant), _, _, Some(user), isTenantAdmin)
-          if !tenantSecurity.isDefaultMode(tenant, user.some, isTenantAdmin) =>
+      case (Some(tenant), _, _, user, isTenantAdmin)
+          if !tenantSecurity.canAccessInCurrentMode(
+            tenant,
+            user,
+            isTenantAdmin,
+            request.path
+          ) =>
         Errors.craftResponseResultF(
           s"${tenant.tenantMode.get.toString} mode enabled",
           Results.ServiceUnavailable
@@ -400,18 +412,18 @@ class DaikokuActionMaybeWithGuest(val parser: BodyParser[AnyContent], env: Env)
   override protected def executionContext: ExecutionContext = ec
 }
 
-class DaikokuActionMaybeWithoutUser(
+class DaikokuUnauthenticatedAction(
     val parser: BodyParser[AnyContent],
     env: Env
-) extends ActionBuilder[DaikokuActionMaybeWithoutUserContext, AnyContent]
-    with ActionFunction[Request, DaikokuActionMaybeWithoutUserContext] {
+) extends ActionBuilder[DaikokuUnauthenticatedActionContext, AnyContent]
+    with ActionFunction[Request, DaikokuUnauthenticatedActionContext] {
 
   implicit lazy val ec: ExecutionContext = env.defaultExecutionContext
   val logger = Logger("daikoku-action-maybe-without-user")
 
   override def invokeBlock[A](
       request: Request[A],
-      block: DaikokuActionMaybeWithoutUserContext[A] => Future[Result]
+      block: DaikokuUnauthenticatedActionContext[A] => Future[Result]
   ): Future[Result] = {
     (
       request.attrs.get(IdentityAttrs.TenantKey),
@@ -420,11 +432,30 @@ class DaikokuActionMaybeWithoutUser(
       request.attrs.get(IdentityAttrs.UserKey),
       request.attrs.get(IdentityAttrs.TenantAdminKey)
     ) match {
-      case (Some(tenant), _, _, maybeUser, isTenantAdmin)
-          if !tenantSecurity.isDefaultMode(tenant, maybeUser, isTenantAdmin) =>
-        Errors.craftResponseResultF(
-          s"${tenant.tenantMode.get.toString} mode enabled",
-          Results.ServiceUnavailable
+      case (Some(tenant), None, _, maybeUser, isTenantAdmin)
+          if !tenantSecurity.canAccessInCurrentMode(
+            tenant,
+            maybeUser,
+            isTenantAdmin,
+            request.path
+          ) =>
+        FastFuture.successful(
+          Results.Redirect(
+            s"/maintenance"
+          )
+        )
+      
+      case (Some(tenant), Some(session), _, Some(user), Some(isTenantAdmin))
+          if !tenantSecurity.canAccessInCurrentMode(
+            tenant,
+            Some(user),
+            Some(isTenantAdmin),
+            request.path
+          ) =>
+        FastFuture.successful(
+          Results.Redirect(
+            s"/maintenance"
+          )
         )
       case (
             Some(tenant),
@@ -438,7 +469,7 @@ class DaikokuActionMaybeWithoutUser(
             .userCanCreateApi(tenant, user)(env, ec)
             .flatMap(perm =>
               block(
-                DaikokuActionMaybeWithoutUserContext(
+                DaikokuUnauthenticatedActionContext(
                   request,
                   Some(user),
                   tenant,
@@ -459,7 +490,7 @@ class DaikokuActionMaybeWithoutUser(
         }
       case (Some(tenant), _, _, _, _) if tenant.isPrivate =>
         block(
-          DaikokuActionMaybeWithoutUserContext(
+          DaikokuUnauthenticatedActionContext(
             request,
             None,
             tenant,
@@ -471,7 +502,7 @@ class DaikokuActionMaybeWithoutUser(
       case (Some(tenant), _, _, _, _) =>
         val user = GuestUser(tenant.id)
         block(
-          DaikokuActionMaybeWithoutUserContext(
+          DaikokuUnauthenticatedActionContext(
             request,
             Some(user),
             tenant,
@@ -501,9 +532,25 @@ class DaikokuTenantAction(val parser: BodyParser[AnyContent], env: Env)
       request: Request[A],
       block: DaikokuTenantActionContext[A] => Future[Result]
   ): Future[Result] = {
-    request.attrs.get(IdentityAttrs.TenantKey) match {
-      case Some(tenant) => block(DaikokuTenantActionContext[A](request, tenant))
-      case None =>
+    (
+      request.attrs.get(IdentityAttrs.TenantKey),
+      request.attrs.get(IdentityAttrs.UserKey),
+      request.attrs.get(IdentityAttrs.TenantAdminKey)
+    ) match {
+      case (Some(tenant), maybeUser, isTenantAdmin)
+          if !tenantSecurity.canAccessInCurrentMode(
+            tenant,
+            maybeUser,
+            isTenantAdmin,
+            request.path
+          ) =>
+        Errors.craftResponseResultF(
+          s"${tenant.tenantMode.get.toString} mode enabled",
+          Results.ServiceUnavailable
+        )
+      case (Some(tenant), _, _) =>
+        block(DaikokuTenantActionContext[A](request, tenant))
+      case (None, _, _) =>
         TenantHelper.withTenant(request, env) { tenant =>
           block(DaikokuTenantActionContext[A](request, tenant))
         }

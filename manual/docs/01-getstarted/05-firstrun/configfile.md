@@ -27,6 +27,7 @@ or
 | `daikoku.team.defaultApiKeyVisibility` | string | "User"                | The default value of team apikeys visibility for its own members is based on Team permission. Supported values are `Administrator`, `ApiEditor` or `User`                                             |
 | `daikoku.exposition.provider`          | string | "none"                | Activate the exchange protocol. Supported values are `otoroshi` (for [Otoroshi Exchange Protocol](https://maif.github.io/otoroshi/manual/usage/2-services.html#otoroshi-exchange-protocol) and `none` |
 | `daikoku.snowflake.seed`               | number | 0                     | This number will be used to generate unique IDs across the cluster. Each Otoroshi instance must have a unique seed.                                                                                   |
+| `daikoku.health.accessKey`               | string |                     | The key to call detailed health endpoint                                                                                  |
 
 ## Admin api
 

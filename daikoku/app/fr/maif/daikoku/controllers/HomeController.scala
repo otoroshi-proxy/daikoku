@@ -3,29 +3,37 @@ package fr.maif.daikoku.controllers
 import cats.implicits.catsSyntaxOptionId
 import controllers.Assets
 import fr.maif.daikoku.BuildInfo
-import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionMaybeWithGuest, DaikokuActionMaybeWithoutUser, DaikokuActionMaybeWithoutUserContext}
+import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionMaybeWithGuest, DaikokuUnauthenticatedAction, DaikokuUnauthenticatedActionContext}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.async.TenantAdminOnly
-import fr.maif.daikoku.domain._
+import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.json.CmsRequestRenderingFormat
 import fr.maif.daikoku.env.Env
-import fr.maif.daikoku.utils.Errors
+import fr.maif.daikoku.logger.AppLogger
+import fr.maif.daikoku.utils.{Errors, OtoroshiClient, S3Configuration}
 import fr.maif.daikoku.utils.future.EnhancedObject
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs
-import play.api.libs.json._
-import play.api.mvc._
+import play.api.libs.json.*
+import play.api.mvc.*
 import fr.maif.daikoku.services.{CmsPage, CmsRequestRendering}
 
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.matching.Regex
+import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
+import io.vertx.core.json.JsonObject
+import org.apache.pekko.stream.connectors.s3.BucketAccess
 
-import fr.maif.daikoku.controllers.{routes => daikokuRoutes}
+enum ServiceStatus(val value: String):
+  case Up extends ServiceStatus("UP")
+  case Down extends ServiceStatus("DOWN")
+  case Absent extends ServiceStatus("ABSENT")
+
 
 class HomeController(
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
+    DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
     DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
     DaikokuAction: DaikokuAction,
     env: Env,
@@ -39,7 +47,7 @@ class HomeController(
   implicit val m: MessagesApi = messagesApi
 
   def index() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       ctx.tenant.style match {
         case Some(value) if value.homePageVisible =>
           (value.homeCmsPage, value.notFoundCmsPage) match {
@@ -63,8 +71,9 @@ class HomeController(
       }
     }
 
+  // todo: handle case of maintenance mode
   def indexForRobots() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       ctx.tenant.robotTxt match {
         case Some(robotTxt) =>
           FastFuture.successful(Ok(views.txt.robot.render(robotTxt)))
@@ -76,77 +85,137 @@ class HomeController(
     }
 
   def indexWithPath(path: String) =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       assets.at("index.html").apply(ctx.request)
     }
   def indexWithoutPath() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       assets.at("index.html").apply(ctx.request)
     }
 
-  def status() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
-      for {
-        maybeTenant <- env.dataStore.tenantRepo.findById(ctx.tenant.id)
-      } yield {
-        val isReady = maybeTenant.isDefined
-        val databaseStatus = maybeTenant.map(_ => "OK").getOrElse("KO")
-        val responseJson = Json.obj(
-          "status" -> (if (isReady) "ready" else "initializing"),
-          "version" -> BuildInfo.version,
-          "database" -> Json.obj(
-            "status" -> databaseStatus
-          ),
-          "timestamp" -> java.time.Instant.now().toString
-        )
-
-        if (isReady)
-          Ok(responseJson)
-        else
-          ServiceUnavailable(responseJson)
+  def health(): Action[AnyContent] = {
+    Action.async { ctx =>
+      ctx.headers.get("Otoroshi-Health-Check-Logic-Test") match {
+        case Some(value) => Ok.withHeaders(
+          "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString
+        ).future
+        case None => (env.dataStore match {
+          case dataStore: PostgresDataStore =>
+            dataStore
+              .checkDatabase()
+              .map(_ => ServiceStatus.Up)
+        })
+          .recover { case _ => ServiceStatus.Down }
+          .map(status => Ok(Json.obj("status" -> (status match {
+            case ServiceStatus.Up => "ready"
+            case _ => "initializing"
+          }))))
       }
     }
+  }
 
-  def health() =
-    DaikokuActionMaybeWithGuest.async { ctx =>
-      ctx.request.headers.get("Otoroshi-Health-Check-Logic-Test") match {
-        // todo: better health check
-        case Some(value) =>
-          Ok.withHeaders(
-            "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString
-          ).future
-        case None =>
-          Ok(
-            Json.obj(
-              "tenantMode" -> ctx.tenant.tenantMode
-                .getOrElse(TenantMode.Default)
-                .name
+  def healthDetailed(): Action[AnyContent] = {
+    Action.async { ctx =>
+      ctx.getQueryString("access_key") match {
+        case Some(key) if env.config.detailedHealthAccessKey.contains(key) => {
+          val datastoreHealth = env.dataStore match {
+            case dataStore: PostgresDataStore =>
+              dataStore
+                .checkDatabase()
+                .map(_ => ServiceStatus.Up)
+          }
+          env.dataStore.tenantRepo
+            .findAll()
+            .flatMap(tenantList =>
+              datastoreHealth
+                .zip(
+                  Future.sequence(
+                    tenantList.map { (tenant: Tenant) =>
+                      for {
+                        mailerHealth <- tenant.mailer
+                          .testConnection(tenant) map (b =>
+                          if (b) ServiceStatus.Up else ServiceStatus.Down
+                          )
+
+                        s3HealthFuture =
+                          tenant.bucketSettings match {
+                            case None =>
+                              Future.successful(ServiceStatus.Absent)
+                            case Some(cfg: S3Configuration) =>
+                              env.assetsStore.checkBucket()(cfg).map {
+                                case BucketAccess.AccessDenied => ServiceStatus.Down
+                                case BucketAccess.AccessGranted => ServiceStatus.Up
+                                case BucketAccess.NotExists => ServiceStatus.Absent
+                              }
+                          }
+                        s3Health <- s3HealthFuture
+
+                        otoroshiHealth <- {
+                          val checks =
+                            tenant.otoroshiSettings.map { otoSettings =>
+                              OtoroshiClient(env)
+                                .getApikey(otoSettings.clientId)(otoroshiSettings =
+                                  otoSettings
+                                )
+                                .map { _ =>
+                                  (otoSettings, ServiceStatus.Up)
+                                }
+                                .recover { case _ => (otoSettings, ServiceStatus.Down)}
+                            }
+                          Future.sequence(checks)
+                        }
+
+                      } yield Json.obj(
+                        "tenantName" -> tenant.name,
+                        "tenantMode" -> tenant.tenantMode.map(_.name).getOrElse(TenantMode.Default.name),
+                        "status" -> Json.obj(
+                          "mailer" -> mailerHealth.value,
+                          "S3" -> s3Health.value,
+                          "otoroshi" -> JsArray(otoroshiHealth.map(oto => Json.obj(s"${oto._1.url} (${oto._1.host})" -> oto._2.value )).toSeq)
+                        )
+                      )
+                    }
+                  )
+                )
+                .map { case (datastore, results) =>
+                  val resultObj = results.foldLeft(Json.obj()) { (acc, item) =>
+                    val tenantName = (item \ "tenantName").as[String]
+                    val withoutNom = item.as[JsObject] - "tenantName"
+                    acc + (tenantName -> withoutNom)
+                  }
+                  Ok(Json.obj(
+                    "status" -> datastore.value,
+                    "datastore" -> datastore.value,
+                    "version" -> BuildInfo.version,
+                  ) ++ resultObj)
+                }
+                .recover { case _ => Ok(Json.obj("status" -> ServiceStatus.Down.value)) }
             )
-          ).future
+        }
+        case _ => AppError.Unauthorized.renderF()
       }
+
+
+
+
+
+
     }
+  }
 
   def getDaikokuVersion() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    Action.async { _ =>
       Ok(Json.obj("version" -> BuildInfo.version)).future
     }
 
-  def getConnectedUser() = {
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+  def getConnectedUser(): Action[AnyContent] = {
+    DaikokuActionMaybeWithGuest.async { ctx =>
       Ok(
         Json.obj(
           "connectedUser" -> ctx.user
-            .map(_.toUiPayload())
-            .getOrElse(JsNull)
-            .as[JsValue],
-          "impersonator" -> ctx.session
-            .map(_.impersonatorJson())
-            .getOrElse(JsNull)
-            .as[JsValue],
-          "session" -> ctx.session
-            .map(_.asSimpleJson)
-            .getOrElse(JsNull)
-            .as[JsValue],
+            .toUiPayload(),
+          "impersonator" -> ctx.session.impersonatorJson(),
+          "session" -> ctx.session.asSimpleJson,
           "tenant" -> ctx.tenant.toUiPayload(env),
           "isTenantAdmin" -> ctx.isTenantAdmin,
           "apiCreationPermitted" -> ctx.apiCreationPermitted,
@@ -248,7 +317,7 @@ class HomeController(
   }
 
   def renderCmsPageFromBody(path: String) =
-    DaikokuActionMaybeWithoutUser.async(parse.json) { ctx =>
+    DaikokuUnauthenticatedAction.async(parse.json) { ctx =>
       val req = ctx.request.body.as[JsObject].as(CmsRequestRenderingFormat)
 
       val currentPage = req.content.find(_.path() == req.current_page)
@@ -267,7 +336,7 @@ class HomeController(
     }
 
   private def renderCmsPage[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A],
+      ctx: DaikokuUnauthenticatedActionContext[A],
       page: Option[CmsPage],
       fields: Map[String, JsValue]
   ) = {
@@ -281,9 +350,17 @@ class HomeController(
     }
   }
 
+  def cmsMaintenancePage(): Unit = {
+    DaikokuUnauthenticatedAction.async { ctx =>
+      Ok(
+        Json.obj("version" -> BuildInfo.version)
+      ).future
+    }
+  }
+
   def cmsPageByPath(path: String, page: Option[CmsPage] = None) =
-    DaikokuActionMaybeWithoutUser.async {
-      (ctx: DaikokuActionMaybeWithoutUserContext[AnyContent]) =>
+    DaikokuUnauthenticatedAction.async {
+      (ctx: DaikokuUnauthenticatedActionContext[AnyContent]) =>
         val actualPath = if (path.startsWith("/")) {
           path
         } else {
@@ -350,7 +427,7 @@ class HomeController(
     }
 
   private def redirectToLoginPage[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A]
+      ctx: DaikokuUnauthenticatedActionContext[A]
   ) =
     FastFuture.successful(
       Redirect(
@@ -359,7 +436,7 @@ class HomeController(
     )
 
   private def cmsPageNotFound[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A]
+      ctx: DaikokuUnauthenticatedActionContext[A]
   ): Future[Result] = {
     val optionFoundPage: Option[DaikokuStyle] = ctx.tenant.style
       .find(p => p.homePageVisible && p.notFoundCmsPage.nonEmpty)
@@ -401,7 +478,7 @@ class HomeController(
   }
 
   private def render[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A],
+      ctx: DaikokuUnauthenticatedActionContext[A],
       r: CmsPage,
       req: Option[CmsRequestRendering] = None,
       fields: Map[String, JsValue] = Map.empty[String, JsValue]
@@ -427,7 +504,7 @@ class HomeController(
   }
 
   private def cmsPageByIdWithoutAction[A](
-      ctx: DaikokuActionMaybeWithoutUserContext[A],
+      ctx: DaikokuUnauthenticatedActionContext[A],
       id: String,
       fields: Map[String, JsValue] = Map.empty
   ) = {
@@ -445,12 +522,12 @@ class HomeController(
   }
 
   def cmsPageById(id: String) =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       cmsPageByIdWithoutAction(ctx, id)
     }
 
   def advancedRenderCmsPageById(id: String) =
-    DaikokuActionMaybeWithoutUser.async(parse.json) { ctx =>
+    DaikokuUnauthenticatedAction.async(parse.json) { ctx =>
       cmsPageByIdWithoutAction(
         ctx,
         id,

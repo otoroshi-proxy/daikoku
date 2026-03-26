@@ -69,7 +69,7 @@ class DaikokuComponentsInstances(context: Context)
   val daikokuAction = wire[DaikokuAction]
   val daikokuTenantAction = wire[DaikokuTenantAction]
   val daikokuTenantActionMaybeWithGuest = wire[DaikokuActionMaybeWithGuest]
-  val daikokuActionMaybeWithoutUser = wire[DaikokuActionMaybeWithoutUser]
+  val DaikokuUnauthenticatedAction = wire[DaikokuUnauthenticatedAction]
   val daikokuApiAction = wire[DaikokuApiAction]
   val cmsApiAction = wire[CmsApiAction]
   val daikokuApiActionWithoutTenant = wire[DaikokuApiActionWithoutTenant]

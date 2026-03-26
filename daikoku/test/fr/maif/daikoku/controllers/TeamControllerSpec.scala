@@ -10,6 +10,7 @@ import fr.maif.daikoku.domain.TeamPermission.{
   ApiEditor,
   TeamUser
 }
+import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.domain._
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import org.joda.time.DateTime
@@ -20,6 +21,7 @@ import org.testcontainers.containers.BindMode
 import play.api.libs.json._
 
 import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.DurationInt
 import scala.util.Random
 
@@ -30,14 +32,27 @@ class TeamControllerSpec()
     with BeforeAndAfter
     with ForAllTestContainer {
 
-  val pwd = System.getProperty("user.dir");
+  val pwd = System.getProperty("user.dir")
+  implicit val ecc: ExecutionContext = daikokuComponents.env.defaultExecutionContext
+  implicit val ev: Env = daikokuComponents.env
+
+  private def getMyOwnTeam(user: User, session: UserSession, tenant: Tenant = tenant): Team = {
+    httpJsonCallBlocking(
+      path = s"/api/me",
+    )(tenant, session)
+
+    val userTeams = Await.result(daikokuComponents.env.dataStore.teamRepo.myTeams(tenant, user), 5.seconds)
+    val maybeUserTeam = userTeams.find(_.`type` == TeamType.Personal)
+    maybeUserTeam.isDefined mustBe true
+    maybeUserTeam.get
+  }
 
   override val container: GenericContainer = GenericContainer(
     "maif/otoroshi",
     exposedPorts = Seq(8080),
     fileSystemBind = Seq(
       FileSystemBind(
-        s"$pwd/test/fr/maif/daikoku/otoroshi.json",
+        s"$pwd/test/fr/maif/daikoku/controllers/otoroshi.json",
         "/home/user/otoroshi.json",
         BindMode.READ_ONLY
       )
@@ -132,13 +147,7 @@ class TeamControllerSpec()
       val dkAdminSession = loginWithBlocking(daikokuAdmin, tenant)
       val userSession = loginWithBlocking(user, tenant)
 
-      val respMyTeam =
-        httpJsonCallBlocking("/api/me/teams/own")(tenant, userSession)
-      respMyTeam.status mustBe 200
-      val userTeam =
-        fr.maif.daikoku.domain.json.TeamFormat.reads(respMyTeam.json)
-      userTeam.isSuccess mustBe true
-      val userTeamId = userTeam.get.id
+      val userTeamId = getMyOwnTeam(user, userSession).id
 
       val respRemoveDenied = httpJsonCallBlocking(
         path = s"/api/teams/${userTeamId.value}/members/${user.id.value}",
@@ -1030,14 +1039,7 @@ class TeamControllerSpec()
         teams = Seq(teamOwner)
       )
       val session = loginWithBlocking(randomUser, tenant)
-
-      val respMyTeam =
-        httpJsonCallBlocking("/api/me/teams/own")(tenant, session)
-      respMyTeam.status mustBe 200
-      val myTeam =
-        fr.maif.daikoku.domain.json.TeamFormat.reads(respMyTeam.json)
-      myTeam.isSuccess mustBe true
-      val myTeamId = myTeam.get.id
+      val myTeamId = getMyOwnTeam(randomUser, session).id
 
       val respUpdate =
         httpJsonCallBlocking(
@@ -1085,12 +1087,7 @@ class TeamControllerSpec()
       )
       val session = loginWithBlocking(randomUser, tenant)
 
-      val respMyTeam =
-        httpJsonCallBlocking("/api/me/teams/own")(tenant, session)
-      val myTeam =
-        fr.maif.daikoku.domain.json.TeamFormat.reads(respMyTeam.json)
-      myTeam.isSuccess mustBe true
-      val myTeamId = myTeam.get.id
+      val myTeamId = getMyOwnTeam(randomUser, session).id
 
       val resp = httpJsonCallBlocking(
         path = s"/api/teams/${myTeamId.value}/members/_permission",
@@ -1133,21 +1130,15 @@ class TeamControllerSpec()
         users = Seq(userAdmin, randomUser)
       )
       val session = loginWithBlocking(randomUser, tenant)
-
-      val respMyTeam =
-        httpJsonCallBlocking("/api/me/teams/own")(tenant, session)
-      val myTeam =
-        fr.maif.daikoku.domain.json.TeamFormat.reads(respMyTeam.json)
-      myTeam.isSuccess mustBe true
-      val myTeamId = myTeam.get.id
+      val myTeam = getMyOwnTeam(randomUser, session)
 
       teamOwner.apiKeyVisibility mustBe Some(TeamApiKeyVisibility.User)
       val resp =
         httpJsonCallBlocking(
-          path = s"/api/teams/${myTeamId.value}",
+          path = s"/api/teams/${myTeam.id.value}",
           method = "PUT",
           body = Some(
-            myTeam.get
+            myTeam
               .copy(apiKeyVisibility = Some(TeamApiKeyVisibility.ApiEditor))
               .asJson
           )
@@ -1323,18 +1314,13 @@ class TeamControllerSpec()
   }
 
   "a personal team" must {
-    "have always thhe same informations than it user" in {
+    "have always the same informations than it user" in {
       setupEnvBlocking(
         tenants = Seq(tenant),
         users = Seq(user)
       )
 
       val session = loginWithBlocking(user, tenant)
-      val resp = httpJsonCallBlocking(s"/api/me/teams/own")(tenant, session)
-      resp.status mustBe 200
-      val myTeam: JsResult[Team] = json.TeamFormat.reads(resp.json)
-      myTeam.isSuccess mustBe true
-      // not now because team is created by suite not by daikoku login
 
       val respUpdate = httpJsonCallBlocking(
         path = s"/api/admin/users/${user.id.value}",
@@ -1342,15 +1328,11 @@ class TeamControllerSpec()
         body = Some(user.copy(name = "Jon Snow").asJson)
       )(tenant, session)
       respUpdate.status mustBe 200
-      logger.debug(Json.stringify(respUpdate.json))
 
-      val resp2 = httpJsonCallBlocking(s"/api/me/teams/own")(tenant, session)
-      resp2.status mustBe 200
-      val myTeamUpdated: JsResult[Team] = json.TeamFormat.reads(resp2.json)
-      myTeamUpdated.isSuccess mustBe true
-      myTeamUpdated.get.name mustBe "Jon Snow"
-      myTeamUpdated.get.avatar.get mustBe user.picture
-      myTeamUpdated.get.contact mustBe user.email
+      val myTeamUpdated = getMyOwnTeam(user, session)
+      myTeamUpdated.name mustBe "Jon Snow"
+      myTeamUpdated.avatar.get mustBe user.picture
+      myTeamUpdated.contact mustBe user.email
     }
     "not be updated" in {
       setupEnvBlocking(
@@ -1359,15 +1341,12 @@ class TeamControllerSpec()
       )
 
       val session = loginWithBlocking(user, tenant)
-      val resp = httpJsonCallBlocking(s"/api/me/teams/own")(tenant, session)
-      resp.status mustBe 200
-      val myTeam: JsResult[Team] = json.TeamFormat.reads(resp.json)
-      myTeam.isSuccess mustBe true
+      val myTeam = getMyOwnTeam(user, session)
 
       val respUpdate = httpJsonCallBlocking(
-        path = s"/api/teams/${myTeam.get.id.value}",
+        path = s"/api/teams/${myTeam.id.value}",
         method = "PUT",
-        body = Some(myTeam.get.copy(name = "test").asJson)
+        body = Some(myTeam.copy(name = "test").asJson)
       )(tenant, session)
       respUpdate.status mustBe 403
     }
@@ -1424,17 +1403,15 @@ class TeamControllerSpec()
       )
 
       val session = loginWithBlocking(user, tenant)
-      val resp = httpJsonCallBlocking(s"/api/me/teams/own")(tenant, session)
-      resp.status mustBe 200
-      val myTeam: JsResult[Team] = json.TeamFormat.reads(resp.json)
-      myTeam.isSuccess mustBe true
+      val myTeam = getMyOwnTeam(user, session)
 
       val respSub = httpJsonCallBlocking(
         path =
-          s"/api/apis/${api.id.value}/plan/${plan.id.value}/team/${myTeam.get.id.value}/_subscribe",
+          s"/api/apis/${api.id.value}/plan/${plan.id.value}/team/${myTeam.id.value}/_subscribe",
         method = "POST",
         body = Json.obj().some
       )(tenant, session)
+      logger.warn(Json.stringify(respSub.json))
       respSub.status mustBe 200
 
       val personalSub =
@@ -1452,6 +1429,7 @@ class TeamControllerSpec()
         port = container.mappedPort(8080),
         hostHeader = "otoroshi-api.oto.tools"
       )(tenant)
+      logger.warn(Json.stringify(respOtoApikey.json))
       respOtoApikey.status mustBe 200
 
       val otoApiKey = respOtoApikey.json.as(json.ActualOtoroshiApiKeyFormat)
@@ -1459,7 +1437,7 @@ class TeamControllerSpec()
 
       val respDelete = httpJsonCallBlocking(
         path =
-          s"/api/teams/${myTeam.get.id.value}/subscriptions/${personalSub.id.value}",
+          s"/api/teams/${myTeam.id.value}/subscriptions/${personalSub.id.value}",
         method = "DELETE"
       )(tenant, session)
       respDelete.status mustBe 200

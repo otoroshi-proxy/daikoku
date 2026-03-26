@@ -2,11 +2,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import jQuery from 'jquery';
 import { useContext } from 'react';
 import { createRoot } from 'react-dom/client';
-import { toast, Toaster } from 'sonner';
+import { Toaster } from 'sonner';
 
 import { DaikokuApp } from './apps';
 import { GlobalContext, GlobalContextProvider } from './contexts/globalContext';
 import { I18nProvider } from './contexts/i18n-context';
+
+import { BrowserRouter} from 'react-router-dom';
 
 import '@maif/react-forms/lib/index.css';
 import 'bootstrap/dist/css/bootstrap.css';
@@ -39,14 +41,15 @@ const ToasterComponent = () => {
   )
 }
 
-
 root.render(
-  <QueryClientProvider client={queryClient}>
-    <GlobalContextProvider>
-      <I18nProvider>
-        <ToasterComponent />
-        <DaikokuApp />
-      </I18nProvider>
-    </GlobalContextProvider>
-  </QueryClientProvider>
+  <BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <GlobalContextProvider>
+        <I18nProvider>
+          <ToasterComponent />
+          <DaikokuApp />
+        </I18nProvider>
+      </GlobalContextProvider>
+    </QueryClientProvider>
+  </BrowserRouter>
 );
