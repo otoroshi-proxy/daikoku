@@ -330,6 +330,8 @@ class Config(val underlying: Configuration) {
     .getOrElse(Interval)
   lazy val otoroshiSyncCronExpr: Option[String] = underlying
     .getOptional[String]("daikoku.otoroshi.sync.cronExpression")
+  lazy val detailedHealthAccessKey: Option[String] = underlying
+    .getOptional[String]("daikoku.health.accessKey")
   lazy val otoroshiGroupNamePrefix: Option[String] =
     underlying.getOptional[String]("daikoku.otoroshi.groups.namePrefix")
   lazy val otoroshiGroupIdPrefix: Option[String] =

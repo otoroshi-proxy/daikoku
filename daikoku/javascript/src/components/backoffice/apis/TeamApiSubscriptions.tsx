@@ -159,12 +159,14 @@ export const TeamApiSubscriptions = ({
       }
     ),
     columnHelper.accessor(row => row.plan.customName, {
+      id: "plan",
       header: translate("Plan"),
       meta: { style: { textAlign: "left" } },
       cell: (info) => info.getValue(),
       enableColumnFilter: true,
     }),
     columnHelper.accessor(row => row.team.name, {
+      id: "team",
       header: translate("Team"),
       meta: { style: { textAlign: "left" } },
       cell: (info) => info.getValue(),
@@ -265,6 +267,7 @@ export const TeamApiSubscriptions = ({
     }),
   ];
 
+
   const defaultData = useMemo(() => [], [])
   const table = useReactTable({
     data: subscriptionsQuery.data?.subscriptions ?? defaultData,
@@ -279,7 +282,11 @@ export const TeamApiSubscriptions = ({
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     manualPagination: true,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: (updater) => {
+      const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+      setColumnFilters(newFilters)
+      setPagination(prev => ({ ...prev, pageIndex: 0 })) // 👈 reset
+    },
     getFilteredRowModel: getFilteredRowModel(),
     getSortedRowModel: getSortedRowModel(),
   })
@@ -483,6 +490,7 @@ export const TeamApiSubscriptions = ({
           onPageChange={(page) => table.setPageIndex(page.selected)}
           containerClassName={'pagination'}
           pageClassName={'page-selector'}
+          forcePage={table.getState().pagination.pageIndex}
           // forcePage={page => table.setPageIndex(page)}
           activeClassName={'active'} />
       </div>

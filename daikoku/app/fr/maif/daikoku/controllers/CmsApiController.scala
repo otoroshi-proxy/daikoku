@@ -6,7 +6,7 @@ import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.actions.{
   ApiActionContext,
   CmsApiAction,
-  DaikokuActionMaybeWithoutUser
+  DaikokuUnauthenticatedAction
 }
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
 import fr.maif.daikoku.domain.json.{CmsFileFormat, CmsPageFormat}
@@ -39,13 +39,13 @@ case class CmsApiActionContext[A](
 ) extends ApiActionContext[A]
 
 class CmsApiController(
-    CmsApiAction: CmsApiAction,
-    env: Env,
-    cc: ControllerComponents,
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
-    translationsService: TranslationsService,
-    apiService: ApiService,
-    assetsService: AssetsService,
+                        CmsApiAction: CmsApiAction,
+                        env: Env,
+                        cc: ControllerComponents,
+                        DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
+                        translationsService: TranslationsService,
+                        apiService: ApiService,
+                        assetsService: AssetsService,
 ) extends AbstractController(cc) {
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext
@@ -175,8 +175,8 @@ class CmsApiController(
 
   def health() =
     CmsApiAction.async { ctx =>
-      ctx.request.headers.get("Otoroshi-Health-Check-Logic-Test") match {
-        // todo: better health check
+      ctx.request.headers.get("Otoroshi-" +
+        "Health-Check-Logic-Test") match {
         case Some(value) =>
           Ok.withHeaders(
             "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString
@@ -327,7 +327,7 @@ class CmsApiController(
     }
 
   def redirectToLoginPage() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       ctx.request.queryString.get("redirect").flatMap(_.headOption) match {
         case Some(redirect: String) =>
           ctx.tenant.authProvider match {

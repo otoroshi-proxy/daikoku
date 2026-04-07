@@ -190,10 +190,10 @@ class StateController(
           .findAllNotDeleted()
           .map(
             _.map(tenant =>
-              env.dataStore.tenantRepo.save(tenant.copy(tenantMode = None))
+              env.dataStore.tenantRepo.save(tenant.copy(tenantMode = TenantMode.Default.some))
             )
           )
-          .map(_ => Ok(ctx.tenant.copy(tenantMode = None).toUiPayload(env)))
+          .map(_ => Ok(ctx.tenant.copy(tenantMode = TenantMode.Default.some).toUiPayload(env)))
       }
     }
 

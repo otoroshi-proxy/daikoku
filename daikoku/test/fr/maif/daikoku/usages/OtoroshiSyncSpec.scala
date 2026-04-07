@@ -1,10 +1,10 @@
-package fr.maif.daikoku.controllers
+package fr.maif.daikoku.usages
 
 import cats.implicits.catsSyntaxOptionId
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
+import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.ValidationStep.HttpRequest
-import fr.maif.daikoku.domain._
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import fr.maif.daikoku.utils.LoggerImplicits.BetterLogger
 import org.joda.time.DateTime
@@ -12,10 +12,10 @@ import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
-import play.api.libs.json._
+import play.api.libs.json.*
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
+import scala.concurrent.duration.*
 
 class OtoroshiSyncSpec()
     extends PlaySpec
@@ -31,7 +31,7 @@ class OtoroshiSyncSpec()
     exposedPorts = Seq(8080),
     fileSystemBind = Seq(
       FileSystemBind(
-        s"$pwd/test/fr/maif/daikoku/otoroshi.json",
+        s"$pwd/test/fr/maif/daikoku/controllers/otoroshi.json",
         "/home/user/otoroshi.json",
         BindMode.READ_ONLY
       )
@@ -60,7 +60,6 @@ class OtoroshiSyncSpec()
       ),
       port = container.mappedPort(8080)
     )(using tenant)
-//    logger.json(respPreVerifOtoParent.json, true)
     (respPreVerifOtoParent.json \ "metadata")
       .as[JsObject]
       .as[Map[String, String]]
@@ -720,7 +719,8 @@ class OtoroshiSyncSpec()
           "Accept" -> "application/json"
         ),
         port = container.mappedPort(8080),
-        body = Json.parse("""
+        body = Json
+          .parse("""
             |[
             |    {
             |        "op": "add",
@@ -1476,7 +1476,7 @@ class OtoroshiSyncSpec()
 
       (apk \ "enabled").as[Boolean] mustBe false
 
-      //FIXME: FIX IT
+      // FIXME: FIX IT
 //      (apk \ "authorizedEntities").as[JsArray].value.length mustBe 1
 //
 //      val metadata = (apk \ "metadata")

@@ -29,8 +29,6 @@ lazy val root = (project in file("."))
     buildInfoPackage := "fr.maif.daikoku"
   )
 
-Test / javaOptions += "-Dconfig.file=conf/application.test.conf"
-
 assembly / assemblyMergeStrategy := {
   case PathList("org", "apache", "commons", "logging", xs @ _*) =>
     MergeStrategy.first
@@ -154,6 +152,7 @@ dependencyOverrides ++= Seq(
 )
 
 Test / fork := true
+Test / javaOptions += "-Dconfig.resource=application.test.conf"
 
 scalacOptions ++= Seq(
   "-feature",

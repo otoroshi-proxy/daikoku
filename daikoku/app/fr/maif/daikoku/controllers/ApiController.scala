@@ -2,13 +2,21 @@ package fr.maif.daikoku.controllers
 
 import cats.data.EitherT
 import cats.implicits.{catsSyntaxOptionId, toTraverseOps}
-import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionContext, DaikokuActionMaybeWithGuest, DaikokuActionMaybeWithoutUser}
+import fr.maif.daikoku.actions.{
+  DaikokuAction,
+  DaikokuActionContext,
+  DaikokuActionMaybeWithGuest,
+  DaikokuUnauthenticatedAction
+}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.controllers.AppError.*
 import fr.maif.daikoku.controllers.authorizations.async.*
 import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.NotificationAction.{ApiAccess, ApiSubscriptionDemand}
+import fr.maif.daikoku.domain.NotificationAction.{
+  ApiAccess,
+  ApiSubscriptionDemand
+}
 import fr.maif.daikoku.domain.UsagePlanVisibility.Private
 import fr.maif.daikoku.domain.json.*
 import fr.maif.daikoku.env.Env
@@ -38,18 +46,18 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 class ApiController(
-    DaikokuAction: DaikokuAction,
-    DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
-    apiService: ApiService,
-    apiKeyStatsJob: ApiKeyStatsJob,
-    env: Env,
-    otoroshiClient: OtoroshiClient,
-    cc: ControllerComponents,
-    otoroshiSynchronisator: OtoroshiVerifierJob,
-    translator: Translator,
-    paymentClient: PaymentClient,
-    deletionService: DeletionService
+                     DaikokuAction: DaikokuAction,
+                     DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
+                     DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
+                     apiService: ApiService,
+                     apiKeyStatsJob: ApiKeyStatsJob,
+                     env: Env,
+                     otoroshiClient: OtoroshiClient,
+                     cc: ControllerComponents,
+                     otoroshiSynchronisator: OtoroshiVerifierJob,
+                     translator: Translator,
+                     paymentClient: PaymentClient,
+                     deletionService: DeletionService
 ) extends AbstractController(cc)
     with I18nSupport {
 
@@ -304,48 +312,6 @@ class ApiController(
                   .map(_.asSimpleJson)
               )
             )
-          }
-      }
-    }
-
-  def oneOfMyTeam(teamId: String) =
-    DaikokuAction.async { ctx =>
-      TeamMemberOnly(
-        AuditTrailEvent(
-          "@{user.name} has accessed on of his team @{team.name} - @{team.id}"
-        )
-      )(teamId, ctx) { team =>
-        ctx.setCtxValue("team.name", team.name)
-        ctx.setCtxValue("team.id", team.id)
-
-        FastFuture.successful(Right(Ok(team.toUiPayload())))
-      }
-    }
-
-  def myOwnTeam() =
-    DaikokuAction.async { ctx =>
-      PublicUserAccess(
-        AuditTrailEvent(
-          s"@{user.name} has accessed its first team on @{tenant.name}"
-        )
-      )(ctx) {
-        env.dataStore.teamRepo
-          .forTenant(ctx.tenant.id)
-          .findOne(
-            Json.obj(
-              "_deleted" -> false,
-              "type" -> TeamType.Personal.name,
-              "users.userId" -> ctx.user.id.asJson
-            )
-          )
-          .map {
-            case None => NotFound(Json.obj("error" -> "Team not found"))
-            case Some(team) if team.includeUser(ctx.user.id) =>
-              Ok(team.asSimpleJson)
-            case _ =>
-              Unauthorized(
-                Json.obj("error" -> "You're not authorized on this team")
-              )
           }
       }
     }
@@ -1304,7 +1270,7 @@ class ApiController(
     }
 
   def validateProcess() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       import fr.maif.daikoku.utils.RequestImplicits.*
       implicit val language: String = ctx.request.getLanguage(ctx.tenant)
       implicit val currentUser: User = ctx.user.getOrElse(GuestUser(ctx.tenant.id))
