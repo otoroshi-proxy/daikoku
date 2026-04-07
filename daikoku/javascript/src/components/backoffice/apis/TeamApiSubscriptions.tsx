@@ -159,14 +159,14 @@ export const TeamApiSubscriptions = ({
       }
     ),
     columnHelper.accessor(row => row.plan.customName, {
-      id:"plan",
+      id: "plan",
       header: translate("Plan"),
       meta: { style: { textAlign: "left" } },
       cell: (info) => info.getValue(),
       enableColumnFilter: true,
     }),
     columnHelper.accessor(row => row.team.name, {
-      id:"team",
+      id: "team",
       header: translate("Team"),
       meta: { style: { textAlign: "left" } },
       cell: (info) => info.getValue(),
@@ -266,7 +266,7 @@ export const TeamApiSubscriptions = ({
       },
     }),
   ];
-  
+
 
   const defaultData = useMemo(() => [], [])
   const table = useReactTable({
@@ -376,8 +376,6 @@ export const TeamApiSubscriptions = ({
     });
   };
 
-  console.log(subscriptionsQuery.data);
-  
   return (
     <Can I={manage} a={API} dispatchError={true} team={currentTeam}>
       <div className="d-flex flex-row justify-content-start align-items-center mb-2">
