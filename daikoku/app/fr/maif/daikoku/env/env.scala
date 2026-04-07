@@ -4,9 +4,10 @@ import cats.implicits.catsSyntaxOptionId
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.{JWT, JWTVerifier}
 import fr.maif.daikoku.audit.AuditActorSupervizer
+import fr.maif.daikoku.domain.OtoroshiSyncMode.Interval
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
-import fr.maif.daikoku.domain.{DatastoreId, ReportsInfo, TeamApiKeyVisibility, Tenant}
+import fr.maif.daikoku.domain.{DatastoreId, OtoroshiSyncMode, ReportsInfo, TeamApiKeyVisibility, Tenant}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider.Local
 import fr.maif.daikoku.login.{AuthProvider, LoginFilter, OAuth2Config}
@@ -323,6 +324,12 @@ class Config(val underlying: Configuration) {
   lazy val otoroshiSyncKey: String = underlying
     .getOptional[String]("daikoku.otoroshi.sync.key")
     .getOrElse("secret")
+  lazy val otoroshiSyncMode: OtoroshiSyncMode = underlying
+    .getOptional[String]("daikoku.otoroshi.sync.mode")
+    .flatMap(OtoroshiSyncMode.fromValue)
+    .getOrElse(Interval)
+  lazy val otoroshiSyncCronExpr: Option[String] = underlying
+    .getOptional[String]("daikoku.otoroshi.sync.cronExpression")
   lazy val otoroshiGroupNamePrefix: Option[String] =
     underlying.getOptional[String]("daikoku.otoroshi.groups.namePrefix")
   lazy val otoroshiGroupIdPrefix: Option[String] =

@@ -678,3 +678,12 @@ case class Asset(id: AssetId, tenant: TenantId, slug: String)
     extends CanJson[Asset] {
   override def asJson: JsValue = json.AssetFormat.writes(this)
 }
+
+enum OtoroshiSyncMode(val value: String):
+  case Interval extends OtoroshiSyncMode("interval")
+  case Cron extends OtoroshiSyncMode("cron")
+
+object OtoroshiSyncMode {
+  def fromValue(v: String): Option[OtoroshiSyncMode] =
+    OtoroshiSyncMode.values.find(_.value == v)
+}

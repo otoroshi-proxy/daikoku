@@ -107,7 +107,9 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-api" % "2.25.3",
   "com.github.blemale" %% "scaffeine" % "5.3.0",
   "com.github.slugify" % "slugify" % "3.0.7",
-  "joda-time" % "joda-time" % "2.14.0"
+  "joda-time" % "joda-time" % "2.14.0",
+  "com.github.alonsodomin.cron4s" %% "cron4s-core" % "0.8.2",
+  "com.github.alonsodomin.cron4s" %% "cron4s-joda" % "0.8.2"
 )
 
 dependencyOverrides ++= Seq(
