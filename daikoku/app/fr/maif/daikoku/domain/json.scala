@@ -4276,7 +4276,7 @@ object json {
               lockedBy = (json \ "lockedBy").as[String],
               lockedAt = (json \ "lockedAt").as(using DateTimeFormat),
               expiresAt = (json \ "expiresAt").as(using DateTimeFormat),
-              cursor = (json \ "cursor").as[String],
+              cursor = (json \ "cursor").as[Long],
               batchSize = (json \ "batchSize").as[Int],
               totalProcessed = (json \ "totalProcessed").as[BigDecimal],
               startedAt = (json \ "startedAt").as(using DateTimeFormat),

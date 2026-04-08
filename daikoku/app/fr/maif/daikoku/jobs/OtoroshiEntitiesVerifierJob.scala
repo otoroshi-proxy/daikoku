@@ -1,6 +1,7 @@
 package fr.maif.daikoku.jobs
 
-import cron4s.Cron
+import cron4s._
+import cron4s.lib.joda._
 import fr.maif.daikoku.audit.JobEvent
 import fr.maif.daikoku.domain.NotificationAction.{OtoroshiSyncApiError, OtoroshiSyncSubscriptionError}
 import fr.maif.daikoku.domain.{Api, ApiId, ApiSubscriptionId, AuthorizedEntities, ConsoleMailerSettings, DatastoreId, JobInformation, JobName, JobStatus, Notification, NotificationAction, NotificationId, NotificationStatus, NotificationType, OtoroshiSettings, SchedulingMode, OtoroshiSyncNotificationAction, TeamId, Tenant, TenantId, UsagePlanId, User, UserId}
@@ -17,6 +18,7 @@ import play.api.libs.json.*
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.duration.*
 import scala.util.{Failure, Success}
 
 class OtoroshiEntitiesVerifierJob(
@@ -26,6 +28,7 @@ class OtoroshiEntitiesVerifierJob(
                                    messagesApi: MessagesApi
                                  ) {
   private val logger = Logger("otoroshi-entities-verifier")
+  private val ref = new AtomicReference[Cancellable]()
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val mat: Materializer = env.defaultMaterializer
@@ -34,7 +37,7 @@ class OtoroshiEntitiesVerifierJob(
   implicit val tr: Translator = translator
 
   def start(): Unit = {
-    val syncAvalaible = env.config.verifierJobEnabled && env.config.otoroshiSyncMaster //FIXME: use also otoroshiSyncMaster ??? 
+    val syncAvalaible = env.config.verifierJobEnabled && env.config.otoroshiSyncMaster //FIXME: use also otoroshiSyncMaster ???
 
     if (
       syncAvalaible && ref.get() == null
@@ -53,9 +56,9 @@ class OtoroshiEntitiesVerifierJob(
                 logger.info(s"next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
 
                 ref.set(
-                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { _ =>
+                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { () =>
                     logger.info(s"cron triggered at $now")
-                    env.dataStore.tenantRepo
+                    val _ = env.dataStore.tenantRepo
                       .findAllNotDeleted()
                       .flatMap(tenants =>
                         Future.sequence(
@@ -69,6 +72,7 @@ class OtoroshiEntitiesVerifierJob(
                       .andThen { case _ =>
                         scheduleNext()
                       }
+                    ()
                   }
                 )
 
@@ -82,7 +86,7 @@ class OtoroshiEntitiesVerifierJob(
         case SchedulingMode.Interval =>
           ref.set(
             env.defaultActorSystem.scheduler
-              .scheduleAtFixedRate(10.seconds, env.config.verifierJobInterval) { _ =>
+              .scheduleAtFixedRate(10.seconds, env.config.verifierJobInterval) { () =>
                 env.dataStore.tenantRepo
                   .findAllNotDeleted()
                   .flatMap(tenants =>
@@ -99,7 +103,7 @@ class OtoroshiEntitiesVerifierJob(
       }
     }
   }
-  
+
   def stop(): Unit = {
     Option(ref.get()).foreach(_.cancel())
   }
@@ -259,7 +263,7 @@ class OtoroshiEntitiesVerifierJob(
               lockedBy = "otoroshi-entities-verifier-job",
               lockedAt = now,
               expiresAt = now.plusHours(1),
-              cursor = "",
+              cursor = 0,
               startedAt = now,
               lastBatchAt = now,
               status = JobStatus.Running

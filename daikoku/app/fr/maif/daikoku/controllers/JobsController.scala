@@ -43,7 +43,7 @@ class JobsController(
       TenantHelper.withTenant(ctx, env) { tenant =>
         ctx.getQueryString("access_key").orElse(ctx.getQueryString("key")) match {
           case Some(key) if env.config.rotationJobKey.contains(key) =>
-            rotationJob.run(tenant = tenant, parallelism = parallelism)
+            rotationJob.run(tenant = tenant)
               .map(_ => Ok(Json.obj("done" -> true)))
           case _ => AppError.Unauthorized.renderF()
         }
@@ -55,7 +55,7 @@ class JobsController(
       TenantHelper.withTenant(ctx, env) { tenant =>
         ctx.getQueryString("access_key").orElse(ctx.getQueryString("key")) match {
           case Some(key) if env.config.verifierJobKey.contains(key) =>
-            verifierJob.run(tenant = tenant, parallelism = parallelism)
+            verifierJob.run(tenant = tenant)
               .map(_ => Ok(Json.obj("done" -> true)))
           case _ => AppError.Unauthorized.renderF()
         }

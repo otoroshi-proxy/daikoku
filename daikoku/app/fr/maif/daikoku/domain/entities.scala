@@ -185,7 +185,7 @@ case class JobInformation(
     lockedBy: String,
     lockedAt: DateTime,
     expiresAt: DateTime,
-    cursor: String,
+    cursor: Long,
     batchSize: Int = 500,
     totalProcessed: BigDecimal = BigDecimal(0),
     startedAt: DateTime,

@@ -324,9 +324,9 @@ class OtoroshiSynchronizerJob(
                 logger.info(s"[OtoroshiSync] next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
 
                 ref.set(
-                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { _ =>
+                  env.defaultActorSystem.scheduler.scheduleOnce(delay) {
                     logger.info(s"[OtoroshiSync] cron triggered at $now")
-                    env.dataStore.tenantRepo
+                    val _ = env.dataStore.tenantRepo
                       .findAllNotDeleted()
                       .flatMap(tenants =>
                         Future.sequence(
@@ -338,8 +338,9 @@ class OtoroshiSynchronizerJob(
                         logger.error("[OtoroshiSync] cron sync failed", e)
                       }
                       .andThen { case _ =>
-                        scheduleNext() 
+                        scheduleNext()
                       }
+                    ()
                   }
                 )
 
@@ -525,7 +526,9 @@ class OtoroshiSynchronizerJob(
   private def synchronizeApikeys(
                                         entity: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(),
                                         tenant: Tenant,
-                                        parallelism: Int = 25
+                                        parallelism: Int = 25,
+                                        saveCursor: Long => Future[Boolean],
+                                        maybeLastCursor: Option[Long]
                                       ): Future[Unit] = {
 
     val predicate: String = entity match {
@@ -540,6 +543,10 @@ class OtoroshiSynchronizerJob(
            |     OR s._id = (SELECT content ->> 'parent' FROM api_subscriptions WHERE _id = '${subscriptionId.value}'))""".stripMargin
       case _: SyncAllSubscription => ""
     }
+
+    val cursorClause = maybeLastCursor
+      .map(c => s"AND (s.content ->> 'createdAt')::bigint >= $c")
+      .getOrElse("")
 
     val findAllSubscriptionsFromEntityStreamSql: String =
       s"""
@@ -566,6 +573,7 @@ class OtoroshiSynchronizerJob(
          |    INNER JOIN usage_plans ON usage_plans._id = s.content ->> 'plan'
          |    WHERE s.content ->> 'parent' IS NULL
          |      $predicate
+         |      $cursorClause
          |) p
          |LEFT JOIN api_subscriptions s ON p.parent_id = s.content ->> 'parent' AND (s.content ->> 'enabled')::bool IS TRUE
          |LEFT JOIN apis ON apis._id = s.content ->> 'api'
@@ -581,9 +589,11 @@ class OtoroshiSynchronizerJob(
     val skipped = new java.util.concurrent.atomic.AtomicLong(0)
     val errored = new java.util.concurrent.atomic.AtomicLong(0)
 
+    val lastCursor = new java.util.concurrent.atomic.AtomicLong(maybeLastCursor.getOrElse(0L))
+
     val startTime = System.nanoTime()
 
-    logger.debug(s"Starting fullyStreamedSync for tenant ${tenant.id.value} with parallelism=$parallelism")
+    logger.debug(s"Starting fullyStreamedSync for tenant ${tenant.id.value} with parallelism=$parallelism, cursor=${maybeLastCursor.getOrElse(0L)}")
 
     env.dataStore
       .asInstanceOf[PostgresDataStore]
@@ -591,20 +601,15 @@ class OtoroshiSynchronizerJob(
         findAllSubscriptionsFromEntityStreamSql,
         Seq(Col("parent", ColJson), Col("children", ColJsonArray), Col("team", ColJson)),
       )
-      .mapAsyncUnordered(parallelism) { row =>
+      .mapAsync(parallelism) { row =>
         val parent = Child.readFromJson((row \ "parent").as[JsObject])
         val children = (row \ "children")
           .asOpt[Seq[JsValue]]
           .map(_.filter(_ != JsNull).map(Child.readFromJson))
           .getOrElse(Seq.empty)
         val team = (row \ "team").as(using TeamFormat)
-        val count = processed.incrementAndGet()
-
-        if (count % 100 == 0) {
-          val elapsed = (System.nanoTime() - startTime) / 1000000000.0
-          val rate = count / elapsed
-          logger.debug(f"Progress: $count processed ($synced synced, $skipped skipped, $errored errors) — $rate%.1f/s")
-        }
+        // createdAt est inclus dans subscriptionFields, accessible via parent > subscription
+        val createdAt = (row \ "parent" \ "subscription" \ "createdAt").asOpt[Long].getOrElse(0L)
 
         (for {
           otoroshiSettings <- EitherT.fromOption[Future](
@@ -623,8 +628,7 @@ class OtoroshiSynchronizerJob(
           }
         } yield (apk, equals)).value
           .recover {
-            case e =>
-              Left(AppError.InternalServerError(e.getMessage))
+            case e => Left(AppError.InternalServerError(e.getMessage))
           }
           .map {
             case Left(error) =>
@@ -633,6 +637,21 @@ class OtoroshiSynchronizerJob(
             case Right((_, wasEqual)) =>
               if (wasEqual) skipped.incrementAndGet() else synced.incrementAndGet()
           }
+          .map(_ => createdAt)
+      }
+      // Ce stage s'exécute dans le thread downstream ordonné de mapAsync :
+      // lastCursor.set est donc toujours appelé dans l'ordre des souscriptions
+      .map { createdAt =>
+        lastCursor.set(createdAt)
+        val count = processed.incrementAndGet()
+        if (count % 100 == 0) {
+          val elapsed = (System.nanoTime() - startTime) / 1000000000.0
+          val rate = count / elapsed
+          logger.debug(f"Progress: $count processed ($synced synced, $skipped skipped, $errored errors) — $rate%.1f/s")
+          saveCursor(lastCursor.get()).recover {
+            case e => logger.warn(s"[OtoroshiSync] Failed to save cursor at $createdAt: ${e.getMessage}")
+          }
+        }
       }
       .runWith(Sink.ignore)
       .map { _ =>
@@ -647,9 +666,6 @@ class OtoroshiSynchronizerJob(
 
   }
 
-    // checkRotation(query), //todo: sortir dans un autre job
-    // verifyIfOtoroshiGroupsStillExists(),  //todo: sortir dans un autre job
-
     def run(entryPoint: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(), tenant: Tenant, parallelism: Int = 25): Future[Unit] = {
       logger.info(s"run apikey synchronisation with entry point as $entryPoint")
 
@@ -657,41 +673,58 @@ class OtoroshiSynchronizerJob(
       val jobId = DatastoreId(s"sync-${IdGenerator.token(16)}")
       val now = DateTime.now()
 
+      val jobInfo = JobInformation(
+        id = jobId,
+        tenant = tenant.id,
+        jobName = JobName.ApiKeySynchronization,
+        lockedBy = "otoroshi-verifier-job",
+        lockedAt = now,
+        expiresAt = now.plusMinutes(5),
+        cursor = 0L,
+        startedAt = now,
+        lastBatchAt = now,
+        status = JobStatus.Running
+      )
+
+      // expiresAt est rafraîchi à chaque appel pour servir de heartbeat :
+      // si Daikoku crash, expiresAt ne sera plus mis à jour et le job sera considéré comme stale
+      def saveCursor(cursor: Long) = jobRepo.save(jobInfo.copy(cursor = cursor, expiresAt = DateTime.now().plusMinutes(5)))
+
+      def doRun(maybeLastCursor: Option[Long] = None): Future[Unit] =
+        synchronizeApikeys(entryPoint, tenant, parallelism, saveCursor, maybeLastCursor)
+          .flatMap { _ =>
+            logger.info("[OtoroshiSync] Sync ended")
+            jobRepo.save(jobInfo.copy(status = JobStatus.Completed, lastBatchAt = DateTime.now())).map(_ => ())
+          }
+          .recoverWith { case e =>
+            logger.error(s"[OtoroshiSync] Sync failed: ${e.getMessage}", e)
+            jobRepo.save(jobInfo.copy(status = JobStatus.Failed, lastBatchAt = DateTime.now())).map(_ => ())
+          }
+
+      //FIXME: remove the timer after dev
       Time.concurrentTime(
         jobRepo
-          .findOneNotDeleted(Json.obj(
-            "jobName" -> JobName.ApiKeySynchronization.value,
-            "status" -> JobStatus.Running.value))
+          .find(Json.obj("jobName" -> JobName.ApiKeySynchronization.value), sort = Some(Json.obj("startedAt" -> -1)), maxDocs = 1)
+          .map(_.headOption)
           .flatMap {
-            case Some(_) =>
-              logger.info("can't run another ApiKeySynchronization, already one is running")
+            case Some(lastJob) if lastJob.status == JobStatus.Running && lastJob.expiresAt.isAfterNow =>
+              logger.info("[OtoroshiSync] can't run another ApiKeySynchronization, already one is running")
               Future.successful(())
-            case None =>
-              val jobInfo = JobInformation(
-                id = jobId,
-                tenant = tenant.id,
-                jobName = JobName.ApiKeySynchronization,
-                lockedBy = "otoroshi-verifier-job",
-                lockedAt = now,
-                expiresAt = now.plusHours(1),
-                cursor = "",
-                startedAt = now,
-                lastBatchAt = now,
-                status = JobStatus.Running
-              )
-              jobRepo.save(jobInfo).flatMap { _ =>
-                synchronizeApikeys(entryPoint, tenant, parallelism)
-                  .flatMap { _ =>
-                    logger.info("Sync verification ended")
-                    jobRepo.save(jobInfo.copy(status = JobStatus.Completed, lastBatchAt = DateTime.now()))
-                      .map(_ => ())
-                  }
-                  .recoverWith { case e =>
-                    logger.error(s"Sync failed: ${e.getMessage}", e)
-                    jobRepo.save(jobInfo.copy(status = JobStatus.Failed, lastBatchAt = DateTime.now()))
-                      .map(_ => ())
-                  }
-              }
+
+            case Some(lastJob) if lastJob.status == JobStatus.Running && lastJob.expiresAt.isBeforeNow =>
+              logger.info(s"[OtoroshiSync] Stale running job detected (expiresAt=${lastJob.expiresAt}), marking as Failed and resuming from cursor ${lastJob.cursor}")
+              jobRepo.save(lastJob.copy(status = JobStatus.Failed))
+                .flatMap(_ => jobRepo.save(jobInfo.copy(cursor = lastJob.cursor)))
+                .flatMap(_ => doRun(Some(lastJob.cursor)))
+
+            case Some(lastJob) if lastJob.status == JobStatus.Failed =>
+              logger.info(s"[OtoroshiSync] Previous job failed, resuming from cursor ${lastJob.cursor}")
+              jobRepo.save(jobInfo.copy(cursor = lastJob.cursor))
+                .flatMap(_ => doRun(Some(lastJob.cursor)))
+
+            case _ =>
+              logger.info("[OtoroshiSync] Starting fresh sync")
+              jobRepo.save(jobInfo).flatMap(_ => doRun())
           }, "Synchronization run"
       )
     }

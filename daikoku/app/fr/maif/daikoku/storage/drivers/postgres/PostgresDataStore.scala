@@ -816,9 +816,9 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
         case _ =>
           logger.info(s"Create missing schema : $getSchema")
           for {
-            _ <-
-              reactivePg.rawQuery(s"CREATE SCHEMA IF NOT EXISTS ${getSchema}")
+            _ <- reactivePg.rawQuery(s"CREATE SCHEMA IF NOT EXISTS $getSchema")
             _ <- createDatabase()
+            _ <- createIndexes()
           } yield ()
       }
       .recover { case e: Exception =>
@@ -830,6 +830,57 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
   def createDatabase(): Future[Any] = {
     logger.info("Checking status of database ...")
     Future.sequence(TABLES.map { case (key, value) => createTable(key, value) })
+  }
+
+  private def createIndexes(): Future[Unit] = {
+    for {
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_id ON apis ((content->>'_id'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_team ON apis ((content->>'team'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_tenant ON apis ((content->>'_tenant'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_deleted ON apis ((content->>'_deleted'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_hrid ON apis ((content->>'_humanReadableId'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_version ON apis ((content->>'currentVersion'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_state ON apis ((content->>'state'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_api_plans ON apis USING GIN ((content->'possibleUsagePlans'));")
+
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_notification_id ON notifications ((content->>'_id'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_notification_tenant ON notifications ((content->>'_tenant'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_notification_deleted ON notifications ((content->>'_deleted'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_notification_team ON notifications ((content->>'team'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_notification_action_team ON notifications ((content-> 'action' ->> 'team'));")
+
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_team_id ON teams ((content->>'_id'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_team_tenant ON teams ((content->>'_tenant'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_team_deleted ON teams ((content->>'_deleted'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_team_hrid ON teams ((content->>'_humanReadableId'));")
+
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_plan_id ON usage_plans ((content->>'_id'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_plan_tenant ON usage_plans ((content->>'_tenant'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_plan_deleted ON usage_plans ((content->>'_deleted'));")
+
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_session_id ON user_sessions ((content->>'_id'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_session_userid ON user_sessions ((content->>'userId'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_session_useremail ON user_sessions ((content->>'userEmail'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_session_expires ON user_sessions ((content->>'expires'));")
+
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_user_id ON users ((content->>'_id'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_user_tenant ON users ((content->>'_tenant'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_user_deleted ON users ((content->>'_deleted'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_user_hrid ON users ((content->>'_humanReadableId'));")
+      
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_id ON api_subscriptions ((content->>'_id'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_tenant ON api_subscriptions ((content->>'_tenant'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_api ON api_subscriptions ((content->>'api'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_plan ON api_subscriptions ((content->>'plan'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_parent ON api_subscriptions ((content->>'parent'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_by ON api_subscriptions ((content->>'by'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_enabled ON api_subscriptions ((content->>'enabled'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_created_at ON api_subscriptions ((content->>'createdAt'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_subscription_clientId ON api_subscriptions ((content-> 'apiKey' ->> 'clientId));")
+      
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_job_started_at ON job_informations ((content->>'startedAt'));")
+      _ <- reactivePg.rawQuery("CREATE INDEX IF NOT EXISTS idx_job_name ON job_informations ((content->>'jobName'));")
+    } yield ()
   }
 
   def createTable(table: String, allFields: Boolean): Future[Any] = {
