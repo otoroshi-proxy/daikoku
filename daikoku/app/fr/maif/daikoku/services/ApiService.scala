@@ -16,7 +16,7 @@ import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.utils.Cypher.{decrypt, encrypt}
 import fr.maif.daikoku.utils.StringImplicits.BetterString
 import fr.maif.daikoku.utils.future.EnhancedObject
-import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiVerifierJob, SyncInformation}
+import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiSynchronizerJob, SyncInformation}
 import fr.maif.daikoku.utils.{IdGenerator, JsonOperationsHelper, OtoroshiClient, Translator}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
@@ -33,13 +33,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 class ApiService(
-    env: Env,
-    otoroshiClient: OtoroshiClient,
-    messagesApi: MessagesApi,
-    translator: Translator,
-    apiKeyStatsJob: ApiKeyStatsJob,
-    otoroshiSynchronisator: OtoroshiVerifierJob,
-    paymentClient: PaymentClient
+                  env: Env,
+                  otoroshiClient: OtoroshiClient,
+                  messagesApi: MessagesApi,
+                  translator: Translator,
+                  apiKeyStatsJob: ApiKeyStatsJob,
+                  otoroshiSynchronisator: OtoroshiSynchronizerJob,
+                  paymentClient: PaymentClient
 ) {
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext

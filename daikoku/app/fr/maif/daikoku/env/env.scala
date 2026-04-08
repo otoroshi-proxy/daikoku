@@ -4,10 +4,10 @@ import cats.implicits.catsSyntaxOptionId
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.{JWT, JWTVerifier}
 import fr.maif.daikoku.audit.AuditActorSupervizer
-import fr.maif.daikoku.domain.OtoroshiSyncMode.Interval
+import fr.maif.daikoku.domain.SchedulingMode.Interval
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
-import fr.maif.daikoku.domain.{DatastoreId, OtoroshiSyncMode, ReportsInfo, TeamApiKeyVisibility, Tenant}
+import fr.maif.daikoku.domain.{DatastoreId, SchedulingMode, ReportsInfo, TeamApiKeyVisibility, Tenant}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider.Local
 import fr.maif.daikoku.login.{AuthProvider, LoginFilter, OAuth2Config}
@@ -27,7 +27,7 @@ import play.api.mvc.EssentialFilter
 import play.api.{Configuration, Environment}
 
 import java.nio.file.Paths
-import scala.concurrent.duration.{FiniteDuration, *}
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -318,15 +318,50 @@ class Config(val underlying: Configuration) {
         .getOptional[Int]("daikoku.otoroshi.sync.instance")
         .getOrElse(-1) == 0
     )
-  lazy val otoroshiSyncByCron: Boolean = underlying
-    .getOptional[Boolean]("daikoku.otoroshi.sync.cron")
+  lazy val rotationJobKey: String = underlying
+    .getOptional[String]("daikoku.rotationJob.key")
+    .getOrElse("secret")
+  lazy val rotationJobEnabled: Boolean = underlying
+    .getOptional[Boolean]("daikoku.rotationJob.enabled")
     .getOrElse(false)
+  lazy val rotationJobCronExpr: Option[String] = underlying
+    .getOptional[String]("daikoku.rotationJob.cronExpression")
+  lazy val rotationJobInterval: FiniteDuration = underlying
+    .getOptional[Long]("daikoku.rotationJob.interval")
+    .map(v => v.millis)
+    .getOrElse(1.hour)
+  lazy val rotationJobSchedulingMode: SchedulingMode = underlying
+    .getOptional[String]("daikoku.rotationJob.mode")
+    .flatMap(SchedulingMode.fromValue)
+    .getOrElse(Interval)
+
+  lazy val verifierJobKey: String = underlying
+    .getOptional[String]("daikoku.verifierJob.key")
+    .getOrElse("secret")
+  lazy val verifierJobEnabled: Boolean = underlying
+    .getOptional[Boolean]("daikoku.verifierJob.enabled")
+    .getOrElse(false)
+  lazy val verifierJobCronExpr: Option[String] = underlying
+    .getOptional[String]("daikoku.verifierJob.cronExpression")
+  lazy val verifierJobInterval: FiniteDuration = underlying
+    .getOptional[Long]("daikoku.verifierJob.interval")
+    .map(v => v.millis)
+    .getOrElse(1.hour)
+  lazy val verifierJobSchedulingMode: SchedulingMode = underlying
+    .getOptional[String]("daikoku.verifierJob.mode")
+    .flatMap(SchedulingMode.fromValue)
+    .getOrElse(Interval)
+
   lazy val otoroshiSyncKey: String = underlying
     .getOptional[String]("daikoku.otoroshi.sync.key")
     .getOrElse("secret")
-  lazy val otoroshiSyncMode: OtoroshiSyncMode = underlying
+
+  lazy val otoroshiSyncByCron: Boolean = underlying
+    .getOptional[Boolean]("daikoku.otoroshi.sync.cron")
+    .getOrElse(false)
+  lazy val otoroshiSyncSchedulingMode: SchedulingMode = underlying
     .getOptional[String]("daikoku.otoroshi.sync.mode")
-    .flatMap(OtoroshiSyncMode.fromValue)
+    .flatMap(SchedulingMode.fromValue)
     .getOrElse(Interval)
   lazy val otoroshiSyncCronExpr: Option[String] = underlying
     .getOptional[String]("daikoku.otoroshi.sync.cronExpression")

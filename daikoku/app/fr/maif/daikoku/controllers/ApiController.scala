@@ -21,7 +21,7 @@ import fr.maif.daikoku.domain.UsagePlanVisibility.Private
 import fr.maif.daikoku.domain.json.*
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.jobs
-import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiVerifierJob}
+import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiSynchronizerJob}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.services.{ApiService, DeletionService}
 import fr.maif.daikoku.utils.Cypher.{decrypt, encrypt}
@@ -54,7 +54,7 @@ class ApiController(
                      env: Env,
                      otoroshiClient: OtoroshiClient,
                      cc: ControllerComponents,
-                     otoroshiSynchronisator: OtoroshiVerifierJob,
+                     otoroshiSynchronisator: OtoroshiSynchronizerJob,
                      translator: Translator,
                      paymentClient: PaymentClient,
                      deletionService: DeletionService

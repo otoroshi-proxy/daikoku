@@ -4,7 +4,7 @@ import cats.data.EitherT
 import fr.maif.daikoku.audit.ApiKeyRotationEvent
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.domain.json.ApiSubscriptionyRotationFormat
-import fr.maif.daikoku.domain.{ApiId, ApiSubscription, ApiSubscriptionId, DatastoreId, JobInformation, JobName, JobStatus, Notification, NotificationAction, NotificationId, NotificationType, Tenant, UsagePlan, UsagePlanId}
+import fr.maif.daikoku.domain.{ApiId, ApiSubscription, ApiSubscriptionId, DatastoreId, JobInformation, JobName, JobStatus, Notification, NotificationAction, NotificationId, NotificationType, SchedulingMode, Tenant, UsagePlan, UsagePlanId}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient, Time, Translator}
 import org.apache.pekko.stream.Materializer
@@ -13,6 +13,7 @@ import play.api.Logger
 import play.api.i18n.MessagesApi
 import play.api.libs.json.{JsArray, JsNull, JsObject, JsValue, Json}
 import cats.implicits.*
+import cron4s.Cron
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -29,6 +30,77 @@ class ApiKeySecretRotationJob(
   implicit val ev: Env = env
   implicit val me: MessagesApi = messagesApi
   implicit val tr: Translator = translator
+
+  def start(): Unit = {
+    val syncAvalaible = env.config.rotationJobEnabled && env.config.otoroshiSyncMaster //FIXME: use also otoroshiSyncMaster ??? 
+
+    if (
+      syncAvalaible && ref.get() == null
+    ) {
+      env.config.rotationJobSchedulingMode match {
+        case SchedulingMode.Cron =>
+          val cronExpr = env.config.rotationJobCronExpr.map(Cron.unsafeParse)
+
+          def scheduleNext(): Unit = {
+            val now = DateTime.now()
+            cronExpr.flatMap(_.next[DateTime](now)) match {
+              case Some(nextRun) =>
+                val delayMillis = Math.max(nextRun.getMillis - now.getMillis, 1000)
+                val delay = delayMillis.millis
+
+                logger.info(s"next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
+
+                ref.set(
+                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { _ =>
+                    logger.info(s"cron triggered at $now")
+                    env.dataStore.tenantRepo
+                      .findAllNotDeleted()
+                      .flatMap(tenants =>
+                        Future.sequence(
+                          tenants.map(tenant => run(SyncAllSubscription(), tenant))
+                        )
+                      )
+                      .map(_ => ())
+                      .recover { case e: Throwable =>
+                        logger.error("cron sync failed", e)
+                      }
+                      .andThen { case _ =>
+                        scheduleNext()
+                      }
+                  }
+                )
+
+              case None =>
+                logger.error(s"could not compute next run from cron expression: ${env.config.rotationJobCronExpr.getOrElse("")}")
+            }
+          }
+
+          scheduleNext()
+
+        case SchedulingMode.Interval =>
+          ref.set(
+            env.defaultActorSystem.scheduler
+              .scheduleAtFixedRate(10.seconds, env.config.rotationJobInterval) { _ =>
+                env.dataStore.tenantRepo
+                  .findAllNotDeleted()
+                  .flatMap(tenants =>
+                    Future.sequence(
+                      tenants.map(tenant => run(SyncAllSubscription(), tenant))
+                    )
+                  )
+                  .map(_ => ())
+                  .recover { case e: Throwable =>
+                    logger.error("interval sync failed", e)
+                  }
+              }
+          )
+      }
+    }
+  }
+  
+  def stop(): Unit = {
+    Option(ref.get()).foreach(_.cancel())
+  }
 
   //FIXME: better perf
   private def checkRotation(query: JsObject) = {
@@ -277,11 +349,10 @@ class ApiKeySecretRotationJob(
       )
     }
   }
-
-
+  
   def run(entryPoint: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(), tenant: Tenant): Future[Unit] = {
     rotationlogger.info(s"run apikey rotation check with entry point as $entryPoint")
-    
+
     val query = entryPoint match {
       case apiId: ApiId => Json.obj("api" -> apiId.asJson)
       case usagePlanId: UsagePlanId => Json.obj("plan" -> usagePlanId.asJson)
@@ -292,7 +363,7 @@ class ApiKeySecretRotationJob(
     val jobRepo = env.dataStore.JobInformationRepo.forTenant(tenant)
     val jobId = DatastoreId(s"sync-${IdGenerator.token(16)}")
     val now = DateTime.now()
-    
+
 
     Time.concurrentTime(
       jobRepo

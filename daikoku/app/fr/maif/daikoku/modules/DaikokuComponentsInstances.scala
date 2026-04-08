@@ -39,7 +39,9 @@ class DaikokuComponentsInstances(context: Context)
 
   implicit lazy val env: Env = wire[DaikokuEnv]
 
-  lazy val verifier = wire[OtoroshiVerifierJob]
+  lazy val verifier = wire[OtoroshiSynchronizerJob]
+  lazy val entityVerifier = wire[OtoroshiEntitiesVerifierJob]
+  lazy val rotationVerifier = wire[ApiKeySecretRotationJob]
   lazy val deletor = wire[QueueJob]
   lazy val statsJob = wire[ApiKeyStatsJob]
   lazy val auditTrailPurgeJob = wire[AuditTrailPurgeJob]

@@ -45,10 +45,27 @@ or
 | `daikoku.exposition.otoroshi.stateRespHeaderName` | string  | "Otoroshi-State-resp" | The Otoroshi exchange protocol response header name                  |
 | `daikoku.otoroshi.groups.namePrefix`              | string  |                       | Value to filter Otoroshi groups based on the group name              |
 | `daikoku.otoroshi.groups.idPrefix`                | string  |                       | Value to filter Otoroshi groups based on the group d                 |
+| `daikoku.otoroshi.sync.mode`                    | string | "interval"                 | Sync scheduling strategy: `interval` (fixed delay loop) or `cron` (cron expression)  |
 | `daikoku.otoroshi.sync.master`                    | boolean | false                 | Value to define if the instance is the master to sync Otoroshi datas |
-| `daikoku.otoroshi.sync.key`                       | string  | "secret"              | Sync key to sync Otoroshi                                            |
+| `daikoku.otoroshi.sync.key`                       | string  | "secret"              | Access key to synchronize subscription with Otoroshi                                           |
 | `daikoku.otoroshi.sync.cron`                      | boolean | false                 | Value to define if Otoroshi values are sync by cron                  |
+| `daikoku.otoroshi.sync.cronExpression`            | string  |                       | **Only used when `mode = cron`**. Cron expression (sec min hour day month weekday)                                 |
+| `daikoku.otoroshi.sync.interval`            | number  |                       | **Only used when `mode = interval`**. Delay in milliseconds between each sync run                               |
 | `daikoku.otoroshi.sync.instance`                  | number  |                       | Daikoku instance number                                              |
+
+## Daikoku jobs settings
+| name                                              |  type   | default value         | description                                                          |
+|---------------------------------------------------|:-------:|-----------------------|----------------------------------------------------------------------|
+| `daikoku.rotationJob.enabled`                       | boolean  | false              | Value to define if the job to check ang get secrets rotation is enabled                                      |
+| `daikoku.rotationJob.mode`                    | string | "interval"                 | scheduling strategy: `interval` (fixed delay loop) or `cron` (cron expression)  |
+| `daikoku.rotationJob.key`                       | string  | "secret"              | Access key to run rotation job                                        |
+| `daikoku.rotationJob.cronExpression`            | string  |                       | **Only used when `mode = cron`**. Cron expression (sec min hour day month weekday)                                 |
+| `daikoku.rotationJob.interval`            | interval  |  3600000                     | **Only used when `mode = interval`**. Delay in milliseconds between each sync run                               |
+| `daikoku.verifierJob.enabled`                       | boolean  | false              | Value to define if the job to check the otoroshi entities used in daikoku are still exiting in otoroshi is enabled                                     |
+| `daikoku.verifierJob.mode`                    | string | "interval"                 | scheduling strategy: `interval` (fixed delay loop) or `cron` (cron expression)  |
+| `daikoku.verifierJob.key`                       | string  | "secret"              | Access key to run otoroshi entities verifier job                                        |
+| `daikoku.verifierJob.cronExpression`            | string  |                       | **Only used when `mode = cron`**. Cron expression (sec min hour day month weekday)                                 |
+| `daikoku.verifierJob.interval`            | interval  |    1hour                   | **Only used when `mode = interval`**. Delay in milliseconds between each sync run                               |
 
 ## Daikoku init
 

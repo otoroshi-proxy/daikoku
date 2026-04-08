@@ -679,11 +679,11 @@ case class Asset(id: AssetId, tenant: TenantId, slug: String)
   override def asJson: JsValue = json.AssetFormat.writes(this)
 }
 
-enum OtoroshiSyncMode(val value: String):
-  case Interval extends OtoroshiSyncMode("interval")
-  case Cron extends OtoroshiSyncMode("cron")
+enum SchedulingMode(val value: String):
+  case Interval extends SchedulingMode("interval")
+  case Cron extends SchedulingMode("cron")
 
-object OtoroshiSyncMode {
-  def fromValue(v: String): Option[OtoroshiSyncMode] =
-    OtoroshiSyncMode.values.find(_.value == v)
+object SchedulingMode {
+  def fromValue(v: String): Option[SchedulingMode] =
+    SchedulingMode.values.find(_.value == v)
 }

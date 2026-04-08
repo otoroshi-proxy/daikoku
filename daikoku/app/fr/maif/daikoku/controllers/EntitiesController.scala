@@ -135,7 +135,7 @@ class DaikokuActionOrApiKey(val parser: BodyParser[AnyContent], env: Env)
       request.attrs.get(IdentityAttrs.TenantAdminKey)
     ) match {
       case (Some(tenant), _, _, Some(user), isTenantAdmin)
-          if !tenantSecurity.isDefaultMode(tenant, user.some, isTenantAdmin) =>
+          if !tenantSecurity.canAccessInCurrentMode(tenant, user.some, isTenantAdmin, request.path) =>
         Errors.craftResponseResultF(
           s"${tenant.tenantMode.get.toString} mode enabled",
           Results.ServiceUnavailable

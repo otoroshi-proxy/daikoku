@@ -1,8 +1,9 @@
 package fr.maif.daikoku.jobs
 
+import cron4s.Cron
 import fr.maif.daikoku.audit.JobEvent
 import fr.maif.daikoku.domain.NotificationAction.{OtoroshiSyncApiError, OtoroshiSyncSubscriptionError}
-import fr.maif.daikoku.domain.{Api, ApiId, ApiSubscriptionId, AuthorizedEntities, ConsoleMailerSettings, DatastoreId, JobInformation, JobName, JobStatus, Notification, NotificationAction, NotificationId, NotificationStatus, NotificationType, OtoroshiSettings, OtoroshiSyncNotificationAction, TeamId, Tenant, TenantId, UsagePlanId, User, UserId}
+import fr.maif.daikoku.domain.{Api, ApiId, ApiSubscriptionId, AuthorizedEntities, ConsoleMailerSettings, DatastoreId, JobInformation, JobName, JobStatus, Notification, NotificationAction, NotificationId, NotificationStatus, NotificationType, OtoroshiSettings, SchedulingMode, OtoroshiSyncNotificationAction, TeamId, Tenant, TenantId, UsagePlanId, User, UserId}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.utils.{ConsoleMailer, IdGenerator, Mailer, OtoroshiClient, Time, Translator}
 import org.apache.pekko.Done
@@ -16,7 +17,7 @@ import play.api.libs.json.*
 
 import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Success, Failure}
+import scala.util.{Failure, Success}
 
 class OtoroshiEntitiesVerifierJob(
                                    client: OtoroshiClient,
@@ -32,6 +33,76 @@ class OtoroshiEntitiesVerifierJob(
   implicit val me: MessagesApi = messagesApi
   implicit val tr: Translator = translator
 
+  def start(): Unit = {
+    val syncAvalaible = env.config.verifierJobEnabled && env.config.otoroshiSyncMaster //FIXME: use also otoroshiSyncMaster ??? 
+
+    if (
+      syncAvalaible && ref.get() == null
+    ) {
+      env.config.verifierJobSchedulingMode match {
+        case SchedulingMode.Cron =>
+          val cronExpr = env.config.verifierJobCronExpr.map(Cron.unsafeParse)
+
+          def scheduleNext(): Unit = {
+            val now = DateTime.now()
+            cronExpr.flatMap(_.next[DateTime](now)) match {
+              case Some(nextRun) =>
+                val delayMillis = Math.max(nextRun.getMillis - now.getMillis, 1000)
+                val delay = delayMillis.millis
+
+                logger.info(s"next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
+
+                ref.set(
+                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { _ =>
+                    logger.info(s"cron triggered at $now")
+                    env.dataStore.tenantRepo
+                      .findAllNotDeleted()
+                      .flatMap(tenants =>
+                        Future.sequence(
+                          tenants.map(tenant => run(SyncAllSubscription(), tenant))
+                        )
+                      )
+                      .map(_ => ())
+                      .recover { case e: Throwable =>
+                        logger.error("cron sync failed", e)
+                      }
+                      .andThen { case _ =>
+                        scheduleNext()
+                      }
+                  }
+                )
+
+              case None =>
+                logger.error(s"could not compute next run from cron expression: ${env.config.verifierJobCronExpr.getOrElse("")}")
+            }
+          }
+
+          scheduleNext()
+
+        case SchedulingMode.Interval =>
+          ref.set(
+            env.defaultActorSystem.scheduler
+              .scheduleAtFixedRate(10.seconds, env.config.verifierJobInterval) { _ =>
+                env.dataStore.tenantRepo
+                  .findAllNotDeleted()
+                  .flatMap(tenants =>
+                    Future.sequence(
+                      tenants.map(tenant => run(SyncAllSubscription(), tenant))
+                    )
+                  )
+                  .map(_ => ())
+                  .recover { case e: Throwable =>
+                    logger.error("interval sync failed", e)
+                  }
+              }
+          )
+      }
+    }
+  }
+  
+  def stop(): Unit = {
+    Option(ref.get()).foreach(_.cancel())
+  }
 
   private def verifyIfOtoroshiGroupsStillExists(
                                                  query: JsObject = Json.obj()

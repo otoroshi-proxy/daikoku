@@ -257,7 +257,7 @@ case class SyncInformation(
                             tenantAdminTeam: Team
                           )
 
-class OtoroshiVerifierJob(
+class OtoroshiSynchronizerJob(
                            client: OtoroshiClient,
     env: Env,
     translator: Translator,
@@ -310,8 +310,8 @@ class OtoroshiVerifierJob(
     if (
       syncAvalaible && ref.get() == null
     ) {
-      env.config.otoroshiSyncMode match {
-        case OtoroshiSyncMode.Cron =>
+      env.config.otoroshiSyncSchedulingMode match {
+        case SchedulingMode.Cron =>
           val cronExpr = env.config.otoroshiSyncCronExpr.map(Cron.unsafeParse)
 
           def scheduleNext(): Unit = {
@@ -324,7 +324,7 @@ class OtoroshiVerifierJob(
                 logger.info(s"[OtoroshiSync] next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
 
                 ref.set(
-                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { () =>
+                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { _ =>
                     logger.info(s"[OtoroshiSync] cron triggered at $now")
                     env.dataStore.tenantRepo
                       .findAllNotDeleted()
@@ -350,7 +350,7 @@ class OtoroshiVerifierJob(
 
           scheduleNext()
 
-        case OtoroshiSyncMode.Interval =>
+        case SchedulingMode.Interval =>
           ref.set(
             env.defaultActorSystem.scheduler
               .scheduleAtFixedRate(10.seconds, env.config.otoroshiSyncInterval) { () =>

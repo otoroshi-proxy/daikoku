@@ -142,7 +142,7 @@ class HomeController(
                             case None =>
                               Future.successful(ServiceStatus.Absent)
                             case Some(cfg: S3Configuration) =>
-                              env.assetsStore.checkBucket()(cfg).map {
+                              env.assetsStore.checkBucket()(using cfg).map {
                                 case BucketAccess.AccessDenied => ServiceStatus.Down
                                 case BucketAccess.AccessGranted => ServiceStatus.Up
                                 case BucketAccess.NotExists => ServiceStatus.Absent
@@ -154,7 +154,7 @@ class HomeController(
                           val checks =
                             tenant.otoroshiSettings.map { otoSettings =>
                               OtoroshiClient(env)
-                                .getApikey(otoSettings.clientId)(otoroshiSettings =
+                                .getApikey(otoSettings.clientId)(using otoroshiSettings =
                                   otoSettings
                                 )
                                 .map { _ =>
