@@ -1,5 +1,6 @@
 package fr.maif.daikoku.controllers
 
+import fr.maif.daikoku.domain.{ApiId, ApiSubscriptionId, UsagePlanId}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.utils.{DaikokuApiAction, OtoroshiClient}
 import org.apache.pekko.http.scaladsl.util.FastFuture
@@ -31,7 +32,18 @@ class JobsController(
       TenantHelper.withTenant(ctx, env){ tenant =>
         ctx.getQueryString("access_key").orElse(ctx.getQueryString("key")) match {
           case Some(key) if env.config.otoroshiSyncKey.contains(key) =>
-            otoroshiSynchronizerJob.run(tenant = tenant, parallelism = parallelism)
+            val entryPoint: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription =
+              ctx.getQueryString("subscription") match {
+                case Some(id) => ApiSubscriptionId(id)
+                case None => ctx.getQueryString("plan") match {
+                  case Some(id) => UsagePlanId(id)
+                  case None => ctx.getQueryString("api") match {
+                    case Some(id) => ApiId(id)
+                    case None => SyncAllSubscription()
+                  }
+                }
+              }
+            otoroshiSynchronizerJob.run(entryPoint = entryPoint, tenant = tenant, parallelism = parallelism)
               .map(_ => Ok(Json.obj("done" -> true)))
           case _ => AppError.Unauthorized.renderF()
         }

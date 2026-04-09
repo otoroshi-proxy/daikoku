@@ -40,6 +40,10 @@ jobs:
             compose-file: ./daikoku/javascript/tests/docker-compose-openid.yml
             playwright-config: playwright.oidc.config.js
             health-url: http://localhost:13200/health
+          - name: ldap
+            compose-file: ./daikoku/javascript/tests/docker-compose.yml
+            playwright-config: playwright.perf.config.js
+            health-url: http://localhost:13200/health
     name: test-${{ matrix.suite.name }}
     steps:
       - name: Checkout repository

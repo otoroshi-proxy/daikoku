@@ -56,7 +56,7 @@ class OtoroshiEntitiesVerifierJob(
                 logger.info(s"next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
 
                 ref.set(
-                  env.defaultActorSystem.scheduler.scheduleOnce(delay) { () =>
+                  env.defaultActorSystem.scheduler.scheduleOnce(delay) {
                     logger.info(s"cron triggered at $now")
                     val _ = env.dataStore.tenantRepo
                       .findAllNotDeleted()
