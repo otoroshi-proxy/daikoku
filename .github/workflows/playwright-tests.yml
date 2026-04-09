@@ -40,7 +40,7 @@ jobs:
             compose-file: ./daikoku/javascript/tests/docker-compose-openid.yml
             playwright-config: playwright.oidc.config.js
             health-url: http://localhost:13200/health
-          - name: ldap
+          - name: perf
             compose-file: ./daikoku/javascript/tests/docker-compose.yml
             playwright-config: playwright.perf.config.js
             health-url: http://localhost:13200/health
