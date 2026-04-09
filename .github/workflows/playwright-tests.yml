@@ -63,8 +63,9 @@ jobs:
 
       - name: Pull Daikoku image
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest maif/daikoku:latest
+          BRANCH=$(echo "${{ github.event.workflow_run.head_branch || github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH} maif/daikoku:latest
 
       - name: Start environment
         uses: hoverkraft-tech/compose-action@v2.2.0

@@ -26,7 +26,10 @@ lazy val root = (project in file("."))
   .disablePlugins(PlayFilters)
   .settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
-    buildInfoPackage := "fr.maif.daikoku"
+    buildInfoPackage := "fr.maif.daikoku",
+    // cron4s 0.8.x has Scala.js annotations that break Scaladoc generation on JVM
+    Compile / doc / sources := Seq.empty,
+    Compile / packageDoc / publishArtifact := false,
   )
 
 assembly / assemblyMergeStrategy := {
