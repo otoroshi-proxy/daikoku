@@ -8,13 +8,13 @@ import { fileURLToPath } from "node:url";
 // CONFIG — calibré sur les stats prod
 /////////////////////////////////////////////
 
-const BASE_URL = "http://localhost:5173";
-const ADMIN_USER = "admin_key_client_id";
-const ADMIN_PASS = "admin_key_client_secret";
+const BASE_URL = process.env.DAIKOKU_URL ?? "http://localhost:5173";
+const ADMIN_USER = process.env.DAIKOKU_ADMIN_USER ?? "admin_key_client_id";
+const ADMIN_PASS = process.env.DAIKOKU_ADMIN_PASS ?? "admin_key_client_secret";
 
-const OTOROSHI_URL = "http://otoroshi-api.oto.tools:8080";
-const OTOROSHI_USER = "admin-api-apikey-id";
-const OTOROSHI_PASS = "admin-api-apikey-secret";
+const OTOROSHI_URL = process.env.OTOROSHI_URL ?? "http://otoroshi-api.oto.tools:8080";
+const OTOROSHI_USER = process.env.OTOROSHI_USER ?? "admin-api-apikey-id";
+const OTOROSHI_PASS = process.env.OTOROSHI_PASS ?? "admin-api-apikey-secret";
 
 const TENANT_ID = "default";
 const OTOROSHI_SETTINGS_ID = "seed-otoroshi";
