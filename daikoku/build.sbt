@@ -5,7 +5,7 @@ organization := "fr.maif.otoroshi"
 maintainer := "oss@maif.fr"
 Universal / packageName := "daikoku"
 
-scalaVersion := "3.3.6"
+scalaVersion := "3.8.2"
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
@@ -26,7 +26,10 @@ lazy val root = (project in file("."))
   .disablePlugins(PlayFilters)
   .settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
-    buildInfoPackage := "fr.maif.daikoku"
+    buildInfoPackage := "fr.maif.daikoku",
+    // cron4s 0.8.x has Scala.js annotations that break Scaladoc generation on JVM
+    Compile / doc / sources := Seq.empty,
+    Compile / packageDoc / publishArtifact := false,
   )
 
 assembly / assemblyMergeStrategy := {
@@ -105,7 +108,9 @@ libraryDependencies ++= Seq(
   "org.apache.logging.log4j" % "log4j-api" % "2.25.3",
   "com.github.blemale" %% "scaffeine" % "5.3.0",
   "com.github.slugify" % "slugify" % "3.0.7",
-  "joda-time" % "joda-time" % "2.14.0"
+  "joda-time" % "joda-time" % "2.14.0",
+  "com.github.alonsodomin.cron4s" %% "cron4s-core" % "0.8.2",
+  "com.github.alonsodomin.cron4s" %% "cron4s-joda" % "0.8.2"
 )
 
 dependencyOverrides ++= Seq(
@@ -163,6 +168,7 @@ scalacOptions ++= Seq(
   "-Wconf:src=views/.*:silent",
   "-Wconf:msg=discarded non-Unit value:s",
 )
+
 
 //scalacOptions ++= {
 //  CrossVersion.partialVersion(scalaVersion.value) match {

@@ -21,7 +21,7 @@ import fr.maif.daikoku.domain.UsagePlanVisibility.Private
 import fr.maif.daikoku.domain.json.*
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.jobs
-import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiVerifierJob}
+import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiSynchronizerJob}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.services.{ApiService, DeletionService}
 import fr.maif.daikoku.utils.Cypher.{decrypt, encrypt}
@@ -54,7 +54,7 @@ class ApiController(
                      env: Env,
                      otoroshiClient: OtoroshiClient,
                      cc: ControllerComponents,
-                     otoroshiSynchronisator: OtoroshiVerifierJob,
+                     otoroshiSynchronisator: OtoroshiSynchronizerJob,
                      translator: Translator,
                      paymentClient: PaymentClient,
                      deletionService: DeletionService
@@ -104,7 +104,7 @@ class ApiController(
               EitherT(Try {
                 env.wsClient
                   .url(finalUrl)
-                  .withHttpHeaders(headers.toSeq: _*)
+                  .withHttpHeaders(headers.toSeq*)
                   .get()
                   .map { resp =>
                     val contentType =
@@ -207,7 +207,7 @@ class ApiController(
                   : Try[Future[Either[AppError, Result]]] = Try {
                 env.wsClient
                   .url(finalUrl)
-                  .withHttpHeaders(headers.toSeq: _*)
+                  .withHttpHeaders(headers.toSeq*)
                   .get()
                   .map { resp =>
                     val contentType =
@@ -892,7 +892,7 @@ class ApiController(
                           .url(url)
                           .withMethod("GET")
                           .withRequestTimeout(30.seconds)
-                          .withHttpHeaders(page.remoteContentHeaders.toSeq: _*)
+                          .withHttpHeaders(page.remoteContentHeaders.toSeq*)
                           .stream()
                           .map { r =>
                             Status(r.status)
@@ -904,7 +904,7 @@ class ApiController(
                                 )
                               )
                               .withHeaders(
-                                r.headers.view.mapValues(_.head).toSeq: _*
+                                r.headers.view.mapValues(_.head).toSeq*
                               )
                               .as(page.contentType) //r.header("Content-Type").getOrElse(page.contentType))
                           }
@@ -1024,15 +1024,15 @@ class ApiController(
       .map(Json.parse)
       .map(value =>
         subscriptionData(
-          apiKey = (value \ "apikey").as(OtoroshiApiKeyFormat),
-          plan = (value \ "plan").as(UsagePlanIdFormat),
-          team = (value \ "team").as(TeamIdFormat),
-          api = (value \ "api").as(ApiIdFormat)
+          apiKey = (value \ "apikey").as(using OtoroshiApiKeyFormat),
+          plan = (value \ "plan").as(using UsagePlanIdFormat),
+          team = (value \ "team").as(using TeamIdFormat),
+          api = (value \ "api").as(using ApiIdFormat)
         )
       )
 
   val sourceApiSubscriptionsDataBodyParser
-      : BodyParser[Source[subscriptionData, _]] =
+      : BodyParser[Source[subscriptionData, ?]] =
     BodyParser("Streaming BodyParser") { req =>
       req.contentType match {
         case Some("application/json") =>
@@ -1121,7 +1121,7 @@ class ApiController(
       .filterNot(_.isError)
       .map(_.get)
 
-  val sourceApiBodyParser: BodyParser[Source[Api, _]] =
+  val sourceApiBodyParser: BodyParser[Source[Api, ?]] =
     BodyParser("Streaming BodyParser") { req =>
       req.contentType match {
         case Some("application/json") =>
@@ -1709,14 +1709,14 @@ class ApiController(
             customMaxPerMonth = (body \ "customMaxPerMonth").asOpt[Long],
             customReadOnly = (body \ "customReadOnly").asOpt[Boolean],
             adminCustomName = (body \ "adminCustomName").asOpt[String],
-            validUntil = (body \ "validUntil").asOpt(DateTimeFormat),
+            validUntil = (body \ "validUntil").asOpt(using DateTimeFormat),
           )
           _ <- EitherT.right[AppError](
             env.dataStore.apiSubscriptionRepo
               .forTenant(ctx.tenant.id)
               .save(subToSave))
 
-          _ <- EitherT.right[AppError](otoroshiSynchronisator.verify(Json.obj("_id" -> subscription.id.asJson)))
+          _ <- EitherT.right[AppError](otoroshiSynchronisator.run(subscription.id, ctx.tenant))
         } yield Ok(subToSave.asJson))
           .leftMap(_.render())
           .merge
@@ -2167,7 +2167,7 @@ class ApiController(
                 )
               )
               createdApiKey <-
-                EitherT(otoroshiClient.createApiKey(apikey)(o))
+                EitherT(otoroshiClient.createApiKey(apikey)(using o))
               _ <- EitherT.right[AppError](
                 env.dataStore.apiSubscriptionRepo
                   .forTenant(tenant.id)
@@ -2388,7 +2388,7 @@ class ApiController(
                       _ <- EitherT.liftF[Future, AppError, Seq[Boolean]](Future.sequence(childs.filter(c => c.id != futureParent.id)
                         .map(child => env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
                           .save(child.copy(parent = futureParent.id.some))))) //update first child to remove parent
-                      _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.verify(Json.obj("_id" -> futureParent.id.asJson)))
+                      _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.run(futureParent.id, ctx.tenant))
                       _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.notificationRepo.forTenant(ctx.tenant)
                         .save(Notification(
                         id = NotificationId(IdGenerator.token(32)),
@@ -2467,7 +2467,7 @@ class ApiController(
   def apiOfTeam(teamId: String, apiId: String, version: String) =
     DaikokuAction.async { ctx =>
       CommonServices
-        .apiOfTeam(teamId, apiId, version)(ctx, env, ec)
+        .apiOfTeam(teamId, apiId, version)(using ctx, env, ec)
         .map {
           case Right(api)  => Ok(api.asJson)
           case Left(error) => error.render()
@@ -3152,7 +3152,7 @@ class ApiController(
           _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiRepo
               .forTenant(ctx.tenant.id)
               .save(newApi))
-          _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.verify(Json.obj("api" -> newApi.id.value)))
+          _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.run(newApi.id, ctx.tenant))
           _ <- EitherT.liftF[Future, AppError, Seq[Boolean]](updateTagsOfIssues(ctx.tenant.id, newApi))
           _ <- EitherT.liftF[Future, AppError, Long](updateAllHumanReadableId(ctx, newApi, oldApi))
           _ <- EitherT.liftF[Future, AppError, Long](turnOffDefaultVersion(
@@ -4644,7 +4644,7 @@ class ApiController(
           s"@{user.name} has created new plan @{plan.id} for api @{api.name} to @{newTeam.name}"
         )
       )(teamId, ctx) { team =>
-        val newPlan = ctx.request.body.as(UsagePlanFormat)
+        val newPlan = ctx.request.body.as(using UsagePlanFormat)
 
         def addProcess(
             api: Api,
@@ -4732,7 +4732,7 @@ class ApiController(
           s"@{user.name} has updated plan @{plan.id} for api @{api.name} to @{newTeam.name}"
         )
       )(teamId, ctx) { team =>
-        val updatedPlan = ctx.request.body.as(UsagePlanFormat)
+        val updatedPlan = ctx.request.body.as(using UsagePlanFormat)
 
         def getPlanAndCheckIt(
             oldPlan: UsagePlan,
@@ -5052,7 +5052,7 @@ class ApiController(
             env.dataStore.usagePlanRepo.forTenant(ctx.tenant).save(updatedPlan)
           )
           _ <- EitherT.liftF(
-            otoroshiSynchronisator.verify(Json.obj("plan" -> updatedPlan.id.value))
+            otoroshiSynchronisator.run(updatedPlan.id, ctx.tenant)
           )
           _ <- runDemandUpdate(oldPlan, updatedPlan, api)
           //FIXME: attention, peut etre il y en a qui sont blocked de base
@@ -5128,8 +5128,8 @@ class ApiController(
       )(teamId, ctx) { team =>
         val paymentSettingsId =
           (ctx.request.body \ "paymentSettings" \ "thirdPartyPaymentSettingsId")
-            .as(ThirdPartyPaymentSettingsIdFormat)
-        val base = ctx.request.body.as(BasePaymentInformationFormat)
+            .as(using ThirdPartyPaymentSettingsIdFormat)
+        val base = ctx.request.body.as(using BasePaymentInformationFormat)
 
         def getRatedPlan(
             plan: UsagePlan,
@@ -5254,7 +5254,7 @@ class ApiController(
           test = subscriptions.groupBy(sub => sub.plan).toSeq
           r <- Future.sequence(test.map {
             case (planId, subs) =>
-              getOtoroshiUsage(subs, plans.find(_.id == planId))(ctx.tenant)
+              getOtoroshiUsage(subs, plans.find(_.id == planId))(using ctx.tenant)
           })
         } yield Ok(JsArray(r.flatMap(_.value)))
 
@@ -5276,7 +5276,7 @@ class ApiController(
             Json.arr()
           )
           usages <- otoroshiClient.getSubscriptionLastUsage(subscriptions)(
-            otoroshi,
+            using otoroshi,
             tenant
           )
         } yield usages

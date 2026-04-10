@@ -116,6 +116,7 @@ class HomeController(
 
   def healthDetailed(): Action[AnyContent] = {
     Action.async { ctx =>
+      println(env.config.detailedHealthAccessKey)
       ctx.getQueryString("access_key") match {
         case Some(key) if env.config.detailedHealthAccessKey.contains(key) => {
           val datastoreHealth = env.dataStore match {
@@ -142,7 +143,7 @@ class HomeController(
                             case None =>
                               Future.successful(ServiceStatus.Absent)
                             case Some(cfg: S3Configuration) =>
-                              env.assetsStore.checkBucket()(cfg).map {
+                              env.assetsStore.checkBucket()(using cfg).map {
                                 case BucketAccess.AccessDenied => ServiceStatus.Down
                                 case BucketAccess.AccessGranted => ServiceStatus.Up
                                 case BucketAccess.NotExists => ServiceStatus.Absent
@@ -154,7 +155,7 @@ class HomeController(
                           val checks =
                             tenant.otoroshiSettings.map { otoSettings =>
                               OtoroshiClient(env)
-                                .getApikey(otoSettings.clientId)(otoroshiSettings =
+                                .getApikey(otoSettings.clientId)(using otoroshiSettings =
                                   otoSettings
                                 )
                                 .map { _ =>
@@ -318,7 +319,7 @@ class HomeController(
 
   def renderCmsPageFromBody(path: String) =
     DaikokuUnauthenticatedAction.async(parse.json) { ctx =>
-      val req = ctx.request.body.as[JsObject].as(CmsRequestRenderingFormat)
+      val req = ctx.request.body.as[JsObject].as(using CmsRequestRenderingFormat)
 
       val currentPage = req.content.find(_.path() == req.current_page)
 

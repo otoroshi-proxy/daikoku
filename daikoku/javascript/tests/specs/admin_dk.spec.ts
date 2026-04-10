@@ -5,7 +5,6 @@ import { ACCUEIL, adminApikeyId, adminApikeySecret, dwightPaperApiKeyId, exposed
 
 
 test.beforeEach(async () => {
-  console.log(`Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`)
   await Promise.all([
     fetch(`http://localhost:${exposedPort}/admin-api/state/reset`, {
       method: 'POST',
@@ -113,5 +112,5 @@ test('[ASOAPI-10506] - Supprimer définitivement un utilisateur (cas particulier
       "Otoroshi-Client-Secret": otoroshiAdminApikeySecret,
     },
   })
-  await expect (maybeKey.status).toBe(404)
+  await expect(maybeKey.status).toBe(404)
 });

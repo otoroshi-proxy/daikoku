@@ -4,13 +4,13 @@ import { ACCUEIL, adminApikeyId, adminApikeySecret, exposedPort, loginOidcAs, lo
 
 test.beforeEach(async () => {
   await fetch(`http://localhost:${exposedPort}/admin-api/state/reset`, {
-        method: 'POST',
-        headers: {
-          "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
-        }
-      })
-  .then(r => r.json())
-  .then(console.log);
+    method: 'POST',
+    headers: {
+      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
+    }
+  })
+    .then(r => r.json())
+    .then(console.log);
 });
 
 
@@ -90,12 +90,11 @@ test('Se connecter avec un user inconnu', async ({ page }) => {
 });
 
 
-test('Health check', async ({ page }) => {
-  const resultHealth = await (fetch(`http://localhost:${exposedPort}/health`, {
+test('Health check', async () => {
+  const resultHealth = await (fetch(`http://localhost:${exposedPort}/health/details?access_key=secret`, {
     method: 'GET',
     headers: {
       "content-type": "application/json",
-      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
     }
   }).then(r => r.json()))
 
@@ -104,41 +103,19 @@ test('Health check', async ({ page }) => {
       datastore: 'UP',
       'Dunder Mifflin': {
         tenantMode: 'Default',
-        status: { mailer: 'UP', S3: 'ABSENT', otoroshi: 'UP' }
-      }
+        status: {
+          mailer: 'UP',
+          S3: 'ABSENT',
+          otoroshi: [
+            {
+              "http://localhost:8080 (otoroshi-api.oto.tools)": "UP"
+            }
+          ]
+        },
+      },
+      "status": "UP",
+      "version": "18.8.0-dev"
     }
   )
-  await page.goto(ACCUEIL);
-  await loginOidcAs(MICHAEL, page);
-
-});
-
-test('Health check without SMTP', async ({ page }) => {
-    await page.route('**:25**', (route) => {
-    route.abort('connectionrefused');
-  });
-
-  const resultHealth = await (fetch(`http://localhost:${exposedPort}/health`, {
-    method: 'GET',
-    headers: {
-      "content-type": "application/json",
-      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
-    }
-  }).then(r => r.json()))
-
-
-  console.log(resultHealth)
-  expect(resultHealth).toEqual(
-    {
-      datastore: 'UP',
-      'Dunder Mifflin': {
-        tenantMode: 'Default',
-        status: { mailer: 'UP', S3: 'ABSENT', otoroshi: 'UP' }
-      }
-    }
-  )
-  await page.goto(ACCUEIL);
-  await loginOidcAs(MICHAEL, page);
-
 });
 

@@ -573,7 +573,7 @@ object CommonServices {
             )
       } yield {
         result
-          .map(_.as(json.ApiWithCountFormat))
+          .map(_.as(using json.ApiWithCountFormat))
           .getOrElse(ApiWithCount())
       }
     }
@@ -680,7 +680,7 @@ object CommonServices {
   }
 
   def apiOfTeam(teamId: String, apiId: String, version: String)(implicit
-      ctx: DaikokuActionContext[_],
+      ctx: DaikokuActionContext[?],
       env: Env,
       ec: ExecutionContext
   ): Future[Either[AppError, Api]] =
@@ -1262,7 +1262,7 @@ object CommonServices {
       } yield {
         NotificationWithCount(
           notifications = (notifications \ "notifications")
-            .asOpt(json.SeqNotificationFormat)
+            .asOpt(using json.SeqNotificationFormat)
             .getOrElse(Seq.empty),
           totalFiltered = (notifications \ "total_filtered").as[Long],
           total = (totals \ "total").as[Long],

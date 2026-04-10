@@ -230,7 +230,7 @@ class MessageActor(implicit
               case None => Json.obj("chat" -> chat, "date" -> JsNull)
             }
         })
-        .runWith(Sink.seq)(env.defaultMaterializer)
+        .runWith(Sink.seq)(using env.defaultMaterializer)
 
       result pipeTo sender()
   }

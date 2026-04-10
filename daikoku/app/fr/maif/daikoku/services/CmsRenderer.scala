@@ -179,7 +179,7 @@ case class CmsPage(
           CommonServices.getVisibleApis(
             limit = Int.MaxValue,
             offset = 0
-          )(ctxUserContext, env, ec),
+          )(using ctxUserContext, env, ec),
           10.seconds
         ) match {
           case Right(ApiWithCount(apis, _, _, _, _, _)) =>
@@ -221,7 +221,7 @@ case class CmsPage(
             Await.result(
               CommonServices
                 .apiOfTeam(api.team.value, api.id.value, version)(
-                  ctxUserContext,
+                  using ctxUserContext,
                   env,
                   ec
                 )
@@ -261,7 +261,7 @@ case class CmsPage(
             Await.result(
               CommonServices
                 .apiOfTeam(api.team.value, api.id.value, version)(
-                  ctx.asInstanceOf[DaikokuActionContext[Any]],
+                  using ctx.asInstanceOf[DaikokuActionContext[Any]],
                   env,
                   ec
                 )
@@ -281,7 +281,7 @@ case class CmsPage(
         Await.result(
           CommonServices
             .getVisibleApis(limit = Int.MaxValue, offset = 0)(
-              maybeWithoutUserToUserContextConverter(ctx),
+              using maybeWithoutUserToUserContextConverter(ctx),
               env,
               ec
             )
@@ -296,7 +296,7 @@ case class CmsPage(
   }
 
   private def maybeWithoutUserToUserContextConverter(
-      ctx: DaikokuInternalActionMaybeWithoutUserContext[_]
+      ctx: DaikokuInternalActionMaybeWithoutUserContext[?]
   ): DaikokuActionContext[JsValue] = {
     DaikokuActionContext(
       request = null,
@@ -363,7 +363,7 @@ case class CmsPage(
       s"daikoku-owned-teams",
       (_: CmsPage, options: Options) => {
         Await.result(
-          CommonServices.myTeams()(ctxUserContext, env, ec),
+          CommonServices.myTeams()(using ctxUserContext, env, ec),
           10.seconds
         ) match {
           case Right(teams) =>
@@ -451,7 +451,7 @@ case class CmsPage(
       s"daikoku-json-owned-teams",
       (_: CmsPage, _: Options) =>
         Await.result(
-          CommonServices.myTeams()(ctxUserContext, env, ec).map {
+          CommonServices.myTeams()(using ctxUserContext, env, ec).map {
             case Right(teams) => JsArray(teams.map(_.asJson))
             case Left(error)  => toJson(error)
           },
@@ -465,7 +465,7 @@ case class CmsPage(
       parentId: Option[String],
       handlebars: Handlebars,
       name: String,
-      getRepo: Env => TenantCapableRepo[A, _],
+      getRepo: Env => TenantCapableRepo[A, ?],
       stringify: A => JsValue,
       fields: Map[String, Any],
       jsonToCombine: Map[String, JsValue],
@@ -475,7 +475,7 @@ case class CmsPage(
       messagesApi: MessagesApi,
       env: Env
   ): Handlebars = {
-    val repo: TenantCapableRepo[A, _] = getRepo(env)
+    val repo: TenantCapableRepo[A, ?] = getRepo(env)
     handlebars.registerHelper(
       s"daikoku-${name}s",
       (_: CmsPage, options: Options) => {
@@ -629,7 +629,7 @@ case class CmsPage(
   }
 
   private def cmsFindOneNotDeleted(
-      ctx: DaikokuInternalActionMaybeWithoutUserContext[_],
+      ctx: DaikokuInternalActionMaybeWithoutUserContext[?],
       id: String,
       req: Option[CmsRequestRendering]
   )(implicit env: Env, ec: ExecutionContext): Option[CmsPage] = {
@@ -744,7 +744,7 @@ case class CmsPage(
                   fields = tmpFields,
                   jsonToCombine = jsonToCombine,
                   req = req
-                )(env, messagesApi),
+                )(using env, messagesApi),
                 10.seconds
               )
               ._1
@@ -785,7 +785,7 @@ case class CmsPage(
   }
 
   private def daikokuLinks(
-      ctx: DaikokuInternalActionMaybeWithoutUserContext[_],
+      ctx: DaikokuInternalActionMaybeWithoutUserContext[?],
       handlebars: Handlebars
   ) = {
     val links = Map(
@@ -1417,7 +1417,7 @@ case class CmsPage(
               renderString(ctx, parentId, variable, fields, jsonToCombine, req)
             Await.result(
               env.translator.translate(str, ctx.tenant)(
-                messagesApi,
+                using messagesApi,
                 ctx.user
                   .map(
                     _.defaultLanguage

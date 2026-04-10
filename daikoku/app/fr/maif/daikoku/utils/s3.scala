@@ -134,7 +134,7 @@ class AssetsDataStore(actorSystem: ActorSystem)(implicit
       title: String,
       desc: String,
       contentType: String,
-      content: Source[ByteString, _]
+      content: Source[ByteString, ?]
   )(implicit conf: S3Configuration): Future[MultipartUploadResult] = {
     val ref = new AtomicReference[ByteString](ByteString.empty)
     val validated = new AtomicBoolean(false)
@@ -236,7 +236,7 @@ class AssetsDataStore(actorSystem: ActorSystem)(implicit
   }
 
   def checkBucket()(implicit conf: S3Configuration): Future[BucketAccess] = {
-    S3.checkIfBucketExists(conf.bucket)(actorSystem, s3ClientSettingsAttrs)
+    S3.checkIfBucketExists(conf.bucket)(using actorSystem, s3ClientSettingsAttrs)
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -248,7 +248,7 @@ class AssetsDataStore(actorSystem: ActorSystem)(implicit
       title: String,
       desc: String,
       contentType: String,
-      content: Source[ByteString, _]
+      content: Source[ByteString, ?]
   )(implicit conf: S3Configuration): Future[MultipartUploadResult] = {
     val ctype = ContentType
       .parse(contentType)
@@ -367,7 +367,7 @@ class AssetsDataStore(actorSystem: ActorSystem)(implicit
       asset: AssetId,
       filename: String,
       contentType: String,
-      content: Source[ByteString, _]
+      content: Source[ByteString, ?]
   )(implicit conf: S3Configuration): Future[MultipartUploadResult] = {
     val ctype = ContentType
       .parse(contentType)
@@ -411,7 +411,7 @@ class AssetsDataStore(actorSystem: ActorSystem)(implicit
   def storeThumbnail(
       tenant: TenantId,
       asset: AssetId,
-      content: Source[ByteString, _]
+      content: Source[ByteString, ?]
   )(implicit conf: S3Configuration): Future[MultipartUploadResult] = {
     val ctype = ContentType
       .parse("image/png")

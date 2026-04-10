@@ -73,7 +73,7 @@ class CmsApiController(
 
   def getId(entity: CmsPage): CmsPageId = entity.id
 
-  private def bodyToSource[A](body: A): Source[ByteString, _] = {
+  private def bodyToSource[A](body: A): Source[ByteString, ?] = {
     body match {
       case raw: AnyContentAsRaw =>
         Source.single(raw.raw.asBytes().getOrElse(ByteString.empty))
@@ -135,7 +135,7 @@ class CmsApiController(
       for {
         _ <- Future.sequence(
           ctx.request.body
-            .as(Reads.seq(CmsFileFormat))
+            .as(using Reads.seq(using CmsFileFormat))
             .map(page => {
               val path = page.path()
               if (path.startsWith("/customization/")) {
@@ -347,7 +347,7 @@ class CmsApiController(
                   s"${authConfig.loginUrl}?scope=${scope}&client_id=$clientId&response_type=$responseType&redirect_uri=$redirectUri"
                 ).addingToSession(
                   s"redirect" -> redirect
-                )(ctx.request)
+                )(using ctx.request)
               )
             case _ =>
               FastFuture.successful(Redirect(s"/?redirect=$redirect"))

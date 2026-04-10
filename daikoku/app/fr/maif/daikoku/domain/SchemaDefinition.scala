@@ -1619,7 +1619,7 @@ object SchemaDefinition {
           Field(
             "lastUsage",
             OptionType(DateTimeUnitype),
-            resolve = ctx => getOtoroshiUsage(ctx.value)(ctx.ctx._2.tenant)
+            resolve = ctx => getOtoroshiUsage(ctx.value)(using ctx.ctx._2.tenant)
           )
         )
     )
@@ -1645,7 +1645,7 @@ object SchemaDefinition {
         value: EitherT[Future, Option[DateTime], JsArray] =
           otoroshiClient
             .getSubscriptionLastUsage(Seq(subscription))(
-              otoroshi,
+              using otoroshi,
               tenant
             )
             .leftMap(_ => None)
@@ -1655,7 +1655,7 @@ object SchemaDefinition {
       }
 
       maybeLastUsage
-        .map(_.map(r => (r \ "date").as(json.DateTimeFormat)))
+        .map(_.map(r => (r \ "date").as(using json.DateTimeFormat)))
         .merge
     }
 
@@ -1742,7 +1742,7 @@ object SchemaDefinition {
             )
           )
           .map(teams => teams.flatten)
-    )(HasId[Team, TeamId](_.id))
+    )(using HasId[Team, TeamId](_.id))
     lazy val apisFetcher = Fetcher(
       (ctx: (DataStore, DaikokuActionContext[JsValue]), apis: Seq[ApiId]) =>
         Future
@@ -1752,13 +1752,13 @@ object SchemaDefinition {
             )
           )
           .map(apis => apis.flatten)
-    )(HasId[Api, ApiId](_.id))
+    )(using HasId[Api, ApiId](_.id))
     lazy val usersFetcher = Fetcher(
       (ctx: (DataStore, DaikokuActionContext[JsValue]), users: Seq[UserId]) =>
         Future
           .sequence(users.map(userId => ctx._1.userRepo.findById(userId)))
           .map(users => users.flatten)
-    )(HasId[User, UserId](_.id))
+    )(using HasId[User, UserId](_.id))
 
     lazy val ApiType
         : ObjectType[(DataStore, DaikokuActionContext[JsValue]), Api] =
@@ -1912,7 +1912,7 @@ object SchemaDefinition {
                   case None => FastFuture.successful(None)
                   case Some(apis) =>
                     CommonServices
-                      .getApisByIds(apis.toSeq.map(_.value))(ctx.ctx._2, env, e)
+                      .getApisByIds(apis.toSeq.map(_.value))(using ctx.ctx._2, env, e)
                       .map {
                         case Right(apis) => Some(apis)
                         case Left(_)     => None
@@ -3569,7 +3569,7 @@ object SchemaDefinition {
       override def reads(json: JsValue): JsResult[UserAuditEvent] =
         JsSuccess(
           UserAuditEvent(
-            id = (json \ "id").as(UserIdFormat),
+            id = (json \ "id").as(using UserIdFormat),
             name = (json \ "name").as[String],
             email = (json \ "email").as[String],
             isDaikokuAdmin =
@@ -3591,7 +3591,7 @@ object SchemaDefinition {
       override def reads(json: JsValue): JsResult[TenantAuditEvent] =
         JsSuccess(
           TenantAuditEvent(
-            id = (json \ "id").as(TenantIdFormat),
+            id = (json \ "id").as(using TenantIdFormat),
             name = (json \ "name").as[String]
           )
         )
@@ -3643,7 +3643,7 @@ object SchemaDefinition {
               "user",
               OptionType(UserAuditEventType),
               resolve =
-                ctx => (ctx.value \ "user").asOpt(UserAuditEventTypeReader)
+                ctx => (ctx.value \ "user").asOpt(using UserAuditEventTypeReader)
             ),
             Field(
               "impersonator",
@@ -3663,7 +3663,7 @@ object SchemaDefinition {
               "tenant",
               OptionType(TenantAuditEventType),
               resolve =
-                ctx => (ctx.value \ "tenant").asOpt(TenantAuditEventTypeReader)
+                ctx => (ctx.value \ "tenant").asOpt(using TenantAuditEventTypeReader)
             ),
             Field(
               "_tenant",
@@ -3915,7 +3915,7 @@ object SchemaDefinition {
           "myTeams",
           ListType(TeamObjectType),
           resolve = ctx =>
-            CommonServices.myTeams()(ctx.ctx._2, env, e).map {
+            CommonServices.myTeams()(using ctx.ctx._2, env, e).map {
               case Right(value) => value
               case Left(r)      => throw NotAuthorizedError(r.toString)
             }
@@ -3928,7 +3928,7 @@ object SchemaDefinition {
         limit: Int,
         offset: Int
     ) = {
-      CommonServices.allTeams(research, limit, offset)(ctx.ctx._2, env, e).map {
+      CommonServices.allTeams(research, limit, offset)(using ctx.ctx._2, env, e).map {
         case Left(value)  => throw NotAuthorizedError(value.toString)
         case Right(value) => value
 
@@ -3956,7 +3956,7 @@ object SchemaDefinition {
         planId: Option[String]
     ) = {
       CommonServices
-        .getApiConsumption(apiId, teamId, from, to, planId)(ctx.ctx._2, env, e)
+        .getApiConsumption(apiId, teamId, from, to, planId)(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -3990,7 +3990,7 @@ object SchemaDefinition {
         from: Option[Long],
         to: Option[Long]
     ) = {
-      CommonServices.getTeamIncome(teamId, from, to)(ctx.ctx._2, env, e).map {
+      CommonServices.getTeamIncome(teamId, from, to)(using ctx.ctx._2, env, e).map {
         case Left(value)  => throw NotAuthorizedError(value.toString)
         case Right(value) => value
       }
@@ -4022,7 +4022,7 @@ object SchemaDefinition {
         offset: Int
     ) = {
       CommonServices
-        .getMyNotification(filter, sort, limit, offset)(ctx.ctx._2, env, e)
+        .getMyNotification(filter, sort, limit, offset)(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -4067,7 +4067,7 @@ object SchemaDefinition {
           sorting,
           limit,
           offset
-        )(ctx.ctx._2, env, e)
+        )(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -4091,7 +4091,7 @@ object SchemaDefinition {
           sorting,
           limit,
           offset
-        )(ctx.ctx._2, env, e)
+        )(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -4158,7 +4158,7 @@ object SchemaDefinition {
           groupOpt,
           limit,
           offset
-        )(ctx.ctx._2, env, e)
+        )(using ctx.ctx._2, env, e)
         .map {
           case Right(value) => value
           case Left(r)      => throw NotAuthorizedError(r.toString)
@@ -4170,7 +4170,7 @@ object SchemaDefinition {
         teamId: String
     ) = {
       CommonServices.getApiSubscriptionDetails(subscriptionId, teamId)(
-        ctx.ctx._2,
+        using ctx.ctx._2,
         env,
         e
       )
@@ -4215,7 +4215,7 @@ object SchemaDefinition {
               filter = ctx.arg(FILTER),
               limit = ctx.arg(LIMIT),
               offset = ctx.arg(OFFSET)
-            )(ctx.ctx._2, env, e)
+            )(using ctx.ctx._2, env, e)
           }
         )
       )
@@ -4239,7 +4239,7 @@ object SchemaDefinition {
                 filter = ctx.arg(FILTER),
                 limit = ctx.arg(LIMIT),
                 offset = ctx.arg(OFFSET)
-              )(ctx.ctx._2, env, e)
+              )(using ctx.ctx._2, env, e)
           }
         )
       )
@@ -4254,7 +4254,7 @@ object SchemaDefinition {
     ) = {
       CommonServices
         .getApisWithSubscriptions(teamId, research, limit, offset, apiSubOnly)(
-          ctx.ctx._2,
+          using ctx.ctx._2,
           env,
           e
         )
@@ -4392,7 +4392,7 @@ object SchemaDefinition {
                       )
                   )
                   _ <- testApisTeam(apis, team)
-                  demands <- EitherT.liftF(
+                  demands <- EitherT.right[AppError](
                     dataStore.subscriptionDemandRepo
                       .forTenant(tenant)
                       .findWithPagination(
@@ -4617,7 +4617,7 @@ object SchemaDefinition {
       getTenantFields("post", ApiPostType, ctx => ctx.ctx._1.apiPostRepo) ++
       getTenantFields("issue", ApiIssueType, ctx => ctx.ctx._1.apiIssueRepo) ++
       getTenantFields("cmsPage", CmsPageType, ctx => ctx.ctx._1.cmsRepo) ++
-      getTenantFields("auditEvent", AuditEventType, ctx => ctx.ctx._1.auditTrailRepo):_*
+      getTenantFields("auditEvent", AuditEventType, ctx => ctx.ctx._1.auditTrailRepo)*
       )
 
     (
@@ -4638,7 +4638,7 @@ object SchemaDefinition {
           getSubscriptionDetailsFields() ++
           getAuditTrailQueryFields() ++
           cmsSinglePageFields() ++
-          cmsPageFields():_*)
+          cmsPageFields()*)
       )),
       DeferredResolver.fetchers(teamsFetcher, usersFetcher, apisFetcher)
     )

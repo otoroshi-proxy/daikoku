@@ -3,6 +3,8 @@
 .vscode
 .bsp
 .jvmopts
+.sbtopts
+.bloop
 *.swp
 node_modules
 .idea
@@ -40,3 +42,4 @@ daikoku/public/backofffice-*
 daikoku/public/highlight-*
 daikoku/public/swagger-*
 stats.html
+project/

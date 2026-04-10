@@ -3,26 +3,21 @@ package fr.maif.daikoku.services
 import cats.Monad
 import cats.data.{EitherT, OptionT}
 import cats.implicits.catsSyntaxOptionId
-import fr.maif.daikoku.actions.ApiActionContext
 import fr.maif.daikoku.controllers.AppError.*
-import fr.maif.daikoku.controllers.{AppError, PaymentClient}
-import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.controllers.AppError
+import fr.maif.daikoku.actions.ApiActionContext
+import fr.maif.daikoku.controllers.PaymentClient
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.domain.UsagePlanVisibility.Admin
+import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.json.SeqApiFormat
 import fr.maif.daikoku.env.Env
-import fr.maif.daikoku.jobs
-import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiVerifierJob}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.utils.Cypher.{decrypt, encrypt}
 import fr.maif.daikoku.utils.StringImplicits.BetterString
 import fr.maif.daikoku.utils.future.EnhancedObject
-import fr.maif.daikoku.utils.{
-  IdGenerator,
-  JsonOperationsHelper,
-  OtoroshiClient,
-  Translator
-}
+import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiSynchronizerJob, SyncInformation}
+import fr.maif.daikoku.utils.{IdGenerator, JsonOperationsHelper, OtoroshiClient, Translator}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
@@ -38,13 +33,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 class ApiService(
-    env: Env,
-    otoroshiClient: OtoroshiClient,
-    messagesApi: MessagesApi,
-    translator: Translator,
-    apiKeyStatsJob: ApiKeyStatsJob,
-    otoroshiSynchronisator: OtoroshiVerifierJob,
-    paymentClient: PaymentClient
+                  env: Env,
+                  otoroshiClient: OtoroshiClient,
+                  messagesApi: MessagesApi,
+                  translator: Translator,
+                  apiKeyStatsJob: ApiKeyStatsJob,
+                  otoroshiSynchronisator: OtoroshiSynchronizerJob,
+                  paymentClient: PaymentClient
 ) {
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext
@@ -739,7 +734,7 @@ class ApiService(
         AppError.ApiNotLinked
       )
       apiKey <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(otoSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoSettings)
       )
 
       aggregatedSubs <- EitherT.liftF[Future, AppError, Seq[ApiSubscription]](
@@ -791,7 +786,7 @@ class ApiService(
             readOnly = subscription.customReadOnly.getOrElse(apiKey.readOnly),
             validUntil = subscription.validUntil.map(_.getMillis)
           )
-        )(otoSettings)
+        )(using otoSettings)
       )
       _ <- EitherT.liftF[Future, AppError, Boolean](
         env.dataStore.apiSubscriptionRepo
@@ -826,7 +821,7 @@ class ApiService(
       _ <- (shouldDeleteApiKey, maybeOtoroshiSettings) match {
         case (true, Some(otoorshiSettings)) =>
           otoroshiClient
-            .deleteApiKey(subscription.apiKey.clientId)(otoorshiSettings)
+            .deleteApiKey(subscription.apiKey.clientId)(using otoorshiSettings)
         case _ =>
           EitherT.pure[Future, AppError](Json.obj())
       }
@@ -892,7 +887,7 @@ class ApiService(
 
       // get previous apikey from otoroshi
       apk <- EitherT(
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(otoroshiSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
       )
 
       // get subscription team
@@ -987,10 +982,7 @@ class ApiService(
 //              )
 //            case None => EitherT.pure[Future, AppError](updatedSubscription)
 //          }
-          _ <- EitherT.right[AppError](
-            otoroshiSynchronisator
-              .verify(Json.obj("_id" -> updatedSubscription.id.asJson))
-          )
+          _ <- EitherT.right[AppError](otoroshiSynchronisator.run(updatedSubscription.id, tenant))
 //          apk <- EitherT(computeOtoroshiApiKey(parentSubscription))
 //          _ <- EitherT(otoroshiClient.updateApiKey(apk))
           _ <-
@@ -1096,7 +1088,7 @@ class ApiService(
                 notification
               )
           )
-          _ <- EitherT.liftF(Future.sequence(admins.map(admin => {
+          _ <- EitherT.right[AppError](Future.sequence(admins.map(admin => {
             implicit val language: String = admin.defaultLanguage.getOrElse(
               tenant.defaultLanguage.getOrElse("en")
             )
@@ -1217,7 +1209,7 @@ class ApiService(
                   )
                 )
             )
-            updatedSubscription <- EitherT.liftF(
+            updatedSubscription <- EitherT.right[AppError](
               env.dataStore.apiSubscriptionRepo
                 .forTenant(tenant.id)
                 .findById(subscription.id)
@@ -1503,9 +1495,7 @@ class ApiService(
                     )
 
                 // compute new tags, metadata...
-                _ <- otoroshiSynchronisator.verify(
-                  Json.obj("_id" -> newParent.id.asJson)
-                )
+                _ <- otoroshiSynchronisator.run(newParent.id, tenant)
                 // delete extracted OtoroshiApiKey into Otoroshi
                 // delete extracted subscription
                 - <-
@@ -1543,7 +1533,7 @@ class ApiService(
           )
           _ <- OptionT.liftF(
             deaggregateSubsAndDelete(subscription, childs, subscriberTeam)(
-              otoroshiSettings
+              using otoroshiSettings
             )
           )
           _ <- subscription.thirdPartySubscriptionInformations match {
@@ -1744,7 +1734,7 @@ class ApiService(
             )
           )
       )
-      _ <- EitherT.liftF(Future.sequence(admins.map(admin => {
+      _ <- EitherT.right[AppError](Future.sequence(admins.map(admin => {
         implicit val language: String =
           admin.defaultLanguage.getOrElse(tenantLanguage)
         (for {
@@ -1899,7 +1889,7 @@ class ApiService(
       response <- EitherT(
         env.wsClient
           .url(step.url)
-          .withHttpHeaders(step.headers.toSeq: _*)
+          .withHttpHeaders(step.headers.toSeq*)
           .post(
             Json.obj(
               "demand" -> demand.asJson,
@@ -2012,7 +2002,7 @@ class ApiService(
                 .findByIdNotDeleted(api.team),
               AppError.TeamNotFound
             )
-            _ <- EitherT.liftF(Future.sequence(emails.map(email => {
+            _ <- EitherT.right[AppError](Future.sequence(emails.map(email => {
               val stepValidator = StepValidator(
                 id = DatastoreId(IdGenerator.token(32)),
                 tenant = tenant.id,
@@ -2639,7 +2629,7 @@ class ApiService(
                     )
                   )
               )
-              result <- runSubscriptionProcess(demanId, tenant)(language, user)
+              result <- runSubscriptionProcess(demanId, tenant)(using language, user)
             } yield result
         }
     }
@@ -2950,7 +2940,7 @@ class ApiService(
           )
       )
       apk <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(otoroshiSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
       )
       newApk = apk.copy(
         clientName =
@@ -2960,7 +2950,7 @@ class ApiService(
           apk.metadata + ("daikoku_transfer_to_team_id" -> newTeam.id.value) + ("daikoku_transfer_to_team" -> newTeam.name)
       )
       _ <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.updateApiKey(newApk)(otoroshiSettings)
+        otoroshiClient.updateApiKey(newApk)(using otoroshiSettings)
       )
       _ <- EitherT.liftF[Future, AppError, Boolean](
         env.dataStore.notificationRepo

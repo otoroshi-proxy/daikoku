@@ -65,7 +65,10 @@ jobs:
 
       - name: Tag and push image
         run: |
-          docker tag maif/daikoku:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker tag maif/daikoku:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          BRANCH=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          docker tag maif/daikoku:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}
+          docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}
+          if [[ "${{ github.ref_name }}" == "master" ]]; then
+            docker tag maif/daikoku:latest ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          fi

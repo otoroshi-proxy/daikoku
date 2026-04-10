@@ -645,7 +645,7 @@ class TenantController(
       TenantAdminOnly(
         AuditTrailEvent(s"@{user.name} - @{user.email} test a provider")
       )(tenantId, ctx) { (_, _) =>
-        ctx.request.body.asOpt(json.MailerSettingsFormat) match {
+        ctx.request.body.asOpt(using json.MailerSettingsFormat) match {
           case Some(settings) =>
             settings.mailer
               .testConnection(ctx.tenant)
@@ -904,7 +904,7 @@ class TenantController(
               env.dataStore.teamRepo.forTenant(tenant).save(updatedTeam)
             })
             .toMat(Sink.ignore)(Keep.right)
-            .run()(env.defaultMaterializer)
+            .run()(using env.defaultMaterializer)
         } yield NoContent
 
       }

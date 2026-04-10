@@ -24,7 +24,7 @@ class IntegrationApiController(
   implicit val ev: Env = env
 
   def findById(
-      ctx: DaikokuActionContext[_],
+      ctx: DaikokuActionContext[?],
       teamId: String,
       apiId: String
   ): Future[Either[AppError, (Team, Api)]] = {

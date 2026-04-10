@@ -678,3 +678,12 @@ case class Asset(id: AssetId, tenant: TenantId, slug: String)
     extends CanJson[Asset] {
   override def asJson: JsValue = json.AssetFormat.writes(this)
 }
+
+enum SchedulingMode(val value: String):
+  case Interval extends SchedulingMode("interval")
+  case Cron extends SchedulingMode("cron")
+
+object SchedulingMode {
+  def fromValue(v: String): Option[SchedulingMode] =
+    SchedulingMode.values.find(_.value == v)
+}

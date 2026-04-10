@@ -98,7 +98,7 @@ class DeletionService(
           AppError.EntityNotFound("Otoroshi settings")
         )
         _ <-
-          otoroshiClient.deleteApiKey(apiSubscription.apiKey.clientId)(settings)
+          otoroshiClient.deleteApiKey(apiSubscription.apiKey.clientId)(using settings)
       } yield ()
     }
 
@@ -269,7 +269,7 @@ class DeletionService(
           }
         } yield ()
       }
-      .runWith(Sink.ignore)(env.defaultMaterializer)
+      .runWith(Sink.ignore)(using env.defaultMaterializer)
 
     val r = for {
       _ <- planDeletion

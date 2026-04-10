@@ -308,7 +308,9 @@ GET     /api/entities/otoroshi                          fr.maif.daikoku.controll
 GET     /api/entities/issue                             fr.maif.daikoku.controllers.EntitiesController.newIssue()
 GET     /api/entities/plan                              fr.maif.daikoku.controllers.EntitiesController.newPlan()
 
-POST    /api/jobs/otoroshi/_sync                        fr.maif.daikoku.controllers.JobsController.otoroshiSyncJob()
+POST    /api/jobs/otoroshi/_sync                        fr.maif.daikoku.controllers.JobsController.otoroshiSyncJob(parallelism: Int ?= 25)
+POST    /api/jobs/rotation/_sync                        fr.maif.daikoku.controllers.JobsController.rotationSyncJob(parallelism: Int ?= 25)
+POST    /api/jobs/verifier/_sync                        fr.maif.daikoku.controllers.JobsController.verifierSyncJob(parallelism: Int ?= 25)
 POST    /api/jobs/stats/_sync                           fr.maif.daikoku.controllers.JobsController.apikeysStatsSyncJob()
 POST    /api/jobs/purge/_sync                           fr.maif.daikoku.controllers.JobsController.auditTrailPurgeRunJob()
 
@@ -318,7 +320,6 @@ POST    /api/reset                                      fr.maif.daikoku.controll
 
 GET     /api/state/export                               fr.maif.daikoku.controllers.StateController.exportState()
 POST    /api/state/import                               fr.maif.daikoku.controllers.StateController.importState()
-POST    /api/state/migrate                              fr.maif.daikoku.controllers.StateController.migrateStateToPostgres()
 POST    /api/state/lock                                 fr.maif.daikoku.controllers.StateController.enableMaintenanceMode()
 POST    /api/state/unlock                               fr.maif.daikoku.controllers.StateController.disableMaintenanceMode()
 GET     /api/state/lock                                 fr.maif.daikoku.controllers.StateController.isMaintenanceMode()

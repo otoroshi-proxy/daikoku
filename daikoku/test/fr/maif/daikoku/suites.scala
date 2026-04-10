@@ -276,7 +276,7 @@ object testUtils {
         _ <- Source(tenants.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.tenantRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -284,7 +284,7 @@ object testUtils {
         _ <- Source(users.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.userRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -292,7 +292,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.teamRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -300,7 +300,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.usagePlanRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -308,7 +308,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -316,7 +316,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiSubscriptionRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -324,7 +324,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.notificationRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -332,28 +332,28 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.consumptionRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
         _ <- Source(sessions.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.userSessionRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
         _ <- Source(resets.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.passwordResetRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
         _ <- Source(creations.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.accountCreationRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -361,7 +361,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.messageRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -369,7 +369,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiIssueRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -377,7 +377,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiPostRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -385,7 +385,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.cmsRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -393,7 +393,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiDocumentationPageRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -401,7 +401,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.operationRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -409,7 +409,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.subscriptionDemandRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -417,7 +417,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.translationRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -430,7 +430,7 @@ object testUtils {
 
       def checkStatus(attempt: Int): Future[Unit] = {
         val currentDelay = baseDelay * Math.pow(2, attempt - 1).toLong
-        httpJsonCallWithoutSession(path = "/health")(tenant)
+        httpJsonCallWithoutSession(path = "/health")(using tenant)
           .flatMap { response =>
             (response.json \ "status").asOpt[String] match {
               case Some("ready") =>
@@ -563,7 +563,7 @@ object testUtils {
           body,
           baseUrl,
           port
-        )(tenant, session),
+        )(using tenant, session),
         5.seconds
       )
 
@@ -582,7 +582,7 @@ object testUtils {
       }
       val builder = daikokuComponents.env.wsClient
         .url(s"$baseUrl:$port$path")
-        .withHttpHeaders((Map("Host" -> tenant.domain) ++ headers).toSeq: _*)
+        .withHttpHeaders((Map("Host" -> tenant.domain) ++ headers).toSeq*)
         .withFollowRedirects(false)
         .withRequestTimeout(10.seconds)
         .withMethod(method)
@@ -633,7 +633,7 @@ object testUtils {
           baseUrl,
           port,
           hostHeader
-        )(tenant),
+        )(using tenant),
         5.seconds
       )
 
@@ -696,25 +696,25 @@ object testUtils {
     def openPageBlocking(
         path: String
     )(implicit tenant: Tenant, session: UserSession): Document =
-      openPage(path)(tenant, session).futureValue
+      openPage(path)(using tenant, session).futureValue
 
     def openPage(
         path: String
     )(implicit tenant: Tenant, session: UserSession): Future[Document] =
-      actionOnPage(path, Seq("--dump-dom"))(tenant, session).map(str =>
+      actionOnPage(path, Seq("--dump-dom"))(using tenant, session).map(str =>
         Scoup.parseHTML(str)
       )
 
     def screenshotPageBlocking(
         path: String
     )(implicit tenant: Tenant, session: UserSession): String =
-      screenshotPage(path)(tenant, session).futureValue
+      screenshotPage(path)(using tenant, session).futureValue
 
     def screenshotPage(
         path: String
     )(implicit tenant: Tenant, session: UserSession): Future[String] =
       actionOnPage(path, Seq("--screenshot", "--window-size=1920,1080"))(
-        tenant,
+        using tenant,
         session
       ).map { res =>
         Try(Files.createDirectory(new File("./target/screenshots").toPath))
@@ -907,13 +907,13 @@ object testUtils {
         apks: Seq[JsValue] = Seq(parentApkAsJson, parent2ApkAsJson)
     ) = {
 //      val apikeys = daikokuComponents.env.wsClient
-//        .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
+//        .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
 //        .withHttpHeaders(
 //          Map(
 //            "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
 //            "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
 //            "Host" -> "otoroshi-api.oto.tools"
-//          ).toSeq: _*
+//          ).toSeq*
 //        )
 //        .withFollowRedirects(false)
 //        .withRequestTimeout(10.seconds)
@@ -988,7 +988,7 @@ object testUtils {
                       "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
                       "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
                       "Host" -> "otoroshi-api.oto.tools"
-                    ).toSeq: _*
+                    ).toSeq*
                   )
                   .withFollowRedirects(false)
                   .withRequestTimeout(10.seconds)
@@ -1007,7 +1007,7 @@ object testUtils {
                   "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
                   "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
                   "Host" -> "otoroshi-api.oto.tools"
-                ).toSeq: _*
+                ).toSeq*
               )
               .withFollowRedirects(false)
               .withRequestTimeout(10.seconds)

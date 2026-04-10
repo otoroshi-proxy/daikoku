@@ -33,7 +33,8 @@ import {
   apikey,
   escapeRegExp,
   formatDate,
-  read
+  read,
+  Placeholder
 } from '../../utils';
 import { apiGQLToLegitApi } from '../../utils/apiUtils';
 import { IApiSubscriptionGql } from '../apis';
@@ -257,7 +258,7 @@ export const ApiKeysListForApi = (props: ApiKeysListForApiProps) => {
       const keyToInvalidate = ["data", "subscriptions", "mySubscription"]
       return queryClient.invalidateQueries({
         predicate: (query) => query.queryKey.some((v) => typeof v === 'string' && keyToInvalidate.includes(v)),
-      }) 
+      })
         .then(() => toast.success(
           translate("apikeys.delete.success.message")
         ));
@@ -613,6 +614,17 @@ export const ApiKeyCard = ({
   const { tenant } = useContext(GlobalContext);
 
   const [more, setMore] = useState(false)
+  const [isPending, setIsPending] = useState(false)
+
+  const withLoader = (fn: () => Promise<any> | void) => {
+    setIsPending(true)
+    const result = fn()
+    if (result && typeof result.finally === 'function') {
+      return result.finally(() => setIsPending(false))
+    }
+    setIsPending(false)
+    return result
+  }
 
   const API_SUBSCRIPTION_DETAIL_QUERY = `
     query getApiSubscriptionDetails ($subscriptionId: String!, $teamId: String!) {
@@ -739,12 +751,12 @@ export const ApiKeyCard = ({
 
     const handleChanges = (rotation: IRotation) => {
       if (subscription.enabled) {
-        toggleRotation(
+        withLoader(() => toggleRotation(
           plan,
           rotation.enabled,
           rotation.rotationEvery,
           rotation.gracePeriod
-        )
+        ))
       }
     };
 
@@ -773,7 +785,8 @@ export const ApiKeyCard = ({
     const isApiCMS = api.visibility === "AdminOnly" && api.name.includes("cms");
 
     return (
-      <div className='api-subscription'>
+      <div className='api-subscription' style={{ position: 'relative' }}>
+        {isPending && <Placeholder />}
         <div className="api-subscription__container flex-column flex-xl-row gap-3">
           <div className='api-subscription__icon flex-row flex-xl-column'>
             {subscription.children.length === 0 && <i className={"fa-solid icon fa-key"} />}
@@ -981,7 +994,7 @@ export const ApiKeyCard = ({
             </span>}
             {!subscription.parent && <span
               className="dropdown-item cursor-pointer "
-              onClick={transferKey}
+              onClick={() => withLoader(transferKey)}
             >
               {translate("subscription.transfer.label")}
             </span>}
@@ -989,30 +1002,26 @@ export const ApiKeyCard = ({
               className={classNames("dropdown-item cursor-pointer", {
                 disabled: subscription.parent && !subscription.parentUp
               })}
-              onClick={() => {
-                // if (subscription.parent && subscription.parentUp) {
-                toggle()
-                // }
-              }}
+              onClick={() => withLoader(toggle)}
             >
               {subscription.enabled ? translate("subscription.disable.button.label") : translate("subscription.enable.button.label")}
             </span>
             <div className="dropdown-divider" />
             {!subscription.parent && <span
               className="dropdown-item cursor-pointer danger"
-              onClick={regenerateSecret}
+              onClick={() => withLoader(regenerateSecret)}
             >
               {translate("subscription.reset.secret.label")}
             </span>}
             {subscription.parent && <span
               className="dropdown-item cursor-pointer danger"
-              onClick={() => makeUniqueApiKey(detailQuery.data)}
+              onClick={() => withLoader(() => makeUniqueApiKey(detailQuery.data))}
             >
               {translate("subscription.extract.button.label")}
             </span>}
             <span
               className="dropdown-item cursor-pointer danger"
-              onClick={() => deleteApiKey(detailQuery.data)}
+              onClick={() => withLoader(() => deleteApiKey(detailQuery.data))}
             >
               {translate("subscription.delete.button.label")}
             </span>
@@ -1121,7 +1130,7 @@ export const SimpleApiKeyCard = (props: SimpleApiKeyCardProps) => {
             translate("subscription.for")}
             <span className='ms-1 underline'>{props.api.name}</span>/<span className='me-1 underline'>{props.plan.customName}</span>
             {translate({
-              key: 'subscription.created.at', replacements: [formatDate(props.subscription.createdAt, translate('date.locale'),translate('date.format.without.hours'))]
+              key: 'subscription.created.at', replacements: [formatDate(props.subscription.createdAt, translate('date.locale'), translate('date.format.without.hours'))]
             })}
             <span className={classNames('ms-1', {
               "danger-color": props.subscription.validUntil && isBefore(new Date(props.subscription.validUntil), new Date())

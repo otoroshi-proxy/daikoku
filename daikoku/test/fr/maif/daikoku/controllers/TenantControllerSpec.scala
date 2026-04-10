@@ -78,7 +78,7 @@ class TenantControllerSpec()
         path = s"/api/tenants",
         method = "POST",
         body = Some(testTenant.asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 201
 
       val tryCreatedTenant =
@@ -126,7 +126,7 @@ class TenantControllerSpec()
             |""".stripMargin
             )
           )
-        )(createdTenant, sessionNewTenant)
+        )(using createdTenant, sessionNewTenant)
 
       val tryMyTeams =
         fr.maif.daikoku.domain.json.SeqTeamFormat.reads(
@@ -152,7 +152,7 @@ class TenantControllerSpec()
       val respAdminApi =
         httpJsonCallBlocking(
           s"/api/me/visible-apis/${createdAdminApiId.value}"
-        )(createdTenant, sessionNewTenant)
+        )(using createdTenant, sessionNewTenant)
       val tryAdminApi =
         fr.maif.daikoku.domain.json.ApiFormat.reads(respAdminApi.json)
       tryAdminApi.isSuccess mustBe true
@@ -197,7 +197,7 @@ class TenantControllerSpec()
         path = s"/api/tenants",
         method = "POST",
         body = Some(testTenant.asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 201
 
       val tryCreatedTenant =
@@ -211,18 +211,18 @@ class TenantControllerSpec()
         path = s"/api/tenants/${testTenant.id.value}",
         method = "DELETE",
         body = Some(testTenant.asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respDelete.status mustBe 200
 
       val sessionNewTenant = loginWithBlocking(daikokuAdmin, testTenant)
       val respTeams =
-        httpJsonCallBlocking(s"/api/me/teams")(testTenant, sessionNewTenant)
+        httpJsonCallBlocking(s"/api/me/teams")(using testTenant, sessionNewTenant)
       respTeams.status mustBe 404
 
       val respAdminApi =
         httpJsonCallBlocking(
           s"/api/me/visible-apis/${createdAdminApiId.value}"
-        )(testTenant, sessionNewTenant)
+        )(using testTenant, sessionNewTenant)
       respAdminApi.status mustBe 404
 
     }
@@ -241,7 +241,7 @@ class TenantControllerSpec()
       )
       val session = loginWithBlocking(daikokuAdmin, tenant)
 
-      val resp = httpJsonCallBlocking("/api/tenants")(tenant, session)
+      val resp = httpJsonCallBlocking("/api/tenants")(using tenant, session)
       resp.status mustBe 200
       val tenants =
         fr.maif.daikoku.domain.json.SeqTenantFormat.reads(resp.json)
@@ -267,7 +267,7 @@ class TenantControllerSpec()
       )
       val session = loginWithBlocking(daikokuAdmin, tenant)
       val resp =
-        httpJsonCallBlocking("/api/tenants/simplified")(tenant, session)
+        httpJsonCallBlocking("/api/tenants/simplified")(using tenant, session)
       resp.status mustBe 200
       val tenants =
         fr.maif.daikoku.domain.json.SeqTenantFormat.reads(resp.json)
@@ -295,7 +295,7 @@ class TenantControllerSpec()
 
       val resp =
         httpJsonCallBlocking(s"/api/tenants/${tenant.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       resp.status mustBe 200
@@ -336,7 +336,7 @@ class TenantControllerSpec()
         path = s"/api/tenants",
         method = "POST",
         body = Some(testTenant.asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 201
     }
     "delete a tenant" in {
@@ -352,12 +352,12 @@ class TenantControllerSpec()
       val respCreation = httpJsonCallBlocking(
         path = s"/api/tenants/${tenant.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 200
 
       val respTest =
         httpJsonCallBlocking(s"/api/tenants/${tenant.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       respTest.status mustBe 404
@@ -376,12 +376,12 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}",
         method = "PUT",
         body = Some(tenant.copy(name = "test-again").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respUpdate.status mustBe 200
 
       val respTest =
         httpJsonCallBlocking(s"/api/tenants/${tenant.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       respTest.status mustBe 200
@@ -404,7 +404,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val adminTeam = (resp.json \ "team").as[JsObject]
       val admins = fr.maif.daikoku.domain.json.SeqUserFormat
@@ -428,7 +428,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/addable-admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val addableAdmins =
         fr.maif.daikoku.domain.json.SeqUserFormat.reads(resp.json)
@@ -452,12 +452,12 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}/admins",
         method = "POST",
         body = Some(JsArray(Seq(user.id.asJson)))
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val respTest = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       respTest.status mustBe 200
       val admins = fr.maif.daikoku.domain.json.SeqUserFormat
         .reads((respTest.json \ "admins").as[JsArray])
@@ -486,7 +486,7 @@ class TenantControllerSpec()
 
       var respTest = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       respTest.status mustBe 200
       var admins = fr.maif.daikoku.domain.json.SeqUserFormat
         .reads((respTest.json \ "admins").as[JsArray])
@@ -498,12 +498,12 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/api/tenants/${tenant.id.value}/admins/${user.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       respTest = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       respTest.status mustBe 200
       admins = fr.maif.daikoku.domain.json.SeqUserFormat
         .reads((respTest.json \ "admins").as[JsArray])
@@ -528,7 +528,7 @@ class TenantControllerSpec()
         path =
           s"/api/tenants/${tenant.id.value}/admins/${tenantAdmin.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 409
     }
   }
@@ -546,7 +546,7 @@ class TenantControllerSpec()
       )
       val session = loginWithBlocking(tenantAdmin, tenant)
 
-      val resp = httpJsonCallBlocking("/api/tenants")(tenant, session)
+      val resp = httpJsonCallBlocking("/api/tenants")(using tenant, session)
       resp.status mustBe 401
     }
     "list all simple tenants" in {
@@ -562,7 +562,7 @@ class TenantControllerSpec()
       )
       val session = loginWithBlocking(tenantAdmin, tenant)
       val resp =
-        httpJsonCallBlocking("/api/tenants/simplified")(tenant, session)
+        httpJsonCallBlocking("/api/tenants/simplified")(using tenant, session)
       resp.status mustBe 200
       val tenants =
         fr.maif.daikoku.domain.json.SeqTenantFormat.reads(resp.json)
@@ -590,7 +590,7 @@ class TenantControllerSpec()
 
       val resp =
         httpJsonCallBlocking(s"/api/tenants/${tenant.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       resp.status mustBe 200
@@ -619,7 +619,7 @@ class TenantControllerSpec()
 
       val resp =
         httpJsonCallBlocking(s"/api/tenants/${tenant.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       resp.status mustBe 200
@@ -630,7 +630,7 @@ class TenantControllerSpec()
 
       val resp2 =
         httpJsonCallBlocking(s"/api/tenants/${tenant2.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       resp2.status mustBe 403
@@ -638,7 +638,7 @@ class TenantControllerSpec()
       val dkAdminSession = loginWithBlocking(daikokuAdmin, tenant)
       val respDkAdmin = httpJsonCallBlocking(
         s"/api/tenants/${tenant2.id.value}"
-      )(tenant, dkAdminSession)
+      )(using tenant, dkAdminSession)
       respDkAdmin.status mustBe 200
     }
     "not create tenant" in {
@@ -672,7 +672,7 @@ class TenantControllerSpec()
         path = s"/api/tenants",
         method = "POST",
         body = Some(testTenant.asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 401
     }
     "not delete a tenant" in {
@@ -688,7 +688,7 @@ class TenantControllerSpec()
       val respCreation = httpJsonCallBlocking(
         path = s"/api/tenants/${tenant.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 401
     }
     "save/update a tenant" in {
@@ -705,12 +705,12 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}",
         method = "PUT",
         body = Some(tenant.copy(name = "test-again").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respUpdate.status mustBe 200
 
       val respTest =
         httpJsonCallBlocking(s"/api/tenants/${tenant.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       respTest.status mustBe 200
@@ -731,7 +731,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val adminTeam = (resp.json \ "team").as[JsObject]
       val admins = fr.maif.daikoku.domain.json.SeqUserFormat
@@ -755,7 +755,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/addable-admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       val addableAdmins =
         fr.maif.daikoku.domain.json.SeqUserFormat.reads(resp.json)
@@ -779,12 +779,12 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}/admins",
         method = "POST",
         body = Some(JsArray(Seq(user.id.asJson)))
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       val respTest = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       respTest.status mustBe 200
       val admins = fr.maif.daikoku.domain.json.SeqUserFormat
         .reads((respTest.json \ "admins").as[JsArray])
@@ -811,7 +811,7 @@ class TenantControllerSpec()
 
       var respTest = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       respTest.status mustBe 200
       var admins = fr.maif.daikoku.domain.json.SeqUserFormat
         .reads((respTest.json \ "admins").as[JsArray])
@@ -823,12 +823,12 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/api/tenants/${tenant.id.value}/admins/${user.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       respTest = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       respTest.status mustBe 200
       admins = fr.maif.daikoku.domain.json.SeqUserFormat
         .reads((respTest.json \ "admins").as[JsArray])
@@ -859,7 +859,7 @@ class TenantControllerSpec()
           s"/api/tenants/${tenant.id.value}/admins/${tenantAdmin.id.value}",
         method = "DELETE",
         body = Some(JsArray(Seq(user.id.asJson)))
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 409
     }
 
@@ -887,7 +887,7 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant2.id.value}",
         method = "PUT",
         body = Some(tenant2.copy(name = "test-again").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respUpdate.status mustBe 403
     }
     "not get tenant admins  for tenant which he is not admin" in {
@@ -913,7 +913,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant2.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
     "not get addable admins  for tenant which he is not admin" in {
@@ -939,7 +939,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant2.id.value}/addable-admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
     "not add admins to tenant which he is not admin" in {
@@ -967,7 +967,7 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant2.id.value}/admins",
         method = "POST",
         body = Some(JsArray(Seq(user.id.asJson)))
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
     "not remove an admin  from tenant which he is not admin" in {
@@ -993,7 +993,7 @@ class TenantControllerSpec()
 
       val respTest = httpJsonCallBlocking(
         s"/api/tenants/${tenant2.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       respTest.status mustBe 403
     }
 
@@ -1020,7 +1020,7 @@ class TenantControllerSpec()
 
       var respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 200
       var otos = fr.maif.daikoku.domain.json.SeqOtoroshiSettingsFormat
         .reads(respGet.json)
@@ -1031,13 +1031,13 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}/otoroshis?skipValidation=true",
         method = "POST",
         body = Some(otoroshiSettings.asJson)
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 201
 
       respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 200
       otos = fr.maif.daikoku.domain.json.SeqOtoroshiSettingsFormat
         .reads(respGet.json)
@@ -1046,7 +1046,7 @@ class TenantControllerSpec()
 
       respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis/${otoroshiSettings.id.value}"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 200
       val oto = fr.maif.daikoku.domain.json.OtoroshiSettingsFormat
         .reads(respGet.json)
@@ -1084,7 +1084,7 @@ class TenantControllerSpec()
           s"/api/tenants/${tenant.id.value}/otoroshis/${otoroshiSettings.id.value}?skipValidation=true",
         method = "PUT",
         body = Some(otoroshiSettings.copy(url = "new-url").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
       var oto = fr.maif.daikoku.domain.json.OtoroshiSettingsFormat
         .reads(resp.json)
@@ -1093,7 +1093,7 @@ class TenantControllerSpec()
 
       val respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis/${otoroshiSettings.id.value}"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 200
       oto = fr.maif.daikoku.domain.json.OtoroshiSettingsFormat
         .reads(respGet.json)
@@ -1128,7 +1128,7 @@ class TenantControllerSpec()
 
       var respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 200
       var otos = fr.maif.daikoku.domain.json.SeqOtoroshiSettingsFormat
         .reads(respGet.json)
@@ -1139,12 +1139,12 @@ class TenantControllerSpec()
         path =
           s"/api/tenants/${tenant.id.value}/otoroshis/${otoroshiSettings.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 200
 
       respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 200
       otos = fr.maif.daikoku.domain.json.SeqOtoroshiSettingsFormat
         .reads(respGet.json)
@@ -1162,7 +1162,7 @@ class TenantControllerSpec()
 
       val session = loginWithBlocking(tenantAdmin, tenant)
 
-      val resp = httpJsonCallBlocking(s"/api/admin/auditTrail")(tenant, session)
+      val resp = httpJsonCallBlocking(s"/api/admin/auditTrail")(using tenant, session)
       resp.status mustBe 200
     }
     "get the production content of a cms page by id" in {
@@ -1179,7 +1179,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/cms/pages/${defaultCmsPage.id.value}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       logger.warn(resp.body[String])
@@ -1199,7 +1199,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${defaultCmsPage.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe defaultCmsPage.body
@@ -1217,7 +1217,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${defaultCmsPage.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 404
     }
@@ -1245,7 +1245,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${defaultCmsPage.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe notFoundPage.body
@@ -1266,14 +1266,14 @@ class TenantControllerSpec()
       var resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
 
       resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}/foo",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 404
     }
@@ -1296,7 +1296,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}?bar=foo&foo=bar",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe "bar-foo"
@@ -1320,7 +1320,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe "2"
@@ -1344,7 +1344,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe "foobar"
@@ -1368,7 +1368,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe "foobar"
@@ -1392,7 +1392,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe "foobar"
@@ -1416,7 +1416,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe defaultCmsPage.body
@@ -1446,7 +1446,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe s"""<div><h1>Wrapper</h1>${defaultCmsPage.body}</div>"""
@@ -1471,7 +1471,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       assert(
@@ -1497,7 +1497,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
 
@@ -1524,7 +1524,7 @@ class TenantControllerSpec()
       val resp = httpJsonCallBlocking(
         path = s"/_${page.path.get}",
         headers = Map("accept" -> "text/html")
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 200
       resp.body[String] mustBe s"${defaultApi.plans.map(_.id.value).mkString("\n")}"
@@ -1566,7 +1566,7 @@ class TenantControllerSpec()
           .copy(defaultAuthorizedOtoroshiEntities = newDefaultAuthEntities)
           .asJson
           .some
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
 
       updateTenantResp.status mustBe 200
 
@@ -1588,14 +1588,14 @@ class TenantControllerSpec()
         path = "/api/teams",
         method = "POST",
         body = newTeam.asJson.some
-      )(tenant, userSession)
+      )(using tenant, userSession)
       createNewTeamResp.status mustBe 201
 
       val controlTeamResp = httpJsonCallBlocking(
         path = s"/api/teams/${newTeam.id.value}"
-      )(tenant, userSession)
+      )(using tenant, userSession)
       controlTeamResp.status mustBe 200
-      val controlTeam = Json.parse(controlTeamResp.body[String]).as(json.TeamFormat)
+      val controlTeam = Json.parse(controlTeamResp.body[String]).as(using json.TeamFormat)
 
       controlTeam.authorizedOtoroshiEntities.isDefined mustBe true
       controlTeam.authorizedOtoroshiEntities mustBe newDefaultAuthEntities
@@ -1658,21 +1658,21 @@ class TenantControllerSpec()
           )
           .asJson
           .some
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
       updateTenantResp.status mustBe 200
       val dispatchResp = httpJsonCallBlocking(
         path =
           s"/api/tenants/${tenant.id.value}/_dispatch-default-authorized-entities",
         method = "POST",
         body = Json.obj("mode" -> "merge").some
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
       dispatchResp.status mustBe 204
 
       val controlConsumerTeamResp = httpJsonCallBlocking(
         s"/api/teams/${teamConsumerId.value}"
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
       val controlConsumerTeam =
-        Json.parse(controlConsumerTeamResp.body[String]).as(json.TeamFormat)
+        Json.parse(controlConsumerTeamResp.body[String]).as(using json.TeamFormat)
       controlConsumerTeam.authorizedOtoroshiEntities.isDefined mustBe true
       controlConsumerTeam.authorizedOtoroshiEntities
         .map(_.length)
@@ -1693,10 +1693,10 @@ class TenantControllerSpec()
 
       val controlOwnerTeamResp = httpJsonCallBlocking(
         s"/api/teams/${teamOwnerId.value}"
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
 
       val controlOwnerTeam =
-        Json.parse(controlOwnerTeamResp.body[String]).as(json.TeamFormat)
+        Json.parse(controlOwnerTeamResp.body[String]).as(using json.TeamFormat)
       controlOwnerTeam.authorizedOtoroshiEntities.isDefined mustBe true
       controlOwnerTeam.authorizedOtoroshiEntities
         .map(_.length)
@@ -1789,21 +1789,21 @@ class TenantControllerSpec()
           )
           .asJson
           .some
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
       updateTenantResp.status mustBe 200
       val dispatchResp = httpJsonCallBlocking(
         path =
           s"/api/tenants/${tenant.id.value}/_dispatch-default-authorized-entities",
         method = "POST",
         body = Json.obj("mode" -> "replace").some
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
       dispatchResp.status mustBe 204
 
       val controlConsumerTeamResp = httpJsonCallBlocking(
         s"/api/teams/${teamConsumerId.value}"
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
       val controlConsumerTeam =
-        Json.parse(controlConsumerTeamResp.body[String]).as(json.TeamFormat)
+        Json.parse(controlConsumerTeamResp.body[String]).as(using json.TeamFormat)
       controlConsumerTeam.authorizedOtoroshiEntities.isDefined mustBe true
       controlConsumerTeam.authorizedOtoroshiEntities
         .map(_.length)
@@ -1824,10 +1824,10 @@ class TenantControllerSpec()
 
       val controlOwnerTeamResp = httpJsonCallBlocking(
         s"/api/teams/${teamOwnerId.value}"
-      )(tenant, adminSession)
+      )(using tenant, adminSession)
 
       val controlOwnerTeam =
-        Json.parse(controlOwnerTeamResp.body[String]).as(json.TeamFormat)
+        Json.parse(controlOwnerTeamResp.body[String]).as(using json.TeamFormat)
       controlOwnerTeam.authorizedOtoroshiEntities.isDefined mustBe true
       controlOwnerTeam.authorizedOtoroshiEntities
         .map(_.length)
@@ -1876,7 +1876,7 @@ class TenantControllerSpec()
       )
       val session = loginWithBlocking(user, tenant)
 
-      val resp = httpJsonCallBlocking("/api/tenants")(tenant, session)
+      val resp = httpJsonCallBlocking("/api/tenants")(using tenant, session)
       resp.status mustBe 401
     }
     "list all simple tenants" in {
@@ -1892,7 +1892,7 @@ class TenantControllerSpec()
       )
       val session = loginWithBlocking(user, tenant)
       val resp =
-        httpJsonCallBlocking("/api/tenants/simplified")(tenant, session)
+        httpJsonCallBlocking("/api/tenants/simplified")(using tenant, session)
       resp.status mustBe 200
       val tenants =
         fr.maif.daikoku.domain.json.SeqTenantFormat.reads(resp.json)
@@ -1920,7 +1920,7 @@ class TenantControllerSpec()
 
       val resp =
         httpJsonCallBlocking(s"/api/tenants/${tenant.id.value}")(
-          tenant,
+          using tenant,
           session
         )
       resp.status mustBe 403
@@ -1956,7 +1956,7 @@ class TenantControllerSpec()
         path = s"/api/tenants",
         method = "POST",
         body = Some(testTenant.asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 401
     }
     "not delete a tenant" in {
@@ -1972,7 +1972,7 @@ class TenantControllerSpec()
       val respCreation = httpJsonCallBlocking(
         path = s"/api/tenants/${tenant.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       respCreation.status mustBe 401
     }
     "not save/update a tenant" in {
@@ -1989,7 +1989,7 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}",
         method = "PUT",
         body = Some(tenant.copy(name = "test-again").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       respUpdate.status mustBe 403
     }
     "not get tenant admins" in {
@@ -2004,7 +2004,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
     "not get addable admins for a tenant" in {
@@ -2019,7 +2019,7 @@ class TenantControllerSpec()
 
       val resp = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/addable-admins"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
     "not add admins to a tenant" in {
@@ -2036,7 +2036,7 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}/admins",
         method = "POST",
         body = Some(JsArray(Seq(user.id.asJson)))
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
     "not remove an admin from a tenant" in {
@@ -2059,7 +2059,7 @@ class TenantControllerSpec()
         path = s"/api/tenants/${tenant.id.value}/admins/${user.id.value}",
         method = "DELETE",
         body = Some(JsArray(Seq(user.id.asJson)))
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
 
@@ -2080,20 +2080,20 @@ class TenantControllerSpec()
 
       var respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 403
 
       val resp = httpJsonCallBlocking(
         path = s"/api/tenants/${tenant.id.value}/otoroshis",
         method = "POST",
         body = Some(otoroshiSettings.asJson)
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 403
 
       respGet = httpJsonCallBlocking(
         s"/api/tenants/${tenant.id.value}/otoroshis/${otoroshiSettings.id.value}"
-      )(tenant, session)
+      )(using tenant, session)
       respGet.status mustBe 403
 
     }
@@ -2121,7 +2121,7 @@ class TenantControllerSpec()
           s"/api/tenants/${tenant.id.value}/otoroshis/${otoroshiSettings.id.value}",
         method = "PUT",
         body = Some(otoroshiSettings.copy(url = "new-url").asJson)
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
     "not delete otoroshi instance" in {
@@ -2148,7 +2148,7 @@ class TenantControllerSpec()
         path =
           s"/api/tenants/${tenant.id.value}/otoroshis/${otoroshiSettings.id.value}",
         method = "DELETE"
-      )(tenant, session)
+      )(using tenant, session)
       resp.status mustBe 403
     }
 
@@ -2162,7 +2162,7 @@ class TenantControllerSpec()
 
       val session = loginWithBlocking(user, tenant)
 
-      val resp = httpJsonCallBlocking(s"/api/admin/auditTrail")(tenant, session)
+      val resp = httpJsonCallBlocking(s"/api/admin/auditTrail")(using tenant, session)
       resp.status mustBe 403
     }
   }
