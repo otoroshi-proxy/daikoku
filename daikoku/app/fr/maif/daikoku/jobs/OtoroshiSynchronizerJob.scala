@@ -94,7 +94,11 @@ case class SubscriptionForSync(
                                 metadata: Option[JsObject],
                                 enabled: Boolean,
                                 rotation: Option[ApiSubscriptionRotation],
-                                validUntil: Option[DateTime]
+                                validUntil: Option[DateTime],
+                                customMaxPerSecond: Option[Long],
+                                customMaxPerDay: Option[Long],
+                                customMaxPerMonth: Option[Long],
+                                customReadOnly: Option[Boolean]
                               )
 object SubscriptionForSync {
   def readFromJson(json: JsValue): SubscriptionForSync = SubscriptionForSync(
@@ -103,7 +107,11 @@ object SubscriptionForSync {
     metadata = (json \ "metadata").asOpt[JsObject],
     enabled = (json \ "enabled").asOpt[Boolean].getOrElse(true),
     rotation = (json \ "rotation").asOpt(using ApiSubscriptionyRotationFormat),
-    validUntil = (json \ "validUntil").asOpt[Long].map(l => new DateTime(l))
+    validUntil = (json \ "validUntil").asOpt[Long].map(l => new DateTime(l)),
+    customMaxPerSecond = (json \ "customMaxPerSecond").asOpt[Long],
+    customMaxPerDay = (json \ "customMaxPerDay").asOpt[Long],
+    customMaxPerMonth = (json \ "customMaxPerMonth").asOpt[Long],
+    customReadOnly = (json \ "customReadOnly").asOpt[Boolean]
   )
 }
 
@@ -214,11 +222,11 @@ case class Child(subscription: SubscriptionForSync, api: ApiForSync, user: UserF
       authorizedEntities = maybeTarget.flatMap(t => t.authorizedEntities).getOrElse(AuthorizedEntities()),
       enabled = subscription.enabled,
       allowClientIdOnly = maybeCustomization.exists(_.clientIdOnly),
-      readOnly = maybeCustomization.exists(_.readOnly),
+      readOnly = subscription.customReadOnly.getOrElse(maybeCustomization.exists(_.readOnly)),
       constrainedServicesOnly = maybeCustomization.exists(_.constrainedServicesOnly),
-      throttlingQuota = plan.maxPerSecond.getOrElse(RemainingQuotas.MaxValue),
-      dailyQuota = plan.maxPerDay.getOrElse(RemainingQuotas.MaxValue),
-      monthlyQuota = plan.maxPerMonth.getOrElse(RemainingQuotas.MaxValue),
+      throttlingQuota = subscription.customMaxPerSecond.orElse(plan.maxPerSecond).getOrElse(RemainingQuotas.MaxValue),
+      dailyQuota = subscription.customMaxPerDay.orElse(plan.maxPerDay).getOrElse(RemainingQuotas.MaxValue),
+      monthlyQuota = subscription.customMaxPerMonth.orElse(plan.maxPerMonth).getOrElse(RemainingQuotas.MaxValue),
       tags = tags,
       metadata = meta ++ Map(
         "daikoku__metadata" -> meta.keys.mkString(" | "),
@@ -387,7 +395,11 @@ class OtoroshiSynchronizerJob(
        |  'rotation', $alias.content -> 'rotation',
        |  'validUntil', $alias.content -> 'validUntil',
        |  'team', $alias.content -> 'team',
-       |  'createdAt', $alias.content -> 'createdAt'
+       |  'createdAt', $alias.content -> 'createdAt',
+       |  'customMaxPerSecond', $alias.content -> 'customMaxPerSecond',
+       |  'customMaxPerDay', $alias.content -> 'customMaxPerDay',
+       |  'customMaxPerMonth', $alias.content -> 'customMaxPerMonth',
+       |  'customReadOnly', $alias.content -> 'customReadOnly'
        |)""".stripMargin
 
   private def apiFields(alias: String) =
@@ -470,8 +482,8 @@ class OtoroshiSynchronizerJob(
       throttlingQuota = if (forceNewValue) newApikey.throttlingQuota else math.min(oldApiKey.throttlingQuota, newApikey.throttlingQuota),
       dailyQuota = if (forceNewValue) newApikey.dailyQuota else math.min(oldApiKey.dailyQuota, newApikey.dailyQuota),
       monthlyQuota = if (forceNewValue) newApikey.monthlyQuota else math.min(oldApiKey.monthlyQuota, newApikey.monthlyQuota),
-      readOnly = oldApiKey.readOnly && newApikey.readOnly,
-      allowClientIdOnly = oldApiKey.allowClientIdOnly && newApikey.allowClientIdOnly
+      readOnly = if (forceNewValue) newApikey.readOnly else oldApiKey.readOnly && newApikey.readOnly,
+      allowClientIdOnly = if (forceNewValue) newApikey.allowClientIdOnly else oldApiKey.allowClientIdOnly && newApikey.allowClientIdOnly
     )
   }
 
@@ -568,7 +580,7 @@ class OtoroshiSynchronizerJob(
          |                'api', ${apiFields("apis")},
          |                'user', ${userFields("users")},
          |                'plan', ${planFields("usage_plans")}
-         |        )) FILTER (WHERE s._id IS NOT NULL), '[]'::json) AS children,
+         |        )) FILTER (WHERE s._id IS NOT NULL AND usage_plans._id IS NOT NULL), '[]'::json) AS children,
          |        teams.content AS team
          |FROM (
          |    SELECT s._id as parent_id, s.content ->> 'team' as team_id, s.content ->> 'createdAt' as created_at,

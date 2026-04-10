@@ -544,6 +544,7 @@ class OtoroshiSyncSpec()
       )
 
       val childDevPlanId = UsagePlanId("child.dev")
+      //no need to save childDevPlan, he is missing ;)
 
       val parentApi = defaultApi.api.copy(
         id = ApiId("parent-id"),

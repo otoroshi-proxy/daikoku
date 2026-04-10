@@ -8,6 +8,7 @@ import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
+import org.testcontainers.containers.wait.strategy.Wait
 import play.api.libs.json.Json
 
 class BasicUsageSpec()
@@ -35,6 +36,7 @@ class BasicUsageSpec()
         BindMode.READ_ONLY
       )
     ),
+    waitStrategy = Wait.forLogMessage(".*slapd starting.*", 1),
   )
 
   s"Daikoku basics" should {
