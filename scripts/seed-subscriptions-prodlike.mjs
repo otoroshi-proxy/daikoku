@@ -26,19 +26,27 @@ const OTOROSHI_PASS = process.env.OTOROSHI_PASS ?? "admin-api-apikey-secret";
 const TENANT_ID = "default";
 const OTOROSHI_SETTINGS_ID = "seed-otoroshi";
 
-// --- Dimensions (calibrated for meaningful perf results, not prod scale) ---
-const NB_TEAMS = 100;
-const NB_APIS = 50;
-const PLANS_PER_API = 8;      // fixed per API for simplicity
-const TARGET_PARENTS = 500;
+// --- Dimensions prod-like ---
+const NB_TEAMS = 660;
+const NB_APIS = 220;
+const PLANS_PER_API = 10;     // avg entre 5 et 30
+const TARGET_PARENTS = 3900;
 
-// --- Children distribution (simplified bimodal) ---
+// --- Distribution des enfants par parent (bimodale, calquée sur prod) ---
 const CHILDREN_DISTRIBUTION = [
-  { weight: 30, min: 1, max: 3 },
-  { weight: 30, min: 4, max: 8 },
-  { weight: 20, min: 9, max: 15 },
-  { weight: 10, min: 16, max: 30 },
-  { weight: 10, min: 31, max: 60 },
+  { weight: 12, min: 1, max: 1 },
+  { weight: 10, min: 2, max: 3 },
+  { weight: 12, min: 4, max: 5 },
+  { weight: 8, min: 6, max: 7 },
+  { weight: 10, min: 8, max: 10 },
+  { weight: 8, min: 11, max: 13 },
+  { weight: 5, min: 14, max: 15 },
+  { weight: 5, min: 16, max: 20 },
+  { weight: 5, min: 21, max: 25 },
+  { weight: 3, min: 26, max: 30 },
+  { weight: 3, min: 31, max: 43 },
+  { weight: 5, min: 66, max: 80 },
+  { weight: 2, min: 80, max: 106 },
 ];
 
 /////////////////////////////////////////////
@@ -116,8 +124,7 @@ await client.query(`DELETE FROM api_subscriptions WHERE _id LIKE 'seed-%'`);
 console.log("✓ Previous seed data cleared");
 
 // 4. Fetch admin user id from DB
-const userRow = await client.query(`SELECT _id FROM users LIMIT 1`);
-const USER_ID = userRow.rows[0]?._id ?? "admin";
+const USER_ID = "asFpYYNvJmQRVq3irA6p9cnILhTMLQMC"; //MICHAEL SCOTT
 
 // 5. Register Otoroshi settings in tenant (upsert in DB)
 const tenantRow = await client.query(`SELECT content FROM tenants WHERE _id = $1`, [TENANT_ID]);

@@ -373,6 +373,18 @@ trait Repo[Of, Id <: ValueType] {
 
   def findById(id: Id)(implicit ec: ExecutionContext): Future[Option[Of]] =
     findOne(Json.obj("_id" -> id.value))
+    
+//  def findByIds(ids: Seq[String])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+//    find(Json.obj("_id" -> JsArray(ids.map(JsString.apply))))
+
+  def findByIds(ids: Seq[Id])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+    find(Json.obj("_id" -> Json.obj("$in" -> JsArray(ids.map(id => JsString(id.value))))))
+    
+  def findByIdsNotDeleted(ids: Seq[Id])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+    findNotDeleted(Json.obj("_id" -> Json.obj("$in" -> JsArray(ids.map(id => JsString(id.value)))))) 
+     
+//  def findByIdsNotDeleted(ids: Seq[String])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+//    findNotDeleted(Json.obj("_id" -> JsArray(ids.map(JsString.apply))))
 
   def findAll()(implicit ec: ExecutionContext): Future[Seq[Of]] =
     find(Json.obj())
