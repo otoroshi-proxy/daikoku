@@ -4255,8 +4255,11 @@ object json {
 
   val JobStatusFormat: Format[JobStatus] = new Format[JobStatus] {
     override def reads(json: JsValue): JsResult[JobStatus] =
-      json.validate[String].map { str =>
-        JobStatus.valueOf(str)
+      json.validate[String].flatMap { str =>
+        JobStatus.values.find(_.value == str) match {
+          case Some(status) => JsSuccess(status)
+          case None => JsError(s"enum fr.maif.daikoku.domain.JobStatus has no case with value: $str")
+        }
       }
 
     override def writes(o: JobStatus): JsValue =

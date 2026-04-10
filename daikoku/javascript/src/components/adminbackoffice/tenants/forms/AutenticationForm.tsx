@@ -202,7 +202,7 @@ export const AuthenticationForm = (props: { tenant: ITenantFull, updateTenant: U
     },
     selectedMetadata: {
       type: type.string,
-      label: translate('tenant.settings.authProvider.oauth.configuration.metadata.button.label')
+      label: translate('tenant.settings.authProvider.oauth.configuration.selectedMetadata.button.label')
     },
     clientId: {
       type: type.string,
@@ -241,9 +241,9 @@ export const AuthenticationForm = (props: { tenant: ITenantFull, updateTenant: U
     loginUrl: {
       type: type.string,
       label: translate('Login URL'),
-        constraints: [
-          constraints.required(translate("constraints.required.value"))
-        ]
+      constraints: [
+        constraints.required(translate("constraints.required.value"))
+      ]
     },
     logoutUrl: {
       type: type.string,

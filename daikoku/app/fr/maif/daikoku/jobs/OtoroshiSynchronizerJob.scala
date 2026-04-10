@@ -426,7 +426,7 @@ class OtoroshiSynchronizerJob(
     oldApiKey.copy(
       enabled = true,
       validUntil = List(oldApiKey.validUntil, newApikey.validUntil).flatten.minOption,
-      tags = oldApiKey.tags ++ newApikey.tags,
+      tags = if (forceNewValue) newApikey.tags else oldApiKey.tags ++ newApikey.tags,
       metadata = oldApiKey.metadata ++
         newApikey.metadata ++
         Map(
@@ -453,19 +453,25 @@ class OtoroshiSynchronizerJob(
         notFound =
           oldApiKey.restrictions.notFound ++ newApikey.restrictions.notFound
       ),
-      authorizedEntities = AuthorizedEntities(
-        groups =
-          oldApiKey.authorizedEntities.groups | newApikey.authorizedEntities.groups,
-        services =
-          oldApiKey.authorizedEntities.services | newApikey.authorizedEntities.services,
-        routes =
-          oldApiKey.authorizedEntities.routes | newApikey.authorizedEntities.routes
-      ),
+      authorizedEntities = if (forceNewValue)
+        // forceNewValue = on applique le résultat de mergeAggregation (état désiré calculé depuis zéro)
+        // → on remplace, pas d'union avec le stale Otoroshi state
+        newApikey.authorizedEntities
+      else
+        // Fusion inter-subscriptions dans mergeAggregation : on union les entités de chaque child
+        AuthorizedEntities(
+          groups =
+            oldApiKey.authorizedEntities.groups | newApikey.authorizedEntities.groups,
+          services =
+            oldApiKey.authorizedEntities.services | newApikey.authorizedEntities.services,
+          routes =
+            oldApiKey.authorizedEntities.routes | newApikey.authorizedEntities.routes
+        ),
       throttlingQuota = if (forceNewValue) newApikey.throttlingQuota else math.min(oldApiKey.throttlingQuota, newApikey.throttlingQuota),
       dailyQuota = if (forceNewValue) newApikey.dailyQuota else math.min(oldApiKey.dailyQuota, newApikey.dailyQuota),
       monthlyQuota = if (forceNewValue) newApikey.monthlyQuota else math.min(oldApiKey.monthlyQuota, newApikey.monthlyQuota),
-      readOnly = oldApiKey.readOnly || newApikey.readOnly, //todo: not sure for aggregation
-      allowClientIdOnly = oldApiKey.allowClientIdOnly || oldApiKey.allowClientIdOnly //todo: not sure for aggregation
+      readOnly = oldApiKey.readOnly && newApikey.readOnly,
+      allowClientIdOnly = oldApiKey.allowClientIdOnly && newApikey.allowClientIdOnly
     )
   }
 
@@ -615,18 +621,27 @@ class OtoroshiSynchronizerJob(
           otoroshiSettings <- EitherT.fromOption[Future](
             getOtoroshiTarget(tenant, parent.plan), AppError.EntityNotFound("otoroshi target"))
           apikey <- EitherT(client.getApikey(parent.subscription.apiKey.clientId)(using otoroshiSettings))
-          apikeyFromSubscriptions <- EitherT.fromOption[Future](
-            mergeAggregation(parent, children, team, tenant), AppError.EntityConflict("parent is not enabled"))
-          equals = isEqual(apikey, apikeyFromSubscriptions)
-          apk <- if (!equals) {
-            val cleanApikey = clearApikey(apikey)
-            val computedKey = mergeOtoroshiApikeys(cleanApikey, apikeyFromSubscriptions, forceNewValue = true)
-            logger.debug(s"Updating apikey ${parent.subscription.apiKey.clientId} (${children.size} children)")
-            EitherT(client.updateApiKey(key = computedKey)(using otoroshiSettings))
-          } else {
-            EitherT.pure[Future, AppError](apikey)
+          apk <- mergeAggregation(parent, children, team, tenant) match {
+            case Some(apikeyFromSubscriptions) =>
+              val equals = isEqual(apikey, apikeyFromSubscriptions)
+              if (!equals) {
+                val cleanApikey = clearApikey(apikey)
+                val computedKey = mergeOtoroshiApikeys(cleanApikey, apikeyFromSubscriptions, forceNewValue = true)
+                logger.debug(s"Updating apikey ${parent.subscription.apiKey.clientId} (${children.size} children)")
+                EitherT(client.updateApiKey(key = computedKey)(using otoroshiSettings))
+              } else {
+                EitherT.pure[Future, AppError](apikey)
+              }
+            case None =>
+              // parent subscription is disabled — disable the key in Otoroshi if not already
+              if (apikey.enabled) {
+                logger.debug(s"Disabling apikey ${parent.subscription.apiKey.clientId} in Otoroshi (subscription disabled in Daikoku)")
+                EitherT(client.updateApiKey(key = apikey.copy(enabled = false))(using otoroshiSettings))
+              } else {
+                EitherT.pure[Future, AppError](apikey)
+              }
           }
-        } yield (apk, equals)).value
+        } yield apk).value
           .recover {
             case e => Left(AppError.InternalServerError(e.getMessage))
           }
@@ -634,8 +649,8 @@ class OtoroshiSynchronizerJob(
             case Left(error) =>
               errored.incrementAndGet()
               logger.error(s"Error synchronizing apikey ${parent.subscription.apiKey.clientId}: ${error.getErrorMessage()}")
-            case Right((_, wasEqual)) =>
-              if (wasEqual) skipped.incrementAndGet() else synced.incrementAndGet()
+            case Right(_) =>
+              synced.incrementAndGet()
           }
           .map(_ => createdAt)
       }

@@ -15,3 +15,4 @@ export * from './function';
 export * from './sidebar';
 export * from './Error';
 export * from './Informations';
+export * from './Placeholder';

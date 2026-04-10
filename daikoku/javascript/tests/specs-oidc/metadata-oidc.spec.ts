@@ -137,31 +137,22 @@ test('Récupérer toutes les metadatas claims que d\'OIDC', async ({ page }) => 
     }
   }).then(r => r.json())
 
-  const michael = users[1]
-  const jim = users[2]
-  const metadatasMichael = await fetch(`http://localhost:${exposedPort}/admin-api/users/${michael._id}`, {
-    method: 'GET',
-    headers: {
-      "content-type": "application/json",
-      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
-    }
-  }).then(r => r.json())
-  const metadatasJim = await fetch(`http://localhost:${exposedPort}/admin-api/users/${jim._id}`, {
-    method: 'GET',
-    headers: {
-      "content-type": "application/json",
-      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
-    }
-  }).then(r => r.json())
+  const michael = users.find(u => u.email === MICHAEL.email)
+  console.error("***")
+  console.error(MICHAEL.email)
+  console.error("***")
+  console.error(JSON.stringify(michael))
+  console.error("***")
+  const jim = users.find(u => u.email === JIM.email)
 
-  expect(metadatasMichael.metadata).toEqual(
+  expect(michael.metadata).toEqual(
     {
       sub: '1',
       name: 'Michael Scott',
       role: 'admin',
       email: 'michael.scott@dundermifflin.com'
     })
-  expect(metadatasJim.metadata).toEqual(
+  expect(jim.metadata).toEqual(
     {
       name: 'Jim Halpert',
       birthdate: '1978/10/01',
@@ -199,8 +190,8 @@ test('Récupérer les metadatas claims d\'OIDC "name", puis "birthdate"', async 
     }
   }).then(r => r.json())
 
-  const michael = users.filter( u => u.name === "Michael Scott")[0]
-  const jim = users.filter( u => u.name === "Jim Halpert")[0]
+  const michael = users.filter(u => u.name === "Michael Scott")[0]
+  const jim = users.filter(u => u.name === "Jim Halpert")[0]
 
   console.log(michael)
   console.log(jim)
@@ -219,7 +210,7 @@ test('Récupérer les metadatas claims d\'OIDC "name", puis "birthdate"', async 
       "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
     }
   }).then(r => r.json())
-  
+
   expect(metadatasMichael.metadata).toEqual(
     {
       name: 'Michael Scott'
@@ -257,8 +248,8 @@ test('Récupérer les metadatas claims d\'OIDC "name", puis "birthdate"', async 
       "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
     }
   }).then(r => r.json())
-  const michaelBis = userBis.filter( u => u.name === "Michael Scott")[0]
-  const jimBis = userBis.filter( u => u.name === "Jim Halpert")[0]
+  const michaelBis = userBis.filter(u => u.name === "Michael Scott")[0]
+  const jimBis = userBis.filter(u => u.name === "Jim Halpert")[0]
   const metadatasMichaelBis = await (fetch(`http://localhost:${exposedPort}/admin-api/users/${michaelBis._id}`, {
     method: 'GET',
     headers: {

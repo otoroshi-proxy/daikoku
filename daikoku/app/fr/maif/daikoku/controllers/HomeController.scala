@@ -116,6 +116,7 @@ class HomeController(
 
   def healthDetailed(): Action[AnyContent] = {
     Action.async { ctx =>
+      println(env.config.detailedHealthAccessKey)
       ctx.getQueryString("access_key") match {
         case Some(key) if env.config.detailedHealthAccessKey.contains(key) => {
           val datastoreHealth = env.dataStore match {

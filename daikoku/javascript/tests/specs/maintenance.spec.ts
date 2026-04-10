@@ -1,5 +1,5 @@
 import test, { expect } from '@playwright/test';
-import { JIM, PAM, MICHAEL } from './users';
+import { MICHAEL } from './users';
 import { ACCUEIL, adminApikeyId, adminApikeySecret, exposedPort, HOME, loginAs, otoroshiAdminApikeyId, otoroshiAdminApikeySecret } from './utils';
 import otoroshi_data from '../config/otoroshi/otoroshi-state.json';
 
@@ -26,7 +26,7 @@ test.beforeEach(async () => {
   ])
 })
 
-const passInModeMaintenance  = async ({page}) => {
+const passInModeMaintenance = async ({ page }) => {
   await page.goto(ACCUEIL);
   await loginAs(MICHAEL, page)
   await page.getByRole('button', { name: 'user menu' }).click();
@@ -36,12 +36,12 @@ const passInModeMaintenance  = async ({page}) => {
 }
 
 test('Passe en mode maintenance', async ({ page }) => {
-  await passInModeMaintenance({page})
-  expect (page.getByRole('heading', { name: 'Daikoku est en maintenance' })).toBeVisible;
+  await passInModeMaintenance({ page })
+  await expect(page.getByRole('heading', { name: 'Daikoku est en maintenance' })).toBeVisible();
 });
 
 test('Se connecter en maintenance avec admin', async ({ page }) => {
-  await passInModeMaintenance({page})
+  await passInModeMaintenance({ page })
   const input = page.locator('input[name="username"]');
   await input.fill(MICHAEL.email);
   await page.locator('input[name="password"]').fill('password');
@@ -54,13 +54,13 @@ test('Se connecter en maintenance avec admin', async ({ page }) => {
   await page.getByRole('button', { name: 'Se connecter' }).click();
   await page.getByRole('button', { name: 'user menu' }).click();
   await page.getByRole('link', { name: 'Déconnexion' }).click();
-  expect (page.getByRole('heading', { name: 'Daikoku est en maintenance' })).toBeVisible;
+  await expect(page.getByRole('heading', { name: 'Daikoku est en maintenance' })).toBeVisible();
 });
 
 test('redirection par l\'url retourne page maintenance', async ({ page }) => {
-  await passInModeMaintenance({page})
+  await passInModeMaintenance({ page })
   await page.goto("http://localhost:5173/apis")
-  expect (page.getByRole('heading', { name: 'Daikoku est en maintenance' })).toBeVisible;
+  await expect(page.getByRole('heading', { name: 'Daikoku est en maintenance' })).toBeVisible();
 });
 
 
