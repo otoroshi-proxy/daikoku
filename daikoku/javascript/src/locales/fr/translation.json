@@ -1230,6 +1230,7 @@
   "api.delete.subscription.form": "Formulaire de suppression de la souscription",
   "api.delete.subscription.howToDelete": "Tapez : \"%s\" pour supprimer la souscription.",
   "api.delete.subscription.deleted": "Souscription supprimée.",
+  "api.subscription.update.success": "Souscription modifiée avec succès",
   "api.delete.subscription.impossible.nothing": "Entrez le nom de la souscription pour la supprimer.",
   "api.delete.subscription.impossible.incorrect": "Le nom est faux.",
   "secret.refresh.confirm": "Vous êtes sur le point d'actualiser le secret de la souscription de l'équipe %s pour le plan %s. Cette action ne peut être annulée. Êtes vous sûr d'actualiser ce secret ?",

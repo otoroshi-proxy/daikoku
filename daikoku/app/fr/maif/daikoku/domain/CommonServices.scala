@@ -4,12 +4,13 @@ import cats.data.EitherT
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.actions.DaikokuActionContext
 import fr.maif.daikoku.audit.AuditTrailEvent
-import fr.maif.daikoku.controllers.authorizations.async._
+import fr.maif.daikoku.controllers.authorizations.async.*
 import fr.maif.daikoku.domain.NotificationAction.ApiAccess
 import fr.maif.daikoku.env.Env
+import fr.maif.daikoku.logger.AppLogger
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.joda.time.DateTime
-import play.api.libs.json._
+import play.api.libs.json.*
 import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -935,6 +936,9 @@ object CommonServices {
            |$sortClause
            |LIMIT $$8 OFFSET $$9;
            |""".stripMargin
+
+
+      AppLogger.warn("herre")
 
       (for {
         count <- EitherT.fromOptionF[Future, AppError, Long](

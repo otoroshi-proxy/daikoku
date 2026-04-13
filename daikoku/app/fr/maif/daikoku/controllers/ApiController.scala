@@ -2346,13 +2346,14 @@ class ApiController(
     } yield json
   }
 
-  def deleteApiSubscription(teamId: String, subscriptionId: String, action: Option[String], childId: Option[String]) =
+  def deleteApiSubscription(teamId: String, subscriptionId: String, action: Option[String], childId: Option[String]): Action[AnyContent] =
     DaikokuAction.async { ctx =>
       TeamApiEditorOnly(
         AuditTrailEvent(
           s"@{user.name} has deleted api subscription @{subscription.id} of @{team.name} - @{team.id}"
         )
       )(teamId, ctx) { team =>
+        Time.concurrentTime(
         apiSubscriptionAction(
           ctx.tenant,
           team,
@@ -2404,7 +2405,7 @@ class ApiController(
                     )
                 }
               }.value
-          }
+          })
         )
       }
     }

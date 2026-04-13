@@ -1231,6 +1231,7 @@
     "api.delete.subscription.form": "Subscription deletion form",
     "api.delete.subscription.howToDelete": "type : \"%s\" for deleting the subscription.",
     "api.delete.subscription.deleted": "Subscription deleted.",
+    "api.subscription.update.success": "Subscription successfully updated",
     "api.delete.subscription.impossible.nothing": "Enter the name of the subscription for deleting it.",
     "api.delete.subscription.impossible.incorrect": "The name is wrong.",
     "secret.refresh.confirm": "You are about to refresh the secret the subscription of team %s for plan %s. This action cannot be undone. Are you sure you want to refresh the secret ?",

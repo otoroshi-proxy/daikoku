@@ -90,7 +90,7 @@ async function bulkInsert(client, table, rows) {
   const CHUNK = 500;
   for (let i = 0; i < rows.length; i += CHUNK) {
     const chunk = rows.slice(i, i + CHUNK);
-    const values = chunk.map((r, idx) => `($${idx * 3 + 1}, $${idx * 3 + 2}::jsonb, $${idx * 3 + 3})`).join(", ");
+    const values = chunk.map((_, idx) => `($${idx * 3 + 1}, $${idx * 3 + 2}::jsonb, $${idx * 3 + 3})`).join(", ");
     const params = chunk.flatMap(r => [r.id, JSON.stringify(r.content), false]);
     await client.query(
       `INSERT INTO ${table} (_id, content, _deleted) VALUES ${values} ON CONFLICT (_id) DO NOTHING`,
@@ -310,42 +310,44 @@ for (let t = 0; t < NB_TEAMS; t++) {
 
     const now = Date.now();
 
+    const baseSub = (id, apiId, planId, customName, extra = {}) => ({
+      _id: id,
+      _tenant: TENANT_ID,
+      _deleted: false,
+      api: apiId,
+      plan: planId,
+      tags: [],
+      team: teamId,
+      apiKey: { clientId, clientSecret, clientName: `Key ${parentId}` },
+      parent: null,
+      by: USER_ID,
+      enabled: true,
+      metadata: {},
+      rotation: { enabled: false, gracePeriod: 168, rotationEvery: 744, pendingRotation: false },
+      createdAt: now,
+      customName,
+      validUntil: null,
+      bearerToken: null,
+      customMetadata: null,
+      customReadOnly: null,
+      adminCustomName: null,
+      customMaxPerDay: null,
+      integrationToken: `integ-${id}`,
+      customMaxPerMonth: null,
+      customMaxPerSecond: null,
+      thirdPartySubscriptionInformations: null,
+      ...extra,
+    });
+
     subRows.push({
       id: parentId,
-      content: {
-        _id: parentId,
-        _tenant: TENANT_ID,
-        _deleted: false,
-        plan: parentPlanEntry.planId,
-        team: teamId,
-        api: apiData[apiIdx].apiId,
-        by: USER_ID,
-        enabled: true,
-        createdAt: now,
-        integrationToken: `integ-${parentId}`,
-        customName: `Parent ${parentId}`,
-        apiKey: { clientName: `Key ${parentId}`, clientId, clientSecret },
-      }
+      content: baseSub(parentId, apiData[apiIdx].apiId, parentPlanEntry.planId, `Parent ${parentId}`)
     });
 
     for (const { childId, childApiIdx, childPlanEntry } of childIds) {
       subRows.push({
         id: childId,
-        content: {
-          _id: childId,
-          _tenant: TENANT_ID,
-          _deleted: false,
-          plan: childPlanEntry.planId,
-          team: teamId,
-          api: apiData[childApiIdx].apiId,
-          by: USER_ID,
-          enabled: true,
-          createdAt: now + 1,
-          integrationToken: `integ-${childId}`,
-          customName: `Child ${childId}`,
-          apiKey: { clientName: `Key ${parentId}`, clientId, clientSecret },
-          parent: parentId,
-        }
+        content: baseSub(childId, apiData[childApiIdx].apiId, childPlanEntry.planId, `Child ${childId}`, { parent: parentId, createdAt: now + 1 })
       });
     }
 

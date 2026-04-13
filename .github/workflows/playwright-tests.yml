@@ -89,8 +89,9 @@ jobs:
       - name: Seed perf data
         if: matrix.suite.name == 'perf'
         run: |
+          cd scripts
           npm ci
-          node scripts/seed-subscriptions-prodlike.mjs
+          seed-subscriptions-prodlike.mjs
         env:
           PG_HOST: localhost
           PG_PORT: 5442

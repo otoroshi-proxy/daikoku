@@ -8,7 +8,7 @@ import { DaikokuApp } from './apps';
 import { GlobalContext, GlobalContextProvider } from './contexts/globalContext';
 import { I18nProvider } from './contexts/i18n-context';
 
-import { BrowserRouter} from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 
 import '@maif/react-forms/lib/index.css';
 import 'bootstrap/dist/css/bootstrap.css';

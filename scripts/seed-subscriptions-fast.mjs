@@ -115,8 +115,8 @@ await client.query(`DELETE FROM apis             WHERE _id LIKE 'seed-%'`);
 await client.query(`DELETE FROM api_subscriptions WHERE _id LIKE 'seed-%'`);
 console.log("✓ Previous seed data cleared");
 
-// 4. Fetch admin user id from DB
-const userRow = await client.query(`SELECT _id FROM users LIMIT 1`);
+// 4. Fetch daikoku admin user id from DB
+const userRow = await client.query(`SELECT _id FROM users WHERE (content ->> 'isDaikokuAdmin')::boolean = true LIMIT 1`);
 const USER_ID = userRow.rows[0]?._id ?? "admin";
 
 // 5. Register Otoroshi settings in tenant (upsert in DB)
@@ -303,42 +303,44 @@ for (let t = 0; t < NB_TEAMS; t++) {
 
     const now = Date.now();
 
+    const baseSub = (id, apiId, planId, customName, extra = {}) => ({
+      _id: id,
+      _tenant: TENANT_ID,
+      _deleted: false,
+      api: apiId,
+      plan: planId,
+      tags: [],
+      team: teamId,
+      apiKey: { clientId, clientSecret, clientName: `Key ${parentId}` },
+      parent: null,
+      by: USER_ID,
+      enabled: true,
+      metadata: {},
+      rotation: { enabled: false, gracePeriod: 168, rotationEvery: 744, pendingRotation: false },
+      createdAt: now,
+      customName,
+      validUntil: null,
+      bearerToken: null,
+      customMetadata: null,
+      customReadOnly: null,
+      adminCustomName: null,
+      customMaxPerDay: null,
+      integrationToken: `integ-${id}`,
+      customMaxPerMonth: null,
+      customMaxPerSecond: null,
+      thirdPartySubscriptionInformations: null,
+      ...extra,
+    });
+
     subRows.push({
       id: parentId,
-      content: {
-        _id: parentId,
-        _tenant: TENANT_ID,
-        _deleted: false,
-        plan: parentPlanEntry.planId,
-        team: teamId,
-        api: apiData[apiIdx].apiId,
-        by: USER_ID,
-        enabled: true,
-        createdAt: now,
-        integrationToken: `integ-${parentId}`,
-        customName: `Parent ${parentId}`,
-        apiKey: { clientName: `Key ${parentId}`, clientId, clientSecret },
-      }
+      content: baseSub(parentId, apiData[apiIdx].apiId, parentPlanEntry.planId, `Parent ${parentId}`)
     });
 
     for (const { childId, childApiIdx, childPlanEntry } of childIds) {
       subRows.push({
         id: childId,
-        content: {
-          _id: childId,
-          _tenant: TENANT_ID,
-          _deleted: false,
-          plan: childPlanEntry.planId,
-          team: teamId,
-          api: apiData[childApiIdx].apiId,
-          by: USER_ID,
-          enabled: true,
-          createdAt: now + 1,
-          integrationToken: `integ-${childId}`,
-          customName: `Child ${childId}`,
-          apiKey: { clientName: `Key ${parentId}`, clientId, clientSecret },
-          parent: parentId,
-        }
+        content: baseSub(childId, apiData[childApiIdx].apiId, childPlanEntry.planId, `Child ${childId}`, { parent: parentId, createdAt: now + 1 })
       });
     }
 

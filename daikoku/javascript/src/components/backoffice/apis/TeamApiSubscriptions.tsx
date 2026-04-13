@@ -2,7 +2,6 @@ import { type } from "@maif/react-forms";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ColumnFiltersState, createColumnHelper, flexRender, getCoreRowModel, getFilteredRowModel, getSortedRowModel, PaginationState, SortingState, useReactTable } from "@tanstack/react-table";
 import classNames from "classnames";
-import { GraphQLClient } from "graphql-request";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import Pagination from 'react-paginate';
 import { toast } from "sonner";
@@ -28,6 +27,7 @@ import {
   Spinner
 } from "../../utils";
 import { GlobalContext } from "../../../contexts/globalContext";
+import { FeedbackButton } from "../../utils/FeedbackButton";
 
 type TeamApiSubscriptionsProps = {
   api: IApi;
@@ -121,6 +121,7 @@ export const TeamApiSubscriptions = ({
     select: d => d.apiApiSubscriptions
   });
 
+  const testPromise = (log: string) => new Promise(resolve => setTimeout(() => { console.debug(log); resolve(undefined); }, 3000))
 
   const columnHelper = createColumnHelper<IApiSubscriptionGqlWithUsage>();
   const columns = [
@@ -203,7 +204,7 @@ export const TeamApiSubscriptions = ({
       meta: { style: { textAlign: "left" } },
       cell: (info) => {
         const date = info.getValue();
-        if (!!date) {
+        if (date) {
           return formatDate(date, translate('date.locale'), translate('date.format.without.hours'));
         }
         return translate("N/A");
@@ -215,7 +216,7 @@ export const TeamApiSubscriptions = ({
       meta: { style: { textAlign: "left" } },
       cell: (info) => {
         const date = info.getValue();
-        if (!!date) {
+        if (date) {
           return formatDate(date, translate('date.locale'), translate('date.format'));
         }
         return translate("N/A");
@@ -254,7 +255,7 @@ export const TeamApiSubscriptions = ({
               <button
                 key={`edit-meta-${sub._id}`}
                 type="button"
-                className="btn btn-sm btn-outline-primary btn-outline-danger"
+                className="btn btn-sm btn-outline-danger"
                 aria-label={translate("api.delete.subscription")}
                 onClick={() => deleteSubscription(sub)}
               >
@@ -293,16 +294,19 @@ export const TeamApiSubscriptions = ({
 
   useEffect(() => {
     document.title = `${currentTeam.name} - ${translate("Subscriptions")}`;
-  }, []);
+  }, [currentTeam.name, translate]);
 
   const updateMeta = (sub: IApiSubscriptionGql) => {
     return openSubMetadataModal({
       save: (updates: CustomSubscriptionData) => {
-        Services.updateSubscription(currentTeam, { ...sub, ...updates }).then(
-          () => {
-            queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
-          }
-        );
+        const toastId = toast.loading(translate("loading"));
+        Services.updateSubscription(currentTeam, { ...sub, ...updates })
+          .then(
+            () => {
+              queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+            }
+          ).
+          then(() => toast.success(translate("api.subscription.update.success"), { id: toastId }));
       },
       api: sub.api._id,
       plan: sub.plan._id,
@@ -316,13 +320,12 @@ export const TeamApiSubscriptions = ({
     mutationFn: (sub: IApiSubscriptionGql) =>
       Services.regenerateApiKeySecret(currentTeam._id, sub._id),
     onSuccess: () => {
-      toast.success(translate("secret.refresh.success"));
       tableRef.current?.update();
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
     },
-    onError: (e: ResponseError) => {
-      toast.error(translate(e.error));
-    },
+    // onError: (e: ResponseError) => {
+    //   toast.error(translate(e.error));
+    // },
   });
 
   const regenerateSecret = (sub: IApiSubscriptionGql) => {
@@ -340,7 +343,11 @@ export const TeamApiSubscriptions = ({
       cancelLabel: translate("No"),
     }).then((ok) => {
       if (ok) {
-        regenerateApiKeySecret.mutate(sub);
+        const toastId = toast.loading(translate("loading"));
+        regenerateApiKeySecret.mutateAsync(sub)
+          .then(() => toast.success(translate("secret.refresh.success"), { id: toastId }))
+          .catch((e: ResponseError) => toast.error(translate(e.error), { id: toastId }));
+
       }
     });
   };
@@ -349,13 +356,12 @@ export const TeamApiSubscriptions = ({
     mutationFn: (sub: IApiSubscriptionGql) =>
       Services.deleteApiSubscription(sub.team._id, sub._id, "promotion"),
     onSuccess: () => {
-      toast.success(translate("api.delete.subscription.deleted"));
       tableRef.current?.update();
       queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
     },
-    onError: (e: ResponseError) => {
-      toast.error(translate(e.error));
-    },
+    // onError: (e: ResponseError) => {
+    //   toast.error(translate(e.error));
+    // },
   });
   const deleteSubscription = (sub: IApiSubscriptionGql) => {
     confirm({
@@ -371,7 +377,10 @@ export const TeamApiSubscriptions = ({
       cancelLabel: translate("No"),
     }).then((ok) => {
       if (ok) {
-        deleteApiSubscription.mutate(sub);
+        const toastId = toast.loading(translate("loading"));
+        deleteApiSubscription.mutateAsync(sub)
+          .then(() => toast.success(translate("api.delete.subscription.deleted"), { id: toastId }))
+          .catch((e: ResponseError) => toast.error(translate(e.error), { id: toastId }));
       }
     });
   };
