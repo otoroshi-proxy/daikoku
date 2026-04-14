@@ -863,7 +863,7 @@ test('[ASOAP-10604] - [Consommateur] - transférer une clé d\'api à une autre 
   await page.goto(link);
   await page.getByText('Vendeurs').click();
   await page.getByRole('button', { name: 'Confirmer le transfert' }).click();
-  await page.getByRole('link', {name: 'API papier'}).isVisible();
+  await page.getByRole('link', { name: 'API papier' }).isVisible();
   await page.goto(`${HOME}vendeurs/settings/dashboard`);
   await page.getByText('Clés d\'API').click();
   await page.getByRole('row', { name: 'API Commande' }).getByLabel('Voir les clés d\'API').click();

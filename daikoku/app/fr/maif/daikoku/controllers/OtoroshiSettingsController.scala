@@ -179,7 +179,7 @@ class OtoroshiSettingsController(
                   saveSettings()
                 else
                   otoroshiClient
-                    .getServices()(settings)
+                    .getServices()(using settings)
                     .flatMap { _ =>
                       saveSettings()
                     }
@@ -224,7 +224,7 @@ class OtoroshiSettingsController(
               createOtoroshi()
             else
               otoroshiClient
-                .getServices()(settings)
+                .getServices()(using settings)
                 .flatMap { _ =>
                   createOtoroshi()
                 }
@@ -249,7 +249,7 @@ class OtoroshiSettingsController(
             NotFound(Json.obj("error" -> s"Settings $oto not found")).future
           case Some(settings) =>
             otoroshiClient
-              .getServiceGroups()(settings)
+              .getServiceGroups()(using settings)
               .map { groups =>
                 team.authorizedOtoroshiEntities match {
                   case Some(authorizedEntities)
@@ -291,7 +291,7 @@ class OtoroshiSettingsController(
             )
           case Some(settings) =>
             otoroshiClient
-              .getServiceGroups()(settings)
+              .getServiceGroups()(using settings)
               .map(Ok(_))
               .recover { case error =>
                 BadRequest(Json.obj("error" -> error.getMessage))
@@ -314,7 +314,7 @@ class OtoroshiSettingsController(
             )
           case Some(settings) =>
             otoroshiClient
-              .getServices()(settings)
+              .getServices()(using settings)
               .map { services =>
                 team.authorizedOtoroshiEntities match {
                   case Some(authorizedEntities)
@@ -356,7 +356,7 @@ class OtoroshiSettingsController(
             )
           case Some(settings) =>
             otoroshiClient
-              .getRoutes()(settings)
+              .getRoutes()(using settings)
               .map { routes =>
                 team.authorizedOtoroshiEntities match {
                   case Some(authorizedEntities)
@@ -398,7 +398,7 @@ class OtoroshiSettingsController(
             )
           case Some(settings) =>
             otoroshiClient
-              .getServices()(settings)
+              .getServices()(using settings)
               .map(Ok(_))
               .recover { case error =>
                 BadRequest(Json.obj("error" -> error.getMessage))
@@ -421,7 +421,7 @@ class OtoroshiSettingsController(
             )
           case Some(settings) =>
             otoroshiClient
-              .getRoutes()(settings)
+              .getRoutes()(using settings)
               .map(Ok(_))
               .recover { case error =>
                 BadRequest(Json.obj("error" -> error.getMessage))
@@ -444,7 +444,7 @@ class OtoroshiSettingsController(
             )
           case Some(settings) =>
             otoroshiClient
-              .getApiKeys()(settings)
+              .getApiKeys()(using settings)
               .map(Ok(_))
               .recover { case error =>
                 BadRequest(Json.obj("error" -> error.getMessage))
@@ -463,7 +463,7 @@ class OtoroshiSettingsController(
         val otoroshiSettingsOpt =
           (ctx.request.body \ "otoroshiSettings").asOpt[String]
         val authorizedEntitiesOpt = (ctx.request.body \ "authorizedEntities")
-          .asOpt(AuthorizedEntitiesFormat)
+          .asOpt(using AuthorizedEntitiesFormat)
         val clientNameOpt = (ctx.request.body \ "clientName").asOpt[String]
         val tagOpt = (ctx.request.body \ "tag").asOpt[String]
         val metadataOpt = (ctx.request.body \ "customMetadata").asOpt[JsObject]
@@ -541,7 +541,7 @@ class OtoroshiSettingsController(
             AppError.EntityNotFound("Otoroshi settings")
           )
           apiKey = createApiKey(clientName, authorizedEntities, tag)
-          createdKey <- EitherT(otoroshiClient.createApiKey(apiKey)(settings))
+          createdKey <- EitherT(otoroshiClient.createApiKey(apiKey)(using settings))
         } yield Ok(createdKey.asJson))
           .leftMap(_.render())
           .merge
@@ -558,7 +558,7 @@ class OtoroshiSettingsController(
         val entityType = (ctx.request.body \ "entity" \ "type").as[String]
         val entityId = (ctx.request.body \ "entity" \ "_id").as[String]
 
-        val testingConfig = ctx.request.body.as(TestingConfigFormat)
+        val testingConfig = ctx.request.body.as(using TestingConfigFormat)
 
         def handleKeyJob(
             previousSettings: OtoroshiSettings,
@@ -567,12 +567,12 @@ class OtoroshiSettingsController(
         ): EitherT[Future, AppError, ActualOtoroshiApiKey] = {
           if (previousSettings != actualSettings) {
             for {
-              _ <- otoroshiClient.deleteApiKey(key.clientId)(previousSettings)
+              _ <- otoroshiClient.deleteApiKey(key.clientId)(using previousSettings)
               newKey <-
-                EitherT(otoroshiClient.createApiKey(key)(actualSettings))
+                EitherT(otoroshiClient.createApiKey(key)(using actualSettings))
             } yield newKey
           } else {
-            EitherT(otoroshiClient.updateApiKey(key)(previousSettings))
+            EitherT(otoroshiClient.updateApiKey(key)(using previousSettings))
           }
 
         }
@@ -607,7 +607,7 @@ class OtoroshiSettingsController(
             AppError.EntityNotFound("Otoroshi settings")
           )
           apiKey <- EitherT(
-            otoroshiClient.getApikey(testingConfig.clientName)(previousSettings)
+            otoroshiClient.getApikey(testingConfig.clientName)(using previousSettings)
           )
           lastMetadata: Map[String, String] =
             testing.config
@@ -664,7 +664,7 @@ class OtoroshiSettingsController(
           )
           _ <-
             otoroshiClient
-              .deleteApiKey(clientId)(otoroshiSettings)
+              .deleteApiKey(clientId)(using otoroshiSettings)
         } yield Ok(Json.obj("done" -> true)))
           .leftMap(_.render())
           .merge
@@ -712,7 +712,7 @@ class OtoroshiSettingsController(
         AppLogger.warn(s"$finalHeaders")
         val builder = env.wsClient
           .url(finalUrl)
-          .withHttpHeaders(finalHeaders.toSeq: _*)
+          .withHttpHeaders(finalHeaders.toSeq*)
           .withFollowRedirects(false)
           .withMethod(method)
           .withRequestTimeout(30.seconds)
@@ -744,7 +744,7 @@ class OtoroshiSettingsController(
                   .toSeq
                   .filter(_._1 != "Content-Type")
                   .filter(_._1 != "Content-Length")
-                  .filter(_._1 != "Transfer-Encoding"): _*
+                  .filter(_._1 != "Transfer-Encoding")*
               )
               .as(ctype)
           }

@@ -6,7 +6,7 @@ import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.actions.{
   ApiActionContext,
   CmsApiAction,
-  DaikokuActionMaybeWithoutUser
+  DaikokuUnauthenticatedAction
 }
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
 import fr.maif.daikoku.domain.json.{CmsFileFormat, CmsPageFormat}
@@ -39,13 +39,13 @@ case class CmsApiActionContext[A](
 ) extends ApiActionContext[A]
 
 class CmsApiController(
-    CmsApiAction: CmsApiAction,
-    env: Env,
-    cc: ControllerComponents,
-    DaikokuActionMaybeWithoutUser: DaikokuActionMaybeWithoutUser,
-    translationsService: TranslationsService,
-    apiService: ApiService,
-    assetsService: AssetsService,
+                        CmsApiAction: CmsApiAction,
+                        env: Env,
+                        cc: ControllerComponents,
+                        DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
+                        translationsService: TranslationsService,
+                        apiService: ApiService,
+                        assetsService: AssetsService,
 ) extends AbstractController(cc) {
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext
@@ -73,7 +73,7 @@ class CmsApiController(
 
   def getId(entity: CmsPage): CmsPageId = entity.id
 
-  private def bodyToSource[A](body: A): Source[ByteString, _] = {
+  private def bodyToSource[A](body: A): Source[ByteString, ?] = {
     body match {
       case raw: AnyContentAsRaw =>
         Source.single(raw.raw.asBytes().getOrElse(ByteString.empty))
@@ -135,10 +135,11 @@ class CmsApiController(
       for {
         _ <- Future.sequence(
           ctx.request.body
-            .as(Reads.seq(CmsFileFormat))
+            .as(using Reads.seq(using CmsFileFormat))
             .map(page => {
               val path = page.path()
-              if (path.startsWith("/customization/")) {
+              val fixedIdPages = Set("style.css", "script.js", "color-theme.css")
+              if (path.startsWith("/customization/") && fixedIdPages.contains(page.name)) {
                 env.dataStore.cmsRepo
                   .forTenant(ctx.tenant)
                   .delete(Json.obj("path" -> page.path()))
@@ -148,12 +149,17 @@ class CmsApiController(
                       .save(
                         page
                           .toCmsPage(ctx.tenant.id)
-                          .copy(id =
-                            CmsPageId(
-                              s"${ctx.tenant.id.value}-${page.name.split("\\.").head}"
-                            )
-                          )
+                          .copy(id = CmsPageId(s"${ctx.tenant.id.value}-${page.name.split("\\.").head}"))
                       )
+                  )
+              } else if (path.startsWith("/customization/")) {
+                env.dataStore.cmsRepo
+                  .forTenant(ctx.tenant)
+                  .delete(Json.obj("path" -> page.path()))
+                  .map(_ =>
+                    env.dataStore.cmsRepo
+                      .forTenant(ctx.tenant)
+                      .save(page.toCmsPage(ctx.tenant.id))
                   )
               } else {
                 env.dataStore.cmsRepo
@@ -175,8 +181,8 @@ class CmsApiController(
 
   def health() =
     CmsApiAction.async { ctx =>
-      ctx.request.headers.get("Otoroshi-Health-Check-Logic-Test") match {
-        // todo: better health check
+      ctx.request.headers.get("Otoroshi-" +
+        "Health-Check-Logic-Test") match {
         case Some(value) =>
           Ok.withHeaders(
             "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString
@@ -327,7 +333,7 @@ class CmsApiController(
     }
 
   def redirectToLoginPage() =
-    DaikokuActionMaybeWithoutUser.async { ctx =>
+    DaikokuUnauthenticatedAction.async { ctx =>
       ctx.request.queryString.get("redirect").flatMap(_.headOption) match {
         case Some(redirect: String) =>
           ctx.tenant.authProvider match {
@@ -347,7 +353,7 @@ class CmsApiController(
                   s"${authConfig.loginUrl}?scope=${scope}&client_id=$clientId&response_type=$responseType&redirect_uri=$redirectUri"
                 ).addingToSession(
                   s"redirect" -> redirect
-                )(ctx.request)
+                )(using ctx.request)
               )
             case _ =>
               FastFuture.successful(Redirect(s"/?redirect=$redirect"))

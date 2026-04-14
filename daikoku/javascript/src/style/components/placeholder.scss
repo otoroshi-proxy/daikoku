@@ -1,0 +1,23 @@
+@use "../variables";
+
+@keyframes placeholder-blink {
+
+  0%,
+  100% {
+    background-color: variables.$primary-color;
+  }
+
+  50% {
+    background-color: variables.$level3_bg-color;
+  }
+}
+
+.dk-placeholder {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  border: 10px solid white;
+  border-radius: inherit;
+  animation: placeholder-blink 2.5s ease-in-out infinite;
+  pointer-events: none;
+}

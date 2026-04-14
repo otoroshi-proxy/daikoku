@@ -373,6 +373,18 @@ trait Repo[Of, Id <: ValueType] {
 
   def findById(id: Id)(implicit ec: ExecutionContext): Future[Option[Of]] =
     findOne(Json.obj("_id" -> id.value))
+    
+//  def findByIds(ids: Seq[String])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+//    find(Json.obj("_id" -> JsArray(ids.map(JsString.apply))))
+
+  def findByIds(ids: Seq[Id])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+    find(Json.obj("_id" -> Json.obj("$in" -> JsArray(ids.map(id => JsString(id.value))))))
+    
+  def findByIdsNotDeleted(ids: Seq[Id])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+    findNotDeleted(Json.obj("_id" -> Json.obj("$in" -> JsArray(ids.map(id => JsString(id.value)))))) 
+     
+//  def findByIdsNotDeleted(ids: Seq[String])(implicit ec: ExecutionContext): Future[Seq[Of]] =
+//    findNotDeleted(Json.obj("_id" -> JsArray(ids.map(JsString.apply))))
 
   def findAll()(implicit ec: ExecutionContext): Future[Seq[Of]] =
     find(Json.obj())
@@ -472,6 +484,8 @@ trait ApiIssueRepo extends TenantCapableRepo[ApiIssue, ApiIssueId]
 
 trait ApiSubscriptionRepo
     extends TenantCapableRepo[ApiSubscription, ApiSubscriptionId]
+
+trait JobInformationRepo extends TenantCapableRepo[JobInformation, DatastoreId]
 
 trait ApiRepo extends TenantCapableRepo[Api, ApiId] {
   def findByVersion(tenant: Tenant, id: String, version: String)(implicit
@@ -619,13 +633,15 @@ trait DataStore {
 
   def apiSubscriptionTransferRepo: ApiSubscriptionTransferRepo
 
+  def JobInformationRepo: JobInformationRepo
+
   def exportAsStream(pretty: Boolean, exportAuditTrail: Boolean = true)(implicit
       ec: ExecutionContext,
       mat: Materializer,
       env: Env
-  ): Source[ByteString, _]
+  ): Source[ByteString, ?]
 
-  def importFromStream(source: Source[ByteString, _]): Future[Unit]
+  def importFromStream(source: Source[ByteString, ?]): Future[Unit]
 
   def clear(): Future[Unit]
 

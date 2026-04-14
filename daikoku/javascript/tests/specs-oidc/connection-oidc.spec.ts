@@ -4,13 +4,13 @@ import { ACCUEIL, adminApikeyId, adminApikeySecret, exposedPort, loginOidcAs, lo
 
 test.beforeEach(async () => {
   await fetch(`http://localhost:${exposedPort}/admin-api/state/reset`, {
-        method: 'POST',
-        headers: {
-          "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
-        }
-      })
-  .then(r => r.json())
-  .then(console.log);
+    method: 'POST',
+    headers: {
+      "Authorization": `Basic ${btoa(adminApikeyId + ":" + adminApikeySecret)}`
+    }
+  })
+    .then(r => r.json())
+    .then(console.log);
 });
 
 
@@ -31,9 +31,6 @@ test('Se connecter et se déconnecter via OIDC', async ({ page }) => {
 
   await page.getByRole('button', { name: 'user menu' }).click();
   await logout(page);
-  // await page.getByRole('img', { name: 'user menu' }).click();
-  // await expect(page.locator('.navbar-top .dropdown-menu')).not.toContainText(JIM.email);
-  // await expect(page.getByRole('link', { name: 'Paramètres Daikoku' })).toBeHidden();
 });
 
 test('Se connecter avec un user sans role et un userRole defini', async ({ page }) => {
@@ -87,11 +84,38 @@ test('Se connecter avec un user inconnu', async ({ page }) => {
       }
     ])
   })
-
-
   await page.goto(ACCUEIL);
   await loginOidcAs(TOBY, page);
-
-  
   await expect(page.getByText('Error Invalid username or')).toBeVisible();
 });
+
+
+test('Health check', async () => {
+  const resultHealth = await (fetch(`http://localhost:${exposedPort}/health/details?access_key=secret`, {
+    method: 'GET',
+    headers: {
+      "content-type": "application/json",
+    }
+  }).then(r => r.json()))
+
+  expect(resultHealth).toEqual(
+    {
+      datastore: 'UP',
+      'Dunder Mifflin': {
+        tenantMode: 'Default',
+        status: {
+          mailer: 'UP',
+          S3: 'ABSENT',
+          otoroshi: [
+            {
+              "http://localhost:8080 (otoroshi-api.oto.tools)": "UP"
+            }
+          ]
+        },
+      },
+      "status": "UP",
+      "version": "18.8.0-dev"
+    }
+  )
+});
+

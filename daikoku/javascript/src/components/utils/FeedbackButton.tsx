@@ -6,6 +6,7 @@ type ButtonType = 'success' | 'warning' | 'info' | 'danger' | 'primary' | 'secon
 type Props = {
   type: ButtonType,
   onPress: () => Promise<any>,
+  beforePress?: () => Promise<boolean>,
   onSuccess?: () => void,
   feedbackTimeout?: number,
   feedbackMessages?: { success?: string, fail?: string },

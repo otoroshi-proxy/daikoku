@@ -21,7 +21,7 @@ import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json.*
 import sangria.ast.{BigDecimalValue, ObjectValue, StringValue}
-import sangria.execution.deferred.{DeferredResolver, Fetcher, HasId}
+import sangria.execution.deferred.{DeferredResolver, Fetcher, HasId, FetcherConfig}
 import sangria.macros.derive.*
 import sangria.schema.{Context, *}
 import sangria.validation.ValueCoercionViolation
@@ -132,6 +132,75 @@ object SchemaDefinition {
   def getSchema(env: Env, otoroshiClient: OtoroshiClient) = {
     implicit val e = env.defaultExecutionContext
     implicit val en = env
+    
+    val MAX_BATCH_SIZE = 25
+
+    lazy val tenantsFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), tenants: Seq[TenantId]) =>
+        ctx._1.tenantRepo.findByIds(tenants)
+    )(using HasId[Tenant, TenantId](_.id))
+    lazy val teamsFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), teams: Seq[TeamId]) =>
+        ctx._1.teamRepo.forTenant(ctx._2.tenant).findByIds(teams)
+    )(using HasId[Team, TeamId](_.id))
+    lazy val apisFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), apis: Seq[ApiId]) =>
+        ctx._1.apiRepo.forTenant(ctx._2.tenant).findByIds(apis)
+    )(using HasId[Api, ApiId](_.id))
+    lazy val usersFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), users: Seq[UserId]) =>
+        ctx._1.userRepo.findByIds(users)
+    )(using HasId[User, UserId](_.id))
+    lazy val apiIssuesFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), issues: Seq[ApiIssueId]) =>
+        ctx._1.apiIssueRepo.forTenant(ctx._2.tenant).findByIds(issues)
+    )(using HasId[ApiIssue, ApiIssueId](_.id))
+    lazy val apiPostsFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), posts: Seq[ApiPostId]) =>
+        ctx._1.apiPostRepo.forTenant(ctx._2.tenant).findByIds(posts)
+    )(using HasId[ApiPost, ApiPostId](_.id))
+    lazy val apiDocumentationPagesFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), pages: Seq[ApiDocumentationPageId]) =>
+        ctx._1.apiDocumentationPageRepo.forTenant(ctx._2.tenant).findByIds(pages)
+    )(using HasId[ApiDocumentationPage, ApiDocumentationPageId](_.id))
+    lazy val apiSubscriptionsFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), subscriptions: Seq[ApiSubscriptionId]) =>
+        ctx._1.apiSubscriptionRepo.forTenant(ctx._2.tenant).findByIds(subscriptions)
+    )(using HasId[ApiSubscription, ApiSubscriptionId](_.id))
+    lazy val apiSubscriptionDemandsFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), demands: Seq[DemandId]) =>
+        ctx._1.subscriptionDemandRepo.forTenant(ctx._2.tenant).findByIds(demands)
+    )(using HasId[SubscriptionDemand, DemandId](_.id))
+    lazy val usagePlansFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), plans: Seq[UsagePlanId]) =>
+        ctx._1.usagePlanRepo.forTenant(ctx._2.tenant).findByIds(plans)
+    )(using HasId[UsagePlan, UsagePlanId](_.id))
+    lazy val accountCreationsFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), demands: Seq[DemandId]) =>
+        ctx._1.accountCreationRepo.findByIds(demands)
+    )(using HasId[AccountCreation, DemandId](_.id))
+    lazy val userSessionsFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), sessions: Seq[DatastoreId]) =>
+        ctx._1.userSessionRepo.findByIds(sessions)
+    )(using HasId[UserSession, DatastoreId](_.id))
+    lazy val cmsPagesFetcher = Fetcher(
+      config = FetcherConfig.maxBatchSize(MAX_BATCH_SIZE),
+      fetch = (ctx: (DataStore, DaikokuActionContext[JsValue]), pages: Seq[CmsPageId]) =>
+        ctx._1.cmsRepo.forTenant(ctx._2.tenant).findByIds(pages)
+    )(using HasId[CmsPage, CmsPageId](_.id))
+
 
     lazy val TenantType
         : ObjectType[(DataStore, DaikokuActionContext[JsValue]), Tenant] =
@@ -202,27 +271,13 @@ object SchemaDefinition {
             Field(
               "adminApi",
               OptionType(ApiType),
-              resolve = ctx =>
-                ctx.ctx._1.apiRepo
-                  .forTenant(ctx.ctx._2.tenant)
-                  .findById(ctx.value.adminApi),
+              resolve = ctx => apisFetcher.defer(ctx.value.adminApi),
               tags = List(RequiresTenantAdmin)
             ),
             Field(
               "adminSubscriptions",
               ListType(ApiSubscriptionType),
-              resolve = ctx =>
-                ctx.ctx._1.apiSubscriptionRepo
-                  .forTenant(ctx.ctx._2.tenant)
-                  .find(
-                    Json.obj(
-                      "_id" -> Json.obj(
-                        "$in" -> JsArray(
-                          ctx.value.adminSubscriptions.map(_.asJson)
-                        )
-                      )
-                    )
-                  ),
+              resolve = ctx => apiSubscriptionsFetcher.deferSeq(ctx.value.adminSubscriptions),
               tags = List(RequiresTenantAdmin)
             ),
             Field(
@@ -889,7 +944,7 @@ object SchemaDefinition {
             Field(
               "tenant",
               OptionType(TenantType),
-              resolve = ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant)
+              resolve = ctx => tenantsFetcher.defer(ctx.value.tenant)
             ),
             Field("deleted", BooleanType, resolve = _.value.deleted),
             Field("name", StringType, resolve = _.value.name),
@@ -1066,14 +1121,7 @@ object SchemaDefinition {
           Field(
             "authorizedTeams",
             ListType(OptionType(TeamObjectType)),
-            resolve = ctx =>
-              Future.sequence(
-                ctx.value.authorizedTeams.map(team =>
-                  ctx.ctx._1.teamRepo
-                    .forTenant(ctx.ctx._2.tenant)
-                    .findById(team)
-                )
-              )
+            resolve = ctx => teamsFetcher.deferSeq(ctx.value.authorizedTeams)
           ),
           Field(
             "subscriptionProcess",
@@ -1154,7 +1202,7 @@ object SchemaDefinition {
         Field(
           "tenant",
           OptionType(TenantType),
-          resolve = ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant)
+          resolve = ctx => tenantsFetcher.defer(ctx.value.tenant)
         )
       ),
       ReplaceField(
@@ -1186,19 +1234,12 @@ object SchemaDefinition {
         Field(
           "tenant",
           OptionType(TenantType),
-          resolve = ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant)
+          resolve = ctx => tenantsFetcher.defer(ctx.value.tenant)
         ),
         Field(
           "pages",
           ListType(OptionType(ApiDocumentationPageType)),
-          resolve = ctx =>
-            Future.sequence(
-              ctx.value.pages.map(page =>
-                ctx.ctx._1.apiDocumentationPageRepo
-                  .forTenant(ctx.ctx._2.tenant)
-                  .findById(page.id)
-              )
-            )
+          resolve = ctx => apiDocumentationPagesFetcher.deferSeq(ctx.value.pages.map(_.id))
         ),
         Field(
           "lastModificationAt",
@@ -1221,7 +1262,7 @@ object SchemaDefinition {
           Field(
             "tenant",
             OptionType(TenantType),
-            resolve = ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant)
+            resolve = ctx => tenantsFetcher.defer(ctx.value.tenant)
           )
         ),
         ReplaceField(
@@ -1263,7 +1304,7 @@ object SchemaDefinition {
         Field(
           "by",
           OptionType(UserType),
-          resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.by)
+          resolve = ctx => usersFetcher.defer(ctx.value.by)
         )
       ),
       ReplaceField(
@@ -1291,7 +1332,7 @@ object SchemaDefinition {
           Field(
             "tenant",
             OptionType(TenantType),
-            resolve = ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant)
+            resolve = ctx => tenantsFetcher.defer(ctx.value.tenant)
           )
         ),
         ReplaceField(
@@ -1319,7 +1360,7 @@ object SchemaDefinition {
           Field(
             "by",
             OptionType(UserType),
-            resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.by)
+            resolve = ctx => usersFetcher.defer(ctx.value.by)
           )
         ),
         ReplaceField(
@@ -1370,12 +1411,7 @@ object SchemaDefinition {
             Field(
               "tenants",
               ListType(OptionType(TenantType)),
-              resolve = ctx =>
-                Future.sequence(
-                  ctx.value.tenants.toSeq
-                    .map(_.value)
-                    .map(tenant => ctx.ctx._1.tenantRepo.findById(tenant))
-                )
+              resolve = ctx => tenantsFetcher.deferSeq(ctx.value.tenants.toSeq)
             ),
             Field(
               "origins",
@@ -1415,7 +1451,7 @@ object SchemaDefinition {
               OptionType(TenantType),
               resolve = ctx =>
                 ctx.value.lastTenant match {
-                  case Some(tenant) => ctx.ctx._1.tenantRepo.findById(tenant)
+                  case Some(tenant) => tenantsFetcher.defer(tenant)
                   case None         => None
                 }
             ),
@@ -1429,16 +1465,7 @@ object SchemaDefinition {
             Field(
               "starredApis",
               ListType(OptionType(ApiType)),
-              resolve = ctx =>
-                Future.sequence(
-                  ctx.value.starredApis.toSeq
-                    .map(_.value)
-                    .map(api =>
-                      ctx.ctx._1.apiRepo
-                        .forTenant(ctx.ctx._2.tenant)
-                        .findById(api)
-                    )
-                )
+              resolve = ctx => apisFetcher.deferSeq(ctx.value.starredApis.toSeq)
             ),
             Field(
               "twoFactorAuthentication",
@@ -1476,7 +1503,7 @@ object SchemaDefinition {
           Field(
             "user",
             OptionType(UserType),
-            resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.userId)
+            resolve = ctx => usersFetcher.defer(ctx.value.userId)
           ),
           Field(
             "teamPermission",
@@ -1507,8 +1534,7 @@ object SchemaDefinition {
           Field(
             "tenant",
             OptionType(TenantType),
-            resolve =
-              ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant.value)
+            resolve = ctx => tenantsFetcher.defer(ctx.value.tenant)
           ),
           Field("deleted", BooleanType, resolve = _.value.deleted),
           Field("apiKey", OtoroshiApiKeyType, resolve = _.value.apiKey),
@@ -1520,10 +1546,7 @@ object SchemaDefinition {
           Field(
             "plan",
             OptionType(UsagePlanType),
-            resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.plan)
+            resolve = ctx => usagePlansFetcher.defer(ctx.value.plan)
           ),
           Field("createdAt", DateTimeUnitype, resolve = _.value.createdAt),
           Field(
@@ -1534,23 +1557,17 @@ object SchemaDefinition {
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.team)
+            resolve = ctx => teamsFetcher.defer(ctx.value.team)
           ),
           Field(
             "api",
             OptionType(ApiType),
-            resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.api)
+            resolve = ctx => apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "by",
             OptionType(UserType),
-            resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.by)
+            resolve = ctx => usersFetcher.defer(ctx.value.by)
           ),
           Field(
             "customName",
@@ -1607,19 +1624,12 @@ object SchemaDefinition {
           Field(
             "parent",
             OptionType(ApiSubscriptionType),
-            resolve = ctx =>
-              ctx.value.parent match {
-                case Some(parent) =>
-                  ctx.ctx._1.apiSubscriptionRepo
-                    .forTenant(ctx.ctx._2.tenant)
-                    .findById(parent)
-                case None => None
-              }
+            resolve = ctx => apiSubscriptionsFetcher.deferOpt(ctx.value.parent)
           ),
           Field(
             "lastUsage",
             OptionType(DateTimeUnitype),
-            resolve = ctx => getOtoroshiUsage(ctx.value)(ctx.ctx._2.tenant)
+            resolve = ctx => getOtoroshiUsage(ctx.value)(using ctx.ctx._2.tenant) //FIXME: maybe bulk like defer is good option
           )
         )
     )
@@ -1645,7 +1655,7 @@ object SchemaDefinition {
         value: EitherT[Future, Option[DateTime], JsArray] =
           otoroshiClient
             .getSubscriptionLastUsage(Seq(subscription))(
-              otoroshi,
+              using otoroshi,
               tenant
             )
             .leftMap(_ => None)
@@ -1655,7 +1665,7 @@ object SchemaDefinition {
       }
 
       maybeLastUsage
-        .map(_.map(r => (r \ "date").as(json.DateTimeFormat)))
+        .map(_.map(r => (r \ "date").as(using json.DateTimeFormat)))
         .merge
     }
 
@@ -1733,33 +1743,6 @@ object SchemaDefinition {
         )
       )
 
-    lazy val teamsFetcher = Fetcher(
-      (ctx: (DataStore, DaikokuActionContext[JsValue]), teams: Seq[TeamId]) =>
-        Future
-          .sequence(
-            teams.map(teamId =>
-              ctx._1.teamRepo.forTenant(ctx._2.tenant).findById(teamId)
-            )
-          )
-          .map(teams => teams.flatten)
-    )(HasId[Team, TeamId](_.id))
-    lazy val apisFetcher = Fetcher(
-      (ctx: (DataStore, DaikokuActionContext[JsValue]), apis: Seq[ApiId]) =>
-        Future
-          .sequence(
-            apis.map(apiId =>
-              ctx._1.apiRepo.forTenant(ctx._2.tenant).findById(apiId)
-            )
-          )
-          .map(apis => apis.flatten)
-    )(HasId[Api, ApiId](_.id))
-    lazy val usersFetcher = Fetcher(
-      (ctx: (DataStore, DaikokuActionContext[JsValue]), users: Seq[UserId]) =>
-        Future
-          .sequence(users.map(userId => ctx._1.userRepo.findById(userId)))
-          .map(users => users.flatten)
-    )(HasId[User, UserId](_.id))
-
     lazy val ApiType
         : ObjectType[(DataStore, DaikokuActionContext[JsValue]), Api] =
       ObjectType[(DataStore, DaikokuActionContext[JsValue]), Api](
@@ -1772,7 +1755,7 @@ object SchemaDefinition {
               "tenant",
               OptionType(TenantType),
               resolve =
-                ctx => ctx.ctx._1.tenantRepo.findById(ctx.ctx._2.tenant.id)
+                ctx => tenantsFetcher.defer(ctx.ctx._2.tenant.id)
             ),
             Field("deleted", BooleanType, resolve = _.value.deleted),
             Field("name", StringType, resolve = _.value.name),
@@ -1815,62 +1798,27 @@ object SchemaDefinition {
             Field(
               "possibleUsagePlans",
               ListType(UsagePlanType),
-              resolve = ctx =>
-                ctx.ctx._1.usagePlanRepo.findByApi(ctx.value.tenant, ctx.value)
+              resolve = ctx => usagePlansFetcher.deferSeq(ctx.value.possibleUsagePlans)
             ),
             Field(
               "defaultUsagePlan",
               OptionType(UsagePlanType),
-              resolve = ctx =>
-                ctx.value.defaultUsagePlan match {
-                  case Some(value) =>
-                    ctx.ctx._1.usagePlanRepo
-                      .forTenant(ctx.ctx._2.tenant)
-                      .findById(value)
-                  case None => FastFuture.successful(None)
-                }
+              resolve = ctx => usagePlansFetcher.deferOpt(ctx.value.defaultUsagePlan)
             ),
             Field(
               "authorizedTeams",
               ListType(TeamObjectType),
-              resolve = ctx =>
-                ctx.ctx._1.teamRepo
-                  .forTenant(ctx.ctx._2.tenant)
-                  .find(
-                    Json.obj(
-                      "_id" -> Json.obj(
-                        "$in" -> JsArray(
-                          ctx.value.authorizedTeams.map(_.asJson)
-                        )
-                      )
-                    )
-                  )
+              resolve = ctx => teamsFetcher.deferSeq(ctx.value.authorizedTeams)
             ),
             Field(
               "posts",
               ListType(ApiPostType),
-              resolve = ctx =>
-                ctx.ctx._1.apiPostRepo
-                  .forTenant(ctx.ctx._2.tenant)
-                  .find(
-                    Json.obj(
-                      "_id" -> Json
-                        .obj("$in" -> JsArray(ctx.value.posts.map(_.asJson)))
-                    )
-                  )
+              resolve = ctx => apiPostsFetcher.deferSeq(ctx.value.posts)
             ),
             Field(
               "issues",
               ListType(ApiIssueType),
-              resolve = ctx =>
-                ctx.ctx._1.apiIssueRepo
-                  .forTenant(ctx.ctx._2.tenant)
-                  .find(
-                    Json.obj(
-                      "_id" -> Json
-                        .obj("$in" -> JsArray(ctx.value.issues.map(_.asJson)))
-                    )
-                  )
+              resolve = ctx => apiIssuesFetcher.deferSeq(ctx.value.issues)
             ),
             Field(
               "issuesTags",
@@ -1897,12 +1845,7 @@ object SchemaDefinition {
             Field(
               "parent",
               OptionType(ApiType),
-              resolve = ctx =>
-                ctx.value.parent match {
-                  case Some(p) =>
-                    ctx.ctx._1.apiRepo.forTenant(ctx.ctx._2.tenant).findById(p)
-                  case None => None
-                }
+              resolve = ctx => apisFetcher.deferOpt(ctx.value.parent)
             ),
             Field(
               "apis",
@@ -1910,13 +1853,7 @@ object SchemaDefinition {
               resolve = ctx => {
                 ctx.value.apis match {
                   case None => FastFuture.successful(None)
-                  case Some(apis) =>
-                    CommonServices
-                      .getApisByIds(apis.toSeq.map(_.value))(ctx.ctx._2, env, e)
-                      .map {
-                        case Right(apis) => Some(apis)
-                        case Left(_)     => None
-                      }
+                  case Some(apis) => apisFetcher.deferSeq(apis.toSeq)
                 }
               }
             ),
@@ -2291,18 +2228,12 @@ object SchemaDefinition {
           Field(
             "api",
             OptionType(ApiType),
-            resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.api)
+            resolve = ctx => apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.team)
+            resolve = ctx => teamsFetcher.defer(ctx.value.team)
           )
         )
       )
@@ -2318,15 +2249,12 @@ object SchemaDefinition {
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.team)
+            resolve = ctx => teamsFetcher.defer(ctx.value.team)
           ),
           Field(
             "user",
             OptionType(UserType),
-            resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.user)
+            resolve = ctx => usersFetcher.defer(ctx.value.user)
           )
         )
       )
@@ -2375,10 +2303,7 @@ object SchemaDefinition {
           Field(
             "plan",
             OptionType(UsagePlanType),
-            resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.plan)
+            resolve = ctx => usagePlansFetcher.defer(ctx.value.plan)
           ),
           Field(
             "steps",
@@ -2404,8 +2329,8 @@ object SchemaDefinition {
           ),
           Field(
             "parentSubscriptionId",
-            OptionType(StringType),
-            resolve = _.value.parentSubscriptionId.map(_.value)
+            OptionType(ApiSubscriptionType),
+            resolve = ctx => apiSubscriptionsFetcher.deferOpt(ctx.value.parentSubscriptionId)
           )
         )
     )
@@ -2425,38 +2350,22 @@ object SchemaDefinition {
           Field(
             "api",
             OptionType(ApiType),
-            resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.api)
+            resolve = ctx => apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.team)
+            resolve = ctx => teamsFetcher.defer(ctx.value.team)
           ),
           Field(
             "plan",
             OptionType(UsagePlanType),
-            resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.plan)
+            resolve = ctx => usagePlansFetcher.defer(ctx.value.plan)
           ),
           Field(
             "parentSubscriptionId",
             OptionType(ApiSubscriptionType),
-            resolve = ctx =>
-              ctx.value.parentSubscriptionId match {
-                case Some(parent) =>
-                  ctx.ctx._1.apiSubscriptionRepo
-                    .forTenant(ctx.ctx._2.tenant)
-                    .findById(parent)
-                case None => None
-              }
+            resolve = ctx => apiSubscriptionsFetcher.deferOpt(ctx.value.parentSubscriptionId)
           ),
           Field(
             "motivation",
@@ -2466,10 +2375,7 @@ object SchemaDefinition {
           Field(
             "demand",
             OptionType(SubscriptionDemandType),
-            resolve = ctx =>
-              ctx.ctx._1.subscriptionDemandRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.demand)
+            resolve = ctx => apiSubscriptionDemandsFetcher.defer(ctx.value.demand)
           )
         )
       )
@@ -2489,18 +2395,12 @@ object SchemaDefinition {
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.team)
+            resolve = ctx => teamsFetcher.defer(ctx.value.team)
           ),
           Field(
             "api",
             OptionType(ApiType),
-            resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.api)
+            resolve = ctx => apisFetcher.defer(ctx.value.api)
           )
         )
       )
@@ -2546,26 +2446,17 @@ object SchemaDefinition {
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.team)
+            resolve = ctx => teamsFetcher.defer(ctx.value.team)
           ),
           Field(
             "api",
             OptionType(ApiType),
-            resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.api)
+            resolve = ctx => apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "plan",
             OptionType(UsagePlanType),
-            resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.plan)
+            resolve = ctx => usagePlansFetcher.defer(ctx.value.plan)
           )
         )
       )
@@ -2585,26 +2476,17 @@ object SchemaDefinition {
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.team)
+            resolve = ctx => teamsFetcher.defer(ctx.value.team)
           ),
           Field(
             "api",
             OptionType(ApiType),
-            resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.api)
+            resolve = ctx => apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "plan",
             OptionType(UsagePlanType),
-            resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.plan)
+            resolve = ctx => usagePlansFetcher.defer(ctx.value.plan)
           )
         )
       )
@@ -2635,17 +2517,13 @@ object SchemaDefinition {
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "issue",
             OptionType(ApiIssueType),
             resolve = ctx =>
-              ctx.ctx._1.apiIssueRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.issue)
+              apiIssuesFetcher.defer(ctx.value.issue)
           )
         )
       )
@@ -2690,10 +2568,7 @@ object SchemaDefinition {
           Field(
             "team",
             OptionType(TeamObjectType),
-            resolve = ctx =>
-              ctx.ctx._1.teamRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.teamId)
+            resolve = ctx => teamsFetcher.defer(TeamId(ctx.value.teamId))
           )
         )
       )
@@ -2711,17 +2586,12 @@ object SchemaDefinition {
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "post",
             OptionType(ApiPostType),
-            resolve = ctx =>
-              ctx.ctx._1.apiPostRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.post)
+            resolve = ctx => apiPostsFetcher.defer(ctx.value.post)
           )
         )
       )
@@ -2753,25 +2623,18 @@ object SchemaDefinition {
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "subscription",
             OptionType(ApiSubscriptionType),
-            resolve = ctx =>
-              ctx.ctx._1.apiSubscriptionRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.subscription)
+            resolve = ctx => apiSubscriptionsFetcher.defer(ctx.value.subscription)
           ),
           Field(
             "plan",
             OptionType(UsagePlanType),
             resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.plan)
+              usagePlansFetcher.defer(ctx.value.plan)
           ),
           Field("message", OptionType(StringType), resolve = _.value.message)
         )
@@ -2813,17 +2676,12 @@ object SchemaDefinition {
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "subscription",
             OptionType(ApiSubscriptionType),
-            resolve = ctx =>
-              ctx.ctx._1.apiSubscriptionRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findById(ctx.value.subscription)
+            resolve = ctx => apiSubscriptionsFetcher.defer(ctx.value.subscription)
           )
         )
       )
@@ -2864,25 +2722,19 @@ object SchemaDefinition {
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "subscription",
             OptionType(ApiSubscriptionType),
             resolve = ctx =>
-              ctx.ctx._1.apiSubscriptionRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.subscription)
+              apiSubscriptionsFetcher.defer(ctx.value.subscription)
           ),
           Field(
             "plan",
             OptionType(UsagePlanType),
             resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.plan)
+              usagePlansFetcher.defer(ctx.value.plan)
           )
         )
       )
@@ -2919,25 +2771,19 @@ object SchemaDefinition {
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "subscription",
             OptionType(ApiSubscriptionType),
             resolve = ctx =>
-              ctx.ctx._1.apiSubscriptionRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.subscription)
+              apiSubscriptionsFetcher.defer(ctx.value.subscription)
           ),
           Field(
             "plan",
             OptionType(UsagePlanType),
             resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.plan)
+              usagePlansFetcher.defer(ctx.value.plan)
           )
         )
       )
@@ -2966,24 +2812,18 @@ object SchemaDefinition {
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           ),
           Field(
             "issue",
             OptionType(ApiIssueType),
             resolve = ctx =>
-              ctx.ctx._1.apiIssueRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.issue)
+              apiIssuesFetcher.defer(ctx.value.issue)
           ),
           Field(
             "user",
             OptionType(UserType),
-            resolve = ctx =>
-              ctx.ctx._1.userRepo
-                .findByIdNotDeleted(ctx.value.user)
+            resolve = ctx => usersFetcher.defer(ctx.value.user)
           )
         )
       )
@@ -3004,26 +2844,20 @@ object SchemaDefinition {
             "plan",
             OptionType(UsagePlanType),
             resolve = ctx =>
-              ctx.ctx._1.usagePlanRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.plan)
+              usagePlansFetcher.defer(ctx.value.plan)
           ),
           Field("step", StringType, resolve = _.value.step.value),
           Field(
             "demand",
             OptionType(SubscriptionDemandType),
             resolve = ctx =>
-              ctx.ctx._1.subscriptionDemandRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.demand)
+              apiSubscriptionDemandsFetcher.defer(ctx.value.demand)
           ),
           Field(
             "api",
             OptionType(ApiType),
             resolve = ctx =>
-              ctx.ctx._1.apiRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.api)
+              apisFetcher.defer(ctx.value.api)
           )
         )
       )
@@ -3044,9 +2878,7 @@ object SchemaDefinition {
             "subscription",
             OptionType(ApiSubscriptionType),
             resolve = ctx =>
-              ctx.ctx._1.apiSubscriptionRepo
-                .forTenant(ctx.ctx._2.tenant)
-                .findByIdNotDeleted(ctx.value.subscription)
+              apiSubscriptionsFetcher.defer(ctx.value.subscription)
           )
         )
       )
@@ -3115,15 +2947,13 @@ object SchemaDefinition {
           Field(
             "demand",
             OptionType(AccountCreationType),
-            resolve = ctx =>
-              ctx.ctx._1.accountCreationRepo
-                .findByIdNotDeleted(ctx.value.demand)
+            resolve = ctx => accountCreationsFetcher.defer(ctx.value.demand)
           ),
           Field(
             "step",
             OptionType(SubscriptionDemandStepType),
             resolve = ctx =>
-              ctx.ctx._1.accountCreationRepo
+              ctx.ctx._1.accountCreationRepo //FIXME: use defer ?
                 .findByIdNotDeleted(ctx.value.demand)
                 .map {
                   case Some(d) => d.steps.find(_.id == ctx.value.step)
@@ -3180,7 +3010,7 @@ object SchemaDefinition {
           "tenant",
           OptionType(TenantType),
           resolve =
-            ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant.value)
+            ctx => tenantsFetcher.defer(ctx.value.tenant)
         )
       ),
       ReplaceField(
@@ -3188,12 +3018,7 @@ object SchemaDefinition {
         Field(
           "team",
           OptionType(TeamObjectType),
-          resolve = ctx =>
-            ctx.value.team match {
-              case Some(team) =>
-                ctx.ctx._1.teamRepo.forTenant(ctx.ctx._2.tenant).findById(team)
-              case None => None
-            }
+          resolve = ctx => teamsFetcher.deferOpt(ctx.value.team)
         )
       ),
       ReplaceField(
@@ -3282,7 +3107,7 @@ object SchemaDefinition {
             Field(
               "userId",
               OptionType(UserType),
-              resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.userId)
+              resolve = ctx => usersFetcher.defer(ctx.value.userId)
             ),
             Field("sessionId", StringType, resolve = _.value.sessionId.value),
             Field("userName", StringType, resolve = _.value.userName),
@@ -3292,7 +3117,7 @@ object SchemaDefinition {
               OptionType(UserType),
               resolve = ctx =>
                 ctx.value.impersonatorId match {
-                  case Some(u) => ctx.ctx._1.userRepo.findById(u)
+                  case Some(u) => usersFetcher.defer(u)
                   case None    => None
                 }
             ),
@@ -3353,7 +3178,7 @@ object SchemaDefinition {
           "tenant",
           OptionType(TenantType),
           resolve =
-            ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant.value)
+            ctx => tenantsFetcher.defer(ctx.value.tenant)
         )
       ),
       ReplaceField(
@@ -3361,10 +3186,7 @@ object SchemaDefinition {
         Field(
           "team",
           OptionType(TeamObjectType),
-          resolve = ctx =>
-            ctx.ctx._1.teamRepo
-              .forTenant(ctx.ctx._2.tenant)
-              .findById(ctx.value.team.value)
+          resolve = ctx => teamsFetcher.defer(ctx.value.team)
         )
       ),
       ReplaceField(
@@ -3372,10 +3194,7 @@ object SchemaDefinition {
         Field(
           "api",
           OptionType(ApiType),
-          resolve = ctx =>
-            ctx.ctx._1.apiRepo
-              .forTenant(ctx.ctx._2.tenant)
-              .findById(ctx.value.api)
+          resolve = ctx => apisFetcher.defer(ctx.value.api)
         )
       ),
       ReplaceField(
@@ -3383,10 +3202,7 @@ object SchemaDefinition {
         Field(
           "plan",
           OptionType(UsagePlanType),
-          resolve = ctx =>
-            ctx.ctx._1.usagePlanRepo
-              .forTenant(ctx.ctx._2.tenant)
-              .findById(ctx.value.plan)
+          resolve = ctx => usagePlansFetcher.defer(ctx.value.plan)
         )
       ),
       ReplaceField(
@@ -3433,7 +3249,7 @@ object SchemaDefinition {
         Field(
           "user",
           OptionType(UserType),
-          resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.user.value)
+          resolve = ctx => usersFetcher.defer(ctx.value.user)
         )
       ),
       ReplaceField(
@@ -3457,7 +3273,7 @@ object SchemaDefinition {
               "tenant",
               OptionType(TenantType),
               resolve =
-                ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant.value)
+                ctx => tenantsFetcher.defer(ctx.value.tenant)
             ),
             Field("language", StringType, resolve = _.value.language),
             Field("key", StringType, resolve = _.value.key),
@@ -3498,7 +3314,7 @@ object SchemaDefinition {
               "tenant",
               OptionType(TenantType),
               resolve =
-                ctx => ctx.ctx._1.tenantRepo.findById(ctx.ctx._2.tenant.id)
+                ctx => tenantsFetcher.defer(ctx.ctx._2.tenant.id)
             ),
             Field(
               "messageType",
@@ -3508,39 +3324,23 @@ object SchemaDefinition {
             Field(
               "participants",
               ListType(UserType),
-              resolve = ctx =>
-                ctx.ctx._1.userRepo.find(
-                  Json.obj(
-                    "_id" -> Json.obj(
-                      "$in" -> JsArray(
-                        ctx.value.participants.toSeq.map(_.asJson)
-                      )
-                    )
-                  )
-                )
+              resolve = ctx => usersFetcher.deferSeq(ctx.value.participants.toSeq)
             ),
             Field(
               "readBy",
               ListType(UserType),
-              resolve = ctx =>
-                ctx.ctx._1.userRepo.find(
-                  Json.obj(
-                    "_id" -> Json.obj(
-                      "$in" -> JsArray(ctx.value.readBy.toSeq.map(_.asJson))
-                    )
-                  )
-                )
+              resolve = ctx => usersFetcher.deferSeq(ctx.value.readBy.toSeq)
             ),
             Field(
               "chat",
               OptionType(UserType),
-              resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.chat)
+              resolve = ctx => usersFetcher.defer(ctx.value.chat)
             ),
             Field("date", DateTimeUnitype, resolve = _.value.date),
             Field(
               "sender",
               OptionType(UserType),
-              resolve = ctx => ctx.ctx._1.userRepo.findById(ctx.value.sender)
+              resolve = ctx => usersFetcher.defer(ctx.value.sender)
             ),
             Field("message", StringType, resolve = _.value.message),
             Field(
@@ -3569,7 +3369,7 @@ object SchemaDefinition {
       override def reads(json: JsValue): JsResult[UserAuditEvent] =
         JsSuccess(
           UserAuditEvent(
-            id = (json \ "id").as(UserIdFormat),
+            id = (json \ "id").as(using UserIdFormat),
             name = (json \ "name").as[String],
             email = (json \ "email").as[String],
             isDaikokuAdmin =
@@ -3591,7 +3391,7 @@ object SchemaDefinition {
       override def reads(json: JsValue): JsResult[TenantAuditEvent] =
         JsSuccess(
           TenantAuditEvent(
-            id = (json \ "id").as(TenantIdFormat),
+            id = (json \ "id").as(using TenantIdFormat),
             name = (json \ "name").as[String]
           )
         )
@@ -3643,7 +3443,7 @@ object SchemaDefinition {
               "user",
               OptionType(UserAuditEventType),
               resolve =
-                ctx => (ctx.value \ "user").asOpt(UserAuditEventTypeReader)
+                ctx => (ctx.value \ "user").asOpt(using UserAuditEventTypeReader)
             ),
             Field(
               "impersonator",
@@ -3663,7 +3463,7 @@ object SchemaDefinition {
               "tenant",
               OptionType(TenantAuditEventType),
               resolve =
-                ctx => (ctx.value \ "tenant").asOpt(TenantAuditEventTypeReader)
+                ctx => (ctx.value \ "tenant").asOpt(using TenantAuditEventTypeReader)
             ),
             Field(
               "_tenant",
@@ -3737,15 +3537,14 @@ object SchemaDefinition {
             Field(
               "tenant",
               OptionType(TenantType),
-              resolve = ctx => ctx.ctx._1.tenantRepo.findById(ctx.value.tenant)
+              resolve = ctx => tenantsFetcher.defer(ctx.value.tenant)
             ),
             Field(
               "forwardRef",
               OptionType(CmsPageType),
               resolve = ctx =>
                 ctx.value.forwardRef match {
-                  case Some(ref) =>
-                    ctx.ctx._1.cmsRepo.forTenant(ctx.value.tenant).findById(ref)
+                  case Some(ref) => cmsPagesFetcher.defer(ref)
                   case None => None
                 }
             ),
@@ -3915,7 +3714,7 @@ object SchemaDefinition {
           "myTeams",
           ListType(TeamObjectType),
           resolve = ctx =>
-            CommonServices.myTeams()(ctx.ctx._2, env, e).map {
+            CommonServices.myTeams()(using ctx.ctx._2, env, e).map {
               case Right(value) => value
               case Left(r)      => throw NotAuthorizedError(r.toString)
             }
@@ -3928,7 +3727,7 @@ object SchemaDefinition {
         limit: Int,
         offset: Int
     ) = {
-      CommonServices.allTeams(research, limit, offset)(ctx.ctx._2, env, e).map {
+      CommonServices.allTeams(research, limit, offset)(using ctx.ctx._2, env, e).map {
         case Left(value)  => throw NotAuthorizedError(value.toString)
         case Right(value) => value
 
@@ -3956,7 +3755,7 @@ object SchemaDefinition {
         planId: Option[String]
     ) = {
       CommonServices
-        .getApiConsumption(apiId, teamId, from, to, planId)(ctx.ctx._2, env, e)
+        .getApiConsumption(apiId, teamId, from, to, planId)(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -3990,7 +3789,7 @@ object SchemaDefinition {
         from: Option[Long],
         to: Option[Long]
     ) = {
-      CommonServices.getTeamIncome(teamId, from, to)(ctx.ctx._2, env, e).map {
+      CommonServices.getTeamIncome(teamId, from, to)(using ctx.ctx._2, env, e).map {
         case Left(value)  => throw NotAuthorizedError(value.toString)
         case Right(value) => value
       }
@@ -4022,7 +3821,7 @@ object SchemaDefinition {
         offset: Int
     ) = {
       CommonServices
-        .getMyNotification(filter, sort, limit, offset)(ctx.ctx._2, env, e)
+        .getMyNotification(filter, sort, limit, offset)(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -4067,7 +3866,7 @@ object SchemaDefinition {
           sorting,
           limit,
           offset
-        )(ctx.ctx._2, env, e)
+        )(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -4091,7 +3890,7 @@ object SchemaDefinition {
           sorting,
           limit,
           offset
-        )(ctx.ctx._2, env, e)
+        )(using ctx.ctx._2, env, e)
         .map {
           case Left(value)  => throw NotAuthorizedError(value.toString)
           case Right(value) => value
@@ -4158,7 +3957,7 @@ object SchemaDefinition {
           groupOpt,
           limit,
           offset
-        )(ctx.ctx._2, env, e)
+        )(using ctx.ctx._2, env, e)
         .map {
           case Right(value) => value
           case Left(r)      => throw NotAuthorizedError(r.toString)
@@ -4170,7 +3969,7 @@ object SchemaDefinition {
         teamId: String
     ) = {
       CommonServices.getApiSubscriptionDetails(subscriptionId, teamId)(
-        ctx.ctx._2,
+        using ctx.ctx._2,
         env,
         e
       )
@@ -4215,7 +4014,7 @@ object SchemaDefinition {
               filter = ctx.arg(FILTER),
               limit = ctx.arg(LIMIT),
               offset = ctx.arg(OFFSET)
-            )(ctx.ctx._2, env, e)
+            )(using ctx.ctx._2, env, e)
           }
         )
       )
@@ -4239,7 +4038,7 @@ object SchemaDefinition {
                 filter = ctx.arg(FILTER),
                 limit = ctx.arg(LIMIT),
                 offset = ctx.arg(OFFSET)
-              )(ctx.ctx._2, env, e)
+              )(using ctx.ctx._2, env, e)
           }
         )
       )
@@ -4254,7 +4053,7 @@ object SchemaDefinition {
     ) = {
       CommonServices
         .getApisWithSubscriptions(teamId, research, limit, offset, apiSubOnly)(
-          ctx.ctx._2,
+          using ctx.ctx._2,
           env,
           e
         )
@@ -4392,7 +4191,7 @@ object SchemaDefinition {
                       )
                   )
                   _ <- testApisTeam(apis, team)
-                  demands <- EitherT.liftF(
+                  demands <- EitherT.right[AppError](
                     dataStore.subscriptionDemandRepo
                       .forTenant(tenant)
                       .findWithPagination(
@@ -4617,7 +4416,7 @@ object SchemaDefinition {
       getTenantFields("post", ApiPostType, ctx => ctx.ctx._1.apiPostRepo) ++
       getTenantFields("issue", ApiIssueType, ctx => ctx.ctx._1.apiIssueRepo) ++
       getTenantFields("cmsPage", CmsPageType, ctx => ctx.ctx._1.cmsRepo) ++
-      getTenantFields("auditEvent", AuditEventType, ctx => ctx.ctx._1.auditTrailRepo):_*
+      getTenantFields("auditEvent", AuditEventType, ctx => ctx.ctx._1.auditTrailRepo)*
       )
 
     (
@@ -4638,9 +4437,23 @@ object SchemaDefinition {
           getSubscriptionDetailsFields() ++
           getAuditTrailQueryFields() ++
           cmsSinglePageFields() ++
-          cmsPageFields():_*)
+          cmsPageFields()*)
       )),
-      DeferredResolver.fetchers(teamsFetcher, usersFetcher, apisFetcher)
+      DeferredResolver.fetchers(
+        tenantsFetcher,
+        teamsFetcher,
+        apisFetcher,
+        usersFetcher,
+        apiIssuesFetcher,
+        apiPostsFetcher,
+        apiDocumentationPagesFetcher,
+        apiSubscriptionsFetcher,
+        apiSubscriptionDemandsFetcher,
+        usagePlansFetcher,
+        accountCreationsFetcher,
+        userSessionsFetcher,
+        cmsPagesFetcher
+      )
     )
   }
 }

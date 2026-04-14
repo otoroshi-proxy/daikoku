@@ -4,12 +4,13 @@ import cats.data.EitherT
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.actions.DaikokuActionContext
 import fr.maif.daikoku.audit.AuditTrailEvent
-import fr.maif.daikoku.controllers.authorizations.async._
+import fr.maif.daikoku.controllers.authorizations.async.*
 import fr.maif.daikoku.domain.NotificationAction.ApiAccess
 import fr.maif.daikoku.env.Env
+import fr.maif.daikoku.logger.AppLogger
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.joda.time.DateTime
-import play.api.libs.json._
+import play.api.libs.json.*
 import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -573,7 +574,7 @@ object CommonServices {
             )
       } yield {
         result
-          .map(_.as(json.ApiWithCountFormat))
+          .map(_.as(using json.ApiWithCountFormat))
           .getOrElse(ApiWithCount())
       }
     }
@@ -680,7 +681,7 @@ object CommonServices {
   }
 
   def apiOfTeam(teamId: String, apiId: String, version: String)(implicit
-      ctx: DaikokuActionContext[_],
+      ctx: DaikokuActionContext[?],
       env: Env,
       ec: ExecutionContext
   ): Future[Either[AppError, Api]] =
@@ -935,6 +936,9 @@ object CommonServices {
            |$sortClause
            |LIMIT $$8 OFFSET $$9;
            |""".stripMargin
+
+
+      AppLogger.warn("herre")
 
       (for {
         count <- EitherT.fromOptionF[Future, AppError, Long](
@@ -1262,7 +1266,7 @@ object CommonServices {
       } yield {
         NotificationWithCount(
           notifications = (notifications \ "notifications")
-            .asOpt(json.SeqNotificationFormat)
+            .asOpt(using json.SeqNotificationFormat)
             .getOrElse(Seq.empty),
           totalFiltered = (notifications \ "total_filtered").as[Long],
           total = (totals \ "total").as[Long],

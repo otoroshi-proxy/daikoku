@@ -68,14 +68,14 @@ class EnvironmentDisplayMode()
         s"/api/teams/${teamOwner.id.value}/apis/${api.id.value}/${api.currentVersion.value}/plan",
         method = "POST",
         body = devPlan.asJson.some
-      )(t, session)
+      )(using t, session)
       respDev.status mustBe 201
       // can create plan with avalaible env
       val respDev2 = httpJsonCallBlocking(
         s"/api/teams/${teamOwner.id.value}/apis/${api.id.value}/${api.currentVersion.value}/plan",
         method = "POST",
         body = devPlan2.asJson.some
-      )(t, session)
+      )(using t, session)
       respDev2.status mustBe 409
 
       // can't create plan with unknown env name
@@ -83,7 +83,7 @@ class EnvironmentDisplayMode()
         s"/api/teams/${teamOwner.id.value}/apis/${api.id.value}/${api.currentVersion.value}/plan",
         method = "POST",
         body = preprodplan.asJson.some
-      )(t, session)
+      )(using t, session)
       respPreprod.status mustBe 409
 
       // can't create plan with no custom name
@@ -91,7 +91,7 @@ class EnvironmentDisplayMode()
         s"/api/teams/${teamOwner.id.value}/apis/${api.id.value}/${api.currentVersion.value}/plan",
         method = "POST",
         body = nonePlan.asJson.some
-      )(t, session)
+      )(using t, session)
       respNone.status mustBe 409
 
     }
@@ -124,12 +124,12 @@ class EnvironmentDisplayMode()
         s"/api/tenants/${t.id.value}",
         method = "PUT",
         body = t.copy(environments = Set("prod")).asJson.some
-      )(t, session)
+      )(using t, session)
       respUpdateTenant.status mustBe 200
 
       val respVerif = httpJsonCallBlocking(
         s"/api/me/visible-apis/${api.id.value}"
-      )(t, session)
+      )(using t, session)
       respVerif.status mustBe 200
       (respVerif.json \ "possibleUsagePlans").as[JsArray].value.size mustBe 1
       val uniqPlan = (respVerif.json \ "possibleUsagePlans")

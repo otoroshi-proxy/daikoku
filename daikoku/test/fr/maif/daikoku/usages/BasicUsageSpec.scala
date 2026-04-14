@@ -8,6 +8,7 @@ import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
+import org.testcontainers.containers.wait.strategy.Wait
 import play.api.libs.json.Json
 
 class BasicUsageSpec()
@@ -35,6 +36,7 @@ class BasicUsageSpec()
         BindMode.READ_ONLY
       )
     ),
+    waitStrategy = Wait.forLogMessage(".*slapd starting.*", 1),
   )
 
   s"Daikoku basics" should {
@@ -152,7 +154,7 @@ class BasicUsageSpec()
           path = "/api/auth/ldap/_check",
           method = "POST",
           body = Some(authProviderSettings)
-        )(tenant, session)
+        )(using tenant, session)
 
       resp.status mustBe 200
     }
@@ -176,7 +178,7 @@ class BasicUsageSpec()
 
       var resp = httpJsonCallBlocking(
         path = s"/api/teams/${defaultAdminTeam.id.value}/ldap/users/$validEmail"
-      )(tenant, session)
+      )(using tenant, session)
 
       logger.warn(Json.prettyPrint(resp.json))
       resp.status mustBe 200
@@ -184,7 +186,7 @@ class BasicUsageSpec()
       resp = httpJsonCallBlocking(
         path =
           s"/api/teams/${defaultAdminTeam.id.value}/ldap/users/$unknownEmail"
-      )(tenant, session)
+      )(using tenant, session)
 
       resp.status mustBe 400
     }

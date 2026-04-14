@@ -6,6 +6,7 @@ import com.themillhousegroup.scoup.Scoup
 import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.TeamPermission.*
 import fr.maif.daikoku.domain.UsagePlan.*
+import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider
 import fr.maif.daikoku.modules.DaikokuComponentsInstances
 import fr.maif.daikoku.utils.IdGenerator
@@ -275,7 +276,7 @@ object testUtils {
         _ <- Source(tenants.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.tenantRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -283,7 +284,7 @@ object testUtils {
         _ <- Source(users.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.userRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -291,7 +292,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.teamRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -299,7 +300,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.usagePlanRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -307,7 +308,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -315,7 +316,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiSubscriptionRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -323,7 +324,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.notificationRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -331,28 +332,28 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.consumptionRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
         _ <- Source(sessions.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.userSessionRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
         _ <- Source(resets.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.passwordResetRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
         _ <- Source(creations.toList)
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.accountCreationRepo
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -360,7 +361,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.messageRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -368,7 +369,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiIssueRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -376,7 +377,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiPostRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -384,7 +385,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.cmsRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -392,7 +393,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.apiDocumentationPageRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -400,7 +401,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.operationRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -408,7 +409,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.subscriptionDemandRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -416,7 +417,7 @@ object testUtils {
           .mapAsync(1)(i =>
             daikokuComponents.env.dataStore.translationRepo
               .forAllTenant()
-              .save(i)(daikokuComponents.env.defaultExecutionContext)
+              .save(i)(using daikokuComponents.env.defaultExecutionContext)
           )
           .toMat(Sink.ignore)(Keep.right)
           .run()
@@ -425,10 +426,11 @@ object testUtils {
 
     def waitForDaikokuSetup(): Future[Unit] = {
       val maxRetries = 10
-      val retryDelay = 100.millis
+      val baseDelay = 50.millis
 
       def checkStatus(attempt: Int): Future[Unit] = {
-        httpJsonCallWithoutSession(path = "/status")(tenant)
+        val currentDelay = baseDelay * Math.pow(2, attempt - 1).toLong
+        httpJsonCallWithoutSession(path = "/health")(using tenant)
           .flatMap { response =>
             (response.json \ "status").asOpt[String] match {
               case Some("ready") =>
@@ -436,13 +438,13 @@ object testUtils {
 
               case _ if attempt < maxRetries =>
                 logger.info(
-                  s"Daikoku is no ready (attempt $attempt/$maxRetries), retry in ${retryDelay.toMillis}ms..."
+                  s"Daikoku is not ready (attempt $attempt/$maxRetries), retry in ${currentDelay.toMillis}ms..."
                 )
                 Future.unit
                   .flatMap(_ =>
                     scala.concurrent.Future(
-                      Thread.sleep(retryDelay.toMillis)
-                    ) // Attente entre les appels
+                      Thread.sleep(currentDelay.toMillis)
+                    )
                   )
                   .flatMap(_ => checkStatus(attempt + 1))
 
@@ -561,7 +563,7 @@ object testUtils {
           body,
           baseUrl,
           port
-        )(tenant, session),
+        )(using tenant, session),
         5.seconds
       )
 
@@ -580,7 +582,7 @@ object testUtils {
       }
       val builder = daikokuComponents.env.wsClient
         .url(s"$baseUrl:$port$path")
-        .withHttpHeaders((Map("Host" -> tenant.domain) ++ headers).toSeq: _*)
+        .withHttpHeaders((Map("Host" -> tenant.domain) ++ headers).toSeq*)
         .withFollowRedirects(false)
         .withRequestTimeout(10.seconds)
         .withMethod(method)
@@ -631,7 +633,7 @@ object testUtils {
           baseUrl,
           port,
           hostHeader
-        )(tenant),
+        )(using tenant),
         5.seconds
       )
 
@@ -646,10 +648,11 @@ object testUtils {
     )(implicit tenant: Tenant): Future[WSResponse] = {
       val builder = daikokuComponents.env.wsClient
         .url(s"$baseUrl:$port$path")
-        .withHttpHeaders((headers ++ Map("Host" -> hostHeader)).toSeq: _*)
+        .withHttpHeaders((Map("Host" -> hostHeader) ++ headers).toSeq: _*)
         .withFollowRedirects(false)
         .withRequestTimeout(10.seconds)
         .withMethod(method)
+      AppLogger.warn(s"$baseUrl:$port$path")
       body.map(b => builder.withBody(b)).getOrElse(builder).execute()
     }
 
@@ -693,25 +696,25 @@ object testUtils {
     def openPageBlocking(
         path: String
     )(implicit tenant: Tenant, session: UserSession): Document =
-      openPage(path)(tenant, session).futureValue
+      openPage(path)(using tenant, session).futureValue
 
     def openPage(
         path: String
     )(implicit tenant: Tenant, session: UserSession): Future[Document] =
-      actionOnPage(path, Seq("--dump-dom"))(tenant, session).map(str =>
+      actionOnPage(path, Seq("--dump-dom"))(using tenant, session).map(str =>
         Scoup.parseHTML(str)
       )
 
     def screenshotPageBlocking(
         path: String
     )(implicit tenant: Tenant, session: UserSession): String =
-      screenshotPage(path)(tenant, session).futureValue
+      screenshotPage(path)(using tenant, session).futureValue
 
     def screenshotPage(
         path: String
     )(implicit tenant: Tenant, session: UserSession): Future[String] =
       actionOnPage(path, Seq("--screenshot", "--window-size=1920,1080"))(
-        tenant,
+        using tenant,
         session
       ).map { res =>
         Try(Files.createDirectory(new File("./target/screenshots").toPath))
@@ -889,24 +892,34 @@ object testUtils {
       "metadata" -> Json.obj()
     )
 
+    def cleanMailerServer(
+        mailerPort: Int
+    ) = {
+      daikokuComponents.env.wsClient
+        .url(s"http://localhost:$mailerPort/api/emails")
+        .withRequestTimeout(10.seconds)
+        .withMethod("DELETE")
+        .execute()
+    }
+
     def cleanOtoroshiServer(
         otoroshiPort: Int,
         apks: Seq[JsValue] = Seq(parentApkAsJson, parent2ApkAsJson)
     ) = {
-      val apikeys = daikokuComponents.env.wsClient
-        .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
-        .withHttpHeaders(
-          Map(
-            "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
-            "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
-            "Host" -> "otoroshi-api.oto.tools"
-          ).toSeq: _*
-        )
-        .withFollowRedirects(false)
-        .withRequestTimeout(10.seconds)
-        .withMethod("GET")
-        .execute()
-        .map(_.json.as[JsArray].value.toSeq)
+//      val apikeys = daikokuComponents.env.wsClient
+//        .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
+//        .withHttpHeaders(
+//          Map(
+//            "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
+//            "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
+//            "Host" -> "otoroshi-api.oto.tools"
+//          ).toSeq*
+//        )
+//        .withFollowRedirects(false)
+//        .withRequestTimeout(10.seconds)
+//        .withMethod("GET")
+//        .execute()
+//        .map(_.json.as[JsArray].value.toSeq)
 
       def fetchApiKeysWithRetry(
           maxRetries: Int = 3,
@@ -914,7 +927,7 @@ object testUtils {
       ): Future[Seq[JsValue]] = {
         def fetchOnce(): Future[JsValue] = {
           daikokuComponents.env.wsClient
-            .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
+            .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
             .withHttpHeaders(
               "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
               "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
@@ -923,7 +936,7 @@ object testUtils {
             .withFollowRedirects(false)
             .withRequestTimeout(10.seconds)
             .get()
-            .map(_.json)
+            .map(r  => r.json)
         }
 
         def loop(attempt: Int): Future[Seq[JsValue]] = {
@@ -958,8 +971,7 @@ object testUtils {
       }
 
       for {
-        _ <-
-          Source
+        _ <- Source
             .futureSource(fetchApiKeysWithRetry().map(Source(_)))
             .mapAsync(5)(apk => {
               val clientId = (apk \ "clientId").as[String]
@@ -976,7 +988,7 @@ object testUtils {
                       "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
                       "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
                       "Host" -> "otoroshi-api.oto.tools"
-                    ).toSeq: _*
+                    ).toSeq*
                   )
                   .withFollowRedirects(false)
                   .withRequestTimeout(10.seconds)
@@ -989,13 +1001,13 @@ object testUtils {
         _ <- Future.sequence(
           apks.map(apk =>
             daikokuComponents.env.wsClient
-              .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys")
+              .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
               .withHttpHeaders(
                 Map(
                   "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
                   "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
                   "Host" -> "otoroshi-api.oto.tools"
-                ).toSeq: _*
+                ).toSeq*
               )
               .withFollowRedirects(false)
               .withRequestTimeout(10.seconds)

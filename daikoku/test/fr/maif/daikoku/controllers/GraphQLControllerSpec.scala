@@ -482,7 +482,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPis.some
-      )(_tenant, daikokuAdminSession)
+      )(using _tenant, daikokuAdminSession)
       respDaikokuAdmin.status mustBe 200
       (respDaikokuAdmin.json \ "data" \ "visibleApis" \ "total")
         .as[Int] mustBe 17
@@ -492,7 +492,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPis.some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respOwnerAdmin.status mustBe 200
       (respOwnerAdmin.json \ "data" \ "visibleApis" \ "total").as[Int] mustBe 15
 
@@ -501,7 +501,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPis.some
-      )(_tenant, teamConsumerAdminSession)
+      )(using _tenant, teamConsumerAdminSession)
       respConsumerAdmin.status mustBe 200
       (respConsumerAdmin.json \ "data" \ "visibleApis" \ "total")
         .as[Int] mustBe 14
@@ -511,7 +511,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPis.some
-      )(_tenant, unauthorizedUserSession)
+      )(using _tenant, unauthorizedUserSession)
       respUnauthorizedAdmin.status mustBe 200
       (respUnauthorizedAdmin.json \ "data" \ "visibleApis" \ "total")
         .as[Int] mustBe 13
@@ -521,7 +521,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPis.some
-      )(_tenant)
+      )(using _tenant)
       respGuest.status mustBe 200
       (respGuest.json \ "data" \ "visibleApis" \ "total").as[Int] mustBe 12
 
@@ -535,7 +535,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPisFroApiGroup.some
-      )(_tenant, daikokuAdminSession)
+      )(using _tenant, daikokuAdminSession)
       respApiGroupDaikokuAdmin.status mustBe 200
       logger.warn(Json.prettyPrint(respApiGroupDaikokuAdmin.json))
       (respApiGroupDaikokuAdmin.json \ "data" \ "visibleApis" \ "total")
@@ -547,7 +547,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPisFroApiGroup.some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respApiGroupOwner.status mustBe 200
       (respApiGroupOwner.json \ "data" \ "visibleApis" \ "total")
         .as[Int] mustBe 14
@@ -558,7 +558,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPisFroApiGroup.some
-      )(_tenant, teamConsumerAdminSession)
+      )(using _tenant, teamConsumerAdminSession)
       respApiGroupConsumer.status mustBe 200
       (respApiGroupConsumer.json \ "data" \ "visibleApis" \ "total")
         .as[Int] mustBe 13
@@ -569,7 +569,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPisFroApiGroup.some
-      )(_tenant, unauthorizedUserSession)
+      )(using _tenant, unauthorizedUserSession)
       respApiGroupUnauthorized.status mustBe 200
       (respApiGroupUnauthorized.json \ "data" \ "visibleApis" \ "total")
         .as[Int] mustBe 12
@@ -580,7 +580,7 @@ class GraphQLControllerSpec()
         path = s"/api/search",
         "POST",
         body = graphQlRequestAllVisibleAPisFroApiGroup.some
-      )(_tenant)
+      )(using _tenant)
       respApiGroupGuest.status mustBe 200
       (respApiGroupGuest.json \ "data" \ "visibleApis" \ "total")
         .as[Int] mustBe 11
@@ -613,7 +613,7 @@ class GraphQLControllerSpec()
             "query" -> baseGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       logger.warn(Json.prettyPrint(respOwnerAdminByTags.json))
       respOwnerAdminByTags.status mustBe 200
       (respOwnerAdminByTags.json \ "data" \ "visibleApis" \ "totalFiltered")
@@ -657,7 +657,7 @@ class GraphQLControllerSpec()
             "query" -> baseGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respOwnerAdminByTeam.status mustBe 200
       (respOwnerAdminByTeam.json \ "data" \ "visibleApis" \ "totalFiltered")
         .as[Int] mustBe 15
@@ -679,7 +679,7 @@ class GraphQLControllerSpec()
             "query" -> baseGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respOwnerAdminByResearch.status mustBe 200
       (respOwnerAdminByResearch.json \ "data" \ "visibleApis" \ "totalFiltered")
         .as[Int] mustBe 1
@@ -1142,7 +1142,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, daikokuAdminSession)
+      )(using _tenant, daikokuAdminSession)
       respAllTagsDaikokuAdmin.status mustBe 200
       (respAllTagsDaikokuAdmin.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1158,7 +1158,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllTagsTeamOwner.status mustBe 200
       (respAllTagsTeamOwner.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1174,7 +1174,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, teamConsumerAdminSession)
+      )(using _tenant, teamConsumerAdminSession)
       respAllTagsTeamConsumer.status mustBe 200
       (respAllTagsTeamConsumer.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1190,7 +1190,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, unauthorizedUserSession)
+      )(using _tenant, unauthorizedUserSession)
       respAllTagsUnauthorized.status mustBe 200
       (respAllTagsUnauthorized.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1206,7 +1206,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant)
+      )(using _tenant)
       respAllTagsGuest.status mustBe 200
       (respAllTagsGuest.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1222,7 +1222,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, daikokuAdminSession)
+      )(using _tenant, daikokuAdminSession)
       respAllTagsWithGroupDaikokuAdmin.status mustBe 200
       (respAllTagsWithGroupDaikokuAdmin.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1238,7 +1238,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllTagsWithGroupTeamOwner.status mustBe 200
       (respAllTagsWithGroupTeamOwner.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1254,7 +1254,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, teamConsumerAdminSession)
+      )(using _tenant, teamConsumerAdminSession)
       respAllTagsWithGroupTeamConsumer.status mustBe 200
       (respAllTagsWithGroupTeamConsumer.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1270,7 +1270,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, unauthorizedUserSession)
+      )(using _tenant, unauthorizedUserSession)
       respAllTagsWithgroupUnauthorized.status mustBe 200
       (respAllTagsWithgroupUnauthorized.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1286,7 +1286,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant)
+      )(using _tenant)
       respAllTagsWithGroupGuest.status mustBe 200
       (respAllTagsWithGroupGuest.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1302,7 +1302,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant)
+      )(using _tenant)
       respAllTagsWithResearchGuest.status mustBe 200
       (respAllTagsWithResearchGuest.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1321,7 +1321,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllTagsWithLimitTeamOwner.status mustBe 200
       (respAllTagsWithLimitTeamOwner.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1341,7 +1341,7 @@ class GraphQLControllerSpec()
             "query" -> allTagsGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllTagsWithOffsetTeamOwner.status mustBe 200
       (respAllTagsWithOffsetTeamOwner.json \ "data" \ "allTags")
         .as[Seq[String]]
@@ -1363,7 +1363,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, daikokuAdminSession)
+      )(using _tenant, daikokuAdminSession)
       respAllCatDaikokuAdmin.status mustBe 200
       (respAllCatDaikokuAdmin.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1379,7 +1379,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllCatTeamOwner.status mustBe 200
       (respAllCatTeamOwner.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1395,7 +1395,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, teamConsumerAdminSession)
+      )(using _tenant, teamConsumerAdminSession)
       respAllCatTeamConsumer.status mustBe 200
       (respAllCatTeamConsumer.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1411,7 +1411,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, unauthorizedUserSession)
+      )(using _tenant, unauthorizedUserSession)
       respAllCatUnauthorized.status mustBe 200
       (respAllCatUnauthorized.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1427,7 +1427,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant)
+      )(using _tenant)
       respAllCatGuest.status mustBe 200
       (respAllCatGuest.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1443,7 +1443,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, daikokuAdminSession)
+      )(using _tenant, daikokuAdminSession)
       logger.info(Json.prettyPrint(respAllCatWithGroupDaikokuAdmin.json))
       respAllCatWithGroupDaikokuAdmin.status mustBe 200
       (respAllCatWithGroupDaikokuAdmin.json \ "data" \ "allCategories")
@@ -1460,7 +1460,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllCatWithGroupTeamOwner.status mustBe 200
       (respAllCatWithGroupTeamOwner.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1476,7 +1476,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, teamConsumerAdminSession)
+      )(using _tenant, teamConsumerAdminSession)
       respAllCatWithGroupTeamConsumer.status mustBe 200
       (respAllCatWithGroupTeamConsumer.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1492,7 +1492,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, unauthorizedUserSession)
+      )(using _tenant, unauthorizedUserSession)
       respAllCatWithGroupUnauthorized.status mustBe 200
       (respAllCatWithGroupUnauthorized.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1508,7 +1508,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant)
+      )(using _tenant)
       respAllCatWithGroupGuest.status mustBe 200
       (respAllCatWithGroupGuest.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1523,7 +1523,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant)
+      )(using _tenant)
       respAllCatWithResearchGuest.status mustBe 200
       (respAllCatWithResearchGuest.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1539,7 +1539,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllCategoriesWithLimitTeamOwner.status mustBe 200
       (respAllCategoriesWithLimitTeamOwner.json \ "data" \ "allCategories")
         .as[Seq[String]]
@@ -1559,7 +1559,7 @@ class GraphQLControllerSpec()
             "query" -> allCategoriesGraphQLQuery
           )
           .some
-      )(_tenant, teamOwnerAdminSession)
+      )(using _tenant, teamOwnerAdminSession)
       respAllCategoriesWithOffsetTeamOwner.status mustBe 200
       (respAllCategoriesWithOffsetTeamOwner.json \ "data" \ "allCategories")
         .as[Seq[String]]

@@ -123,7 +123,7 @@ export const SettingsPanel = ({ }) => {
         {(connectedUser.isDaikokuAdmin || isTenantAdmin) && <div className="mb-3 block">
           <div className="mb-1 block__category">{translate('actions')}</div>
           <div className="ms-2 block__entries block__border d-flex flex-column">
-            {isTenantAdmin && (
+            { (connectedUser.isDaikokuAdmin || isTenantAdmin) && (
               <span className="block__entry__link" onClick={toggleMaintenanceMode}>
                 {translate(isMaintenanceMode ? 'Disable maintenance' : 'Maintenance mode')}
               </span>

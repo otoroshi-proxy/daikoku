@@ -11,8 +11,7 @@ import { GlobalContext } from "../../../contexts/globalContext"
 import * as Services from '../../../services'
 import { ApiList } from "./ApiList"
 import { Tile } from "./Tile"
-import { Spinner } from "../../utils"
-import { isError } from "../../../types"
+import { CmsViewerByPath } from "../CmsViewer"
 
 type NewHomeProps = {
   teamId?: string
@@ -33,9 +32,9 @@ export type TDashboardData = {
   }
 }
 
-export const Dashboard = (props: NewHomeProps) => {
+export const Dashboard = (_: NewHomeProps) => {
   const { tenant, connectedUser, isTenantAdmin, theme } = useContext(GlobalContext)
-  const { translate } = useContext(I18nContext)
+  const { translate, language } = useContext(I18nContext)
 
   const navigate = useNavigate()
 
@@ -55,18 +54,22 @@ export const Dashboard = (props: NewHomeProps) => {
   return (
     <main className='flex-grow-1 d-flex flex-column gap-3' role="main">
       <section className="">
-        <div className="d-flex flex-row justify-content-between align-items-center">
-          <div className="d-flex flex-row align-items-center gap-5">
-            {themedLogo && <img style={{ maxWidth: '25%' }} src={themedLogo} alt="logo" />}
-            <div className="d-flex flex-column justify-content-center">
-              <h1 className="jumbotron-heading mt-3">
-                {tenant.title ?? tenant.name}
-              </h1>
-              <p>{tenant.description}</p>
-            </div>
-          </div>
+        <div className="" style={{ marginTop: '50px', maxHeight: '155px', position: 'relative', overflowY: 'scroll' }}>
+          <CmsViewerByPath path={`/customization/dashboard/description/${language.toLocaleLowerCase()}`}
+            fallBack={() => (
+              <div className="d-flex flex-row align-items-center gap-5" style={{ maxHeight: '155px' }}>
+                {themedLogo && <img style={{ maxWidth: '25%', maxHeight: '155px', objectFit: 'contain' }} src={themedLogo} alt="logo" />}
+                <div className="d-flex flex-column justify-content-center">
+                  <h1 className="jumbotron-heading mt-3">
+                    {tenant.title ?? tenant.name}
+                  </h1>
+                  <p>{tenant.description}</p>
+                </div>
+              </div>
+            )
+            } />
           {isTenantAdmin && <button onClick={() => navigate('/settings/settings/general')}
-            className="btn btn-outline-primary">
+            className="btn btn-outline-primary" style={{ position: 'absolute', top: "0px", right: "10px" }}>
             <Sliders className="me-2" />{translate('dashboard.page.tenant.setting.button.label')}
           </button>}
         </div>

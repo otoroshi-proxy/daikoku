@@ -82,7 +82,7 @@ object TenantHelper {
 
     env.config.tenantProvider match {
       case TenantProvider.Header => {
-        val tenantId = TenantHelper.extractTenantId(request)(env)
+        val tenantId = TenantHelper.extractTenantId(request)(using env)
         env.dataStore.tenantRepo.findByIdNotDeleted(tenantId).flatMap {
           case None =>
             Errors.craftResponseResultF(
@@ -370,7 +370,7 @@ class LoginFilter(env: Env)(implicit
                                         fr.maif.daikoku.controllers.routes.LoginController
                                           .loginPage(provider.name)
                                       )
-                                      .removingFromSession("sessionId")(request)
+                                      .removingFromSession("sessionId")(using request)
                                       .withSession(
                                         "redirect" -> cleanupRedirect(
                                           request.relativeUri
@@ -449,7 +449,7 @@ class LoginFilter(env: Env)(implicit
                             fr.maif.daikoku.controllers.routes.LoginController
                               .loginPage(provider.name)
                           )
-                          .removingFromSession("sessionId")(request)
+                          .removingFromSession("sessionId")(using request)
                           .withSession(
                             "redirect" -> cleanupRedirect(request.relativeUri)
                           )
@@ -466,7 +466,7 @@ class LoginFilter(env: Env)(implicit
                             fr.maif.daikoku.controllers.routes.LoginController
                               .loginPage(provider.name)
                           )
-                          .removingFromSession("sessionId")(request)
+                          .removingFromSession("sessionId")(using request)
                           .withSession(
                             "redirect" -> cleanupRedirect(request.relativeUri)
                           )
@@ -483,7 +483,7 @@ class LoginFilter(env: Env)(implicit
                                   fr.maif.daikoku.controllers.routes.LoginController
                                     .loginPage(provider.name)
                                 )
-                                .removingFromSession("sessionId")(request)
+                                .removingFromSession("sessionId")(using request)
                                 .withSession(
                                   "redirect" -> cleanupRedirect(
                                     request.relativeUri
@@ -502,7 +502,7 @@ class LoginFilter(env: Env)(implicit
                                       fr.maif.daikoku.controllers.routes.LoginController
                                         .loginPage(provider.name)
                                     )
-                                    .removingFromSession("sessionId")(request)
+                                    .removingFromSession("sessionId")(using request)
                                     .withSession(
                                       "redirect" -> cleanupRedirect(
                                         request.relativeUri
@@ -569,7 +569,7 @@ class LoginFilter(env: Env)(implicit
                             fr.maif.daikoku.controllers.routes.LoginController
                               .loginPage(provider.name)
                           )
-                          .removingFromSession("sessionId")(request)
+                          .removingFromSession("sessionId")(using request)
                           .withSession(
                             "redirect" -> cleanupRedirect(request.relativeUri)
                           )

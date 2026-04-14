@@ -307,7 +307,7 @@ class AccountCreationService {
         )
         title <- EitherT.liftF(
           translator.translate("mail.rejection.title", tenant)(
-            messagesApi,
+            using messagesApi,
             language,
             env
           )
@@ -322,11 +322,11 @@ class AccountCreationService {
               "account_creation_data" -> demand.asJson,
               "tenant_data" -> tenant.asJson
             )
-          )(messagesApi, language, env)
+          )(using messagesApi, language, env)
         )
         _ <- EitherT.liftF(
           tenant.mailer.send(title, Seq(demand.email), body, tenant)(
-            ec,
+            using ec,
             translator,
             messagesApi,
             env,
@@ -342,7 +342,7 @@ class AccountCreationService {
           .liftF(
             env.wsClient
               .url(step.url)
-              .withHttpHeaders(step.headers.toSeq: _*)
+              .withHttpHeaders(step.headers.toSeq*)
               .post(Json.obj("demand" -> demand.asJson))
           )
           .map(_.json)

@@ -61,17 +61,17 @@ class DaikokuAuthMiddleware()
   type DaikokuContext = (DataStore, DaikokuActionContext[JsValue])
 
   def beforeQuery(
-      context: MiddlewareQueryContext[DaikokuContext, _, _]
+      context: MiddlewareQueryContext[DaikokuContext, ?, ?]
   ): QueryVal = ()
   def afterQuery(
       queryVal: QueryVal,
-      context: MiddlewareQueryContext[DaikokuContext, _, _]
+      context: MiddlewareQueryContext[DaikokuContext, ?, ?]
   ): Unit = ()
 
   def beforeField(
       queryVal: QueryVal,
-      mctx: MiddlewareQueryContext[DaikokuContext, _, _],
-      ctx: Context[DaikokuContext, _]
+      mctx: MiddlewareQueryContext[DaikokuContext, ?, ?],
+      ctx: Context[DaikokuContext, ?]
   ): BeforeFieldResult[DaikokuContext, Unit] = {
 
     val daikokuCtx = ctx.ctx

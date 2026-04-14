@@ -39,7 +39,9 @@ class DaikokuComponentsInstances(context: Context)
 
   implicit lazy val env: Env = wire[DaikokuEnv]
 
-  lazy val verifier = wire[OtoroshiVerifierJob]
+  lazy val verifier = wire[OtoroshiSynchronizerJob]
+  lazy val entityVerifier = wire[OtoroshiEntitiesVerifierJob]
+  lazy val rotationVerifier = wire[ApiKeySecretRotationJob]
   lazy val deletor = wire[QueueJob]
   lazy val statsJob = wire[ApiKeyStatsJob]
   lazy val auditTrailPurgeJob = wire[AuditTrailPurgeJob]
@@ -61,7 +63,7 @@ class DaikokuComponentsInstances(context: Context)
     new SecurityFilter(env)
   ) ++ env.expositionFilters ++ env.identityFilters
 
-  lazy val filters = new DefaultHttpFilters(httpFilters: _*)
+  lazy val filters = new DefaultHttpFilters(httpFilters*)
 
   override lazy val httpErrorHandler: HttpErrorHandler = wire[ErrorHandler]
 
@@ -69,7 +71,7 @@ class DaikokuComponentsInstances(context: Context)
   val daikokuAction = wire[DaikokuAction]
   val daikokuTenantAction = wire[DaikokuTenantAction]
   val daikokuTenantActionMaybeWithGuest = wire[DaikokuActionMaybeWithGuest]
-  val daikokuActionMaybeWithoutUser = wire[DaikokuActionMaybeWithoutUser]
+  val DaikokuUnauthenticatedAction = wire[DaikokuUnauthenticatedAction]
   val daikokuApiAction = wire[DaikokuApiAction]
   val cmsApiAction = wire[CmsApiAction]
   val daikokuApiActionWithoutTenant = wire[DaikokuApiActionWithoutTenant]
@@ -221,10 +223,12 @@ class DaikokuComponentsInstances(context: Context)
     }
     options
   }
+  lazy val vertxInstance: io.vertx.core.Vertx = vertx()
+
   lazy val pgPool: Pool = PgBuilder.pool()
     .`with`(poolOptions)
     .connectingTo(options)
-    .using(vertx)
+    .using(vertxInstance)
     .build()
 
   //    statsJob.start()

@@ -9,13 +9,14 @@ import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.logger.AppLogger
-import fr.maif.daikoku.utils.{AlgoSettings, IdGenerator, InputMode}
+import fr.maif.daikoku.utils.{AlgoSettings, IdGenerator, InputMode, getFilteredMetadataFromOauth}
 import org.apache.commons.codec.binary.Base64 as ApacheBase64
 import play.api.Logger
 import play.api.libs.json.*
+import play.api.libs.json.Json.toJsFieldJsValueWrapper
 import play.api.libs.ws.DefaultBodyWritables.writeableOf_urlEncodedSimpleForm
 import play.api.libs.ws.JsonBodyWritables.writeableOf_JsValue
-import play.api.libs.ws.WSResponse
+import play.api.libs.ws.{WSRequest, WSResponse}
 import play.api.mvc.RequestHeader
 
 import java.security.{MessageDigest, SecureRandom}
@@ -23,6 +24,7 @@ import java.util.Base64
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
+
 
 object OAuth2Config {
 
@@ -50,7 +52,6 @@ object OAuth2Config {
           )
         )
       } recover { case e =>
-//          AppLogger.error(e.getMessage, e)
         JsError(e.getMessage)
       } get
     }
@@ -68,7 +69,7 @@ object OAuth2Config {
       Right(
         OAuth2Config(
           pkceConfig =
-            (json \ "pkceConfig").asOpt(pkceConfigFmt),
+            (json \ "pkceConfig").asOpt(using pkceConfigFmt),
           sessionMaxAge = (json \ "sessionMaxAge").asOpt[Int].getOrElse(86400),
           clientId = (json \ "clientId").asOpt[String].getOrElse("client"),
           clientSecret = (json \ "clientSecret").asOpt[String],
@@ -118,6 +119,8 @@ object OAuth2Config {
           adminRole = (json \ "adminRole")
             .asOpt[String],
           userRole = (json \ "userRole")
+            .asOpt[String],
+          selectedMetadata = (json \ "selectedMetadata")
             .asOpt[String]
         )
       )
@@ -158,7 +161,8 @@ case class OAuth2Config(
     pkceConfig: Option[PKCEConfig] = None,
     roleClaim: Option[String] = None,
     adminRole: Option[String] = None,
-    userRole: Option[String] = None
+    userRole: Option[String] = None,
+    selectedMetadata: Option[String] = None
 ) {
   def asJson =
     Json.obj(
@@ -182,7 +186,8 @@ case class OAuth2Config(
       "callbackUrl" -> this.callbackUrl,
       "daikokuAdmins" -> this.daikokuAdmins,
       "roleClaim" -> this.roleClaim.map(JsString.apply).getOrElse(JsNull).as[JsValue],
-      "adminRole" -> this.adminRole.map(JsString.apply).getOrElse(JsNull).as[JsValue]
+      "adminRole" -> this.adminRole.map(JsString.apply).getOrElse(JsNull).as[JsValue],
+      "selectedMetadata" -> this.selectedMetadata.map(JsString.apply).getOrElse(JsNull).as[JsValue]
     )
 }
 
@@ -245,7 +250,7 @@ object OAuth2Support {
       val alg =
         (tokenHeader \ "alg").asOpt[String].getOrElse("RS256")
       val settings = algoSettings
-        .asAlgorithm(InputMode(alg, kid))(_env)
+        .asAlgorithm(InputMode(alg, kid))(using _env)
 
       EitherT
         .fromOption[Future][AppError, Algorithm](
@@ -262,10 +267,9 @@ object OAuth2Support {
         .map(_ => tokenBody)
     }
 
-    def getUser(accessToken: String) = {
+    def getUser(accessToken: String): EitherT[Future, AppError, JsValue]= {
       val builder2 = _env.wsClient.url(authConfig.userInfoUrl)
-
-      val future2 = if (authConfig.useJson) {
+      val future2: Future[WSResponse] = if (authConfig.useJson) {
         builder2.post(
           Json.obj(
             "access_token" -> accessToken
@@ -276,9 +280,8 @@ object OAuth2Support {
           Map(
             "access_token" -> accessToken
           )
-        )(writeableOf_urlEncodedSimpleForm)
+        )(using writeableOf_urlEncodedSimpleForm)
       }
-
       EitherT
         .right[AppError](future2)
         .map(_.json)
@@ -288,9 +291,11 @@ object OAuth2Support {
         name: String,
         email: String,
         picture: Option[String],
-        isDaikokuAdmin: Boolean
+        isDaikokuAdmin: Boolean,
+        userFromOauth: JsValue
     ): EitherT[Future, AppError, User] = {
       val userId = UserId(IdGenerator.token(32))
+
       val team = Team(
         id = TeamId(IdGenerator.token(32)),
         tenant = tenant.id,
@@ -312,8 +317,9 @@ object OAuth2Support {
         isDaikokuAdmin = isDaikokuAdmin,
         lastTenant = Some(tenant.id),
         personalToken = Some(IdGenerator.token(32)),
-        defaultLanguage = None
-      )
+        defaultLanguage = None,
+        metadata = getFilteredMetadataFromOauth(authConfig,userFromOauth) //TODO pas value map mais value collect et avant, vérifier que metadataBiding existe et est Ok
+       )
       for {
         _ <- EitherT.right[AppError](
           _env.dataStore.teamRepo
@@ -331,7 +337,8 @@ object OAuth2Support {
         name: String,
         email: String,
         picture: Option[String],
-        isDaikokuAdmin: Boolean
+        isDaikokuAdmin: Boolean,
+        userFromOauth: JsValue
     ): EitherT[Future, AppError, User] = {
       val updatedUser = u.copy(
         name = name,
@@ -348,9 +355,9 @@ object OAuth2Support {
               case true if picture.isEmpty => User.DEFAULT_IMAGE
               case _                       => u.picture
             },
-        isDaikokuAdmin = isDaikokuAdmin
+        isDaikokuAdmin = isDaikokuAdmin,
+        metadata = u.metadata ++ getFilteredMetadataFromOauth(authConfig,userFromOauth)
       )
-
       EitherT
         .right[AppError](_env.dataStore.userRepo.save(updatedUser))
         .map(_ => updatedUser)
@@ -418,14 +425,14 @@ object OAuth2Support {
 
         connectedUser <- existingUser match {
           case Some(user) =>
-            updateUser(user, name, email, picture, isDaikokuAdmin)
-          case None => createUser(name, email, picture, isDaikokuAdmin)
+            updateUser(user, name, email, picture, isDaikokuAdmin, userFromOauth)
+          case None => createUser(name, email, picture, isDaikokuAdmin, userFromOauth)
         }
       } yield connectedUser
     }
 
     for {
-      _ <- EitherT.cond[Future](
+      _ <- EitherT.cond[Future][AppError, Unit](
         request.getQueryString("error").isEmpty,
         (),
         AppError.BadRequestError("No code")
@@ -438,7 +445,7 @@ object OAuth2Support {
       builder = _env.wsClient.url(authConfig.tokenUrl)
       verifier = request.session.get("code_verifier").getOrElse("")
       clientSecret = authConfig.clientSecret.map(_.trim).filterNot(_.isEmpty)
-      mapPayload = (Map(
+      mapPayload = Map(
         "code" -> code,
         "grant_type" -> "authorization_code",
         "client_id" -> authConfig.clientId,
@@ -451,7 +458,7 @@ object OAuth2Support {
         .getOrElse(Map.empty)
         ++ clientSecret
           .map(s => Map("client_secret" -> s))
-          .getOrElse(Map.empty))
+          .getOrElse(Map.empty)
 
       response <- EitherT.right[AppError](if (authConfig.useJson) {
         val jsonPayload = JsObject(
@@ -463,19 +470,18 @@ object OAuth2Support {
       } else {
         builder.post(
           mapPayload
-        )(writeableOf_urlEncodedSimpleForm)
+        )(using writeableOf_urlEncodedSimpleForm)
       })
       accessToken = (response.json \ authConfig.accessTokenField).as[String]
       idToken = (response.json \ "id_token").asOpt[String]
-      userJson <-
-        if (authConfig.readProfileFromToken && authConfig.jwtVerifier.isDefined)
-          verifyAndGetUser(accessToken)
-        else
-          getUser(accessToken)
 
+      userJson <-
+        if (authConfig.readProfileFromToken && authConfig.jwtVerifier.isDefined) {
+          verifyAndGetUser(accessToken)
+        } else
+          getUser(accessToken)
       user <- processUserFromOAuth(userJson)
     } yield (user, idToken)
-
   }
 
   def getConfiguration(

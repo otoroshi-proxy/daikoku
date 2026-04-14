@@ -3,8 +3,10 @@ GET     /assets/*file                                   controllers.Assets.versi
 
 GET     /_/                                             fr.maif.daikoku.controllers.HomeController.cmsPageByPath(path="")
 GET     /_/*path                                        fr.maif.daikoku.controllers.HomeController.cmsPageByPath(path)
+
 POST    /_*path                                         fr.maif.daikoku.controllers.HomeController.renderCmsPageFromBody(path)
-GET     /cms/pages/:id                                  fr.maif.daikoku.controllers.HomeController.cmsPageById(id)
+GET     /cms/pages                                      fr.maif.daikoku.controllers.HomeController.getCmsPageByPath(path: Option[String] ?= None)
+GET     /cms/pages/:id                                  fr.maif.daikoku.controllers.HomeController.getCmsPageById(id)
 POST    /cms/pages/:id                                  fr.maif.daikoku.controllers.HomeController.advancedRenderCmsPageById(id)
 DELETE  /api/cms/pages/:id                              fr.maif.daikoku.controllers.HomeController.deleteCmsPage(id)
 
@@ -47,7 +49,7 @@ GET     /notifications/*path                            fr.maif.daikoku.controll
 GET     /apis/*path                                     fr.maif.daikoku.controllers.HomeController.indexWithPath(path)
 GET     /consumptions/*path                             fr.maif.daikoku.controllers.HomeController.indexWithPath(path)
 GET     /health                                         fr.maif.daikoku.controllers.HomeController.health()
-GET     /status                                         fr.maif.daikoku.controllers.HomeController.status()
+GET     /health/details                                 fr.maif.daikoku.controllers.HomeController.healthDetailed()
 GET     /api/versions/_daikoku                          fr.maif.daikoku.controllers.HomeController.getDaikokuVersion()
 GET     /api/me/context                                 fr.maif.daikoku.controllers.HomeController.getConnectedUser()
 
@@ -60,17 +62,16 @@ GET     /account/validate                               fr.maif.daikoku.controll
 POST    /account                                        fr.maif.daikoku.controllers.LoginController.createUser()
 GET     /api/account/_validate                          fr.maif.daikoku.controllers.LoginController.validateAccountCreationAttempt()
 GET     /api/account/_decline                           fr.maif.daikoku.controllers.LoginController.declineAccountCreationAttempt()
-GET     /api/auth/:provider/context                     fr.maif.daikoku.controllers.LoginController.loginContext(provider)
 GET     /auth/:provider/login                           fr.maif.daikoku.controllers.LoginController.loginPage(provider)
+POST    /auth/:provider/maintenance                     fr.maif.daikoku.controllers.LoginController.maintenanceLogin(provider)
 POST    /auth/:provider/callback                        fr.maif.daikoku.controllers.LoginController.login(provider)
 GET     /auth/:provider/callback                        fr.maif.daikoku.controllers.LoginController.loginGet(provider)
+GET     /api/auth/provider                              fr.maif.daikoku.controllers.LoginController.getAuthContext()
 POST    /api/auth/ldap/_check                           fr.maif.daikoku.controllers.LoginController.checkLdapConnection()
 POST    /api/auth/oauth/_check                          fr.maif.daikoku.controllers.LoginController.checkOauthConnection()
 POST    /api/auth/oauth/_fetch-configuration            fr.maif.daikoku.controllers.LoginController.fetchOauthConfiguration()
 
 GET     /api/me/teams                                   fr.maif.daikoku.controllers.ApiController.myTeams()
-GET     /api/me/teams/own                               fr.maif.daikoku.controllers.ApiController.myOwnTeam()
-GET     /api/me/teams/:id                               fr.maif.daikoku.controllers.ApiController.oneOfMyTeam(id)
 GET     /api/me/subscription/_retrieve                  fr.maif.daikoku.controllers.ApiController.checkTransferLink()
 GET     /api/me/dashboard                               fr.maif.daikoku.controllers.ApiController.myDashboard()
 
@@ -308,7 +309,9 @@ GET     /api/entities/otoroshi                          fr.maif.daikoku.controll
 GET     /api/entities/issue                             fr.maif.daikoku.controllers.EntitiesController.newIssue()
 GET     /api/entities/plan                              fr.maif.daikoku.controllers.EntitiesController.newPlan()
 
-POST    /api/jobs/otoroshi/_sync                        fr.maif.daikoku.controllers.JobsController.otoroshiSyncJob()
+POST    /api/jobs/otoroshi/_sync                        fr.maif.daikoku.controllers.JobsController.otoroshiSyncJob(parallelism: Int ?= 25)
+POST    /api/jobs/rotation/_sync                        fr.maif.daikoku.controllers.JobsController.rotationSyncJob(parallelism: Int ?= 25)
+POST    /api/jobs/verifier/_sync                        fr.maif.daikoku.controllers.JobsController.verifierSyncJob(parallelism: Int ?= 25)
 POST    /api/jobs/stats/_sync                           fr.maif.daikoku.controllers.JobsController.apikeysStatsSyncJob()
 POST    /api/jobs/purge/_sync                           fr.maif.daikoku.controllers.JobsController.auditTrailPurgeRunJob()
 
@@ -318,7 +321,6 @@ POST    /api/reset                                      fr.maif.daikoku.controll
 
 GET     /api/state/export                               fr.maif.daikoku.controllers.StateController.exportState()
 POST    /api/state/import                               fr.maif.daikoku.controllers.StateController.importState()
-POST    /api/state/migrate                              fr.maif.daikoku.controllers.StateController.migrateStateToPostgres()
 POST    /api/state/lock                                 fr.maif.daikoku.controllers.StateController.enableMaintenanceMode()
 POST    /api/state/unlock                               fr.maif.daikoku.controllers.StateController.disableMaintenanceMode()
 GET     /api/state/lock                                 fr.maif.daikoku.controllers.StateController.isMaintenanceMode()

@@ -4,9 +4,10 @@ import cats.implicits.catsSyntaxOptionId
 import com.auth0.jwt.algorithms.Algorithm
 import com.auth0.jwt.{JWT, JWTVerifier}
 import fr.maif.daikoku.audit.AuditActorSupervizer
+import fr.maif.daikoku.domain.SchedulingMode.Interval
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
-import fr.maif.daikoku.domain.{DatastoreId, ReportsInfo, TeamApiKeyVisibility, Tenant}
+import fr.maif.daikoku.domain.{DatastoreId, SchedulingMode, ReportsInfo, TeamApiKeyVisibility, Tenant}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider.Local
 import fr.maif.daikoku.login.{AuthProvider, LoginFilter, OAuth2Config}
@@ -26,7 +27,7 @@ import play.api.mvc.EssentialFilter
 import play.api.{Configuration, Environment}
 
 import java.nio.file.Paths
-import scala.concurrent.duration.{FiniteDuration, *}
+import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.{Failure, Success}
 
@@ -317,12 +318,55 @@ class Config(val underlying: Configuration) {
         .getOptional[Int]("daikoku.otoroshi.sync.instance")
         .getOrElse(-1) == 0
     )
-  lazy val otoroshiSyncByCron: Boolean = underlying
-    .getOptional[Boolean]("daikoku.otoroshi.sync.cron")
+  lazy val rotationJobKey: String = underlying
+    .getOptional[String]("daikoku.rotationJob.key")
+    .getOrElse("secret")
+  lazy val rotationJobEnabled: Boolean = underlying
+    .getOptional[Boolean]("daikoku.rotationJob.enabled")
     .getOrElse(false)
+  lazy val rotationJobCronExpr: Option[String] = underlying
+    .getOptional[String]("daikoku.rotationJob.cronExpression")
+  lazy val rotationJobInterval: FiniteDuration = underlying
+    .getOptional[Long]("daikoku.rotationJob.interval")
+    .map(v => v.millis)
+    .getOrElse(1.hour)
+  lazy val rotationJobSchedulingMode: SchedulingMode = underlying
+    .getOptional[String]("daikoku.rotationJob.mode")
+    .flatMap(SchedulingMode.fromValue)
+    .getOrElse(Interval)
+
+  lazy val verifierJobKey: String = underlying
+    .getOptional[String]("daikoku.verifierJob.key")
+    .getOrElse("secret")
+  lazy val verifierJobEnabled: Boolean = underlying
+    .getOptional[Boolean]("daikoku.verifierJob.enabled")
+    .getOrElse(false)
+  lazy val verifierJobCronExpr: Option[String] = underlying
+    .getOptional[String]("daikoku.verifierJob.cronExpression")
+  lazy val verifierJobInterval: FiniteDuration = underlying
+    .getOptional[Long]("daikoku.verifierJob.interval")
+    .map(v => v.millis)
+    .getOrElse(1.hour)
+  lazy val verifierJobSchedulingMode: SchedulingMode = underlying
+    .getOptional[String]("daikoku.verifierJob.mode")
+    .flatMap(SchedulingMode.fromValue)
+    .getOrElse(Interval)
+
   lazy val otoroshiSyncKey: String = underlying
     .getOptional[String]("daikoku.otoroshi.sync.key")
     .getOrElse("secret")
+
+  lazy val otoroshiSyncByCron: Boolean = underlying
+    .getOptional[Boolean]("daikoku.otoroshi.sync.cron")
+    .getOrElse(false)
+  lazy val otoroshiSyncSchedulingMode: SchedulingMode = underlying
+    .getOptional[String]("daikoku.otoroshi.sync.mode")
+    .flatMap(SchedulingMode.fromValue)
+    .getOrElse(Interval)
+  lazy val otoroshiSyncCronExpr: Option[String] = underlying
+    .getOptional[String]("daikoku.otoroshi.sync.cronExpression")
+  lazy val detailedHealthAccessKey: Option[String] = underlying
+    .getOptional[String]("daikoku.health.accessKey")
   lazy val otoroshiGroupNamePrefix: Option[String] =
     underlying.getOptional[String]("daikoku.otoroshi.groups.namePrefix")
   lazy val otoroshiGroupIdPrefix: Option[String] =
@@ -450,7 +494,7 @@ class DaikokuEnv(
 
   val auditActor: ActorRef =
     actorSystem.actorOf(
-      AuditActorSupervizer.props(this, messagesApi, interpreter)
+      AuditActorSupervizer.props(using this, messagesApi, interpreter)
     )
 
   private val daikokuConfig = new Config(configuration)
@@ -469,7 +513,7 @@ class DaikokuEnv(
     }
 
   private val s3assetsStore =
-    new AssetsDataStore(actorSystem)(actorSystem.dispatcher, materializer)
+    new AssetsDataStore(actorSystem)(using actorSystem.dispatcher, materializer)
 
   override def rawConfiguration: Configuration = configuration
 
@@ -519,7 +563,7 @@ class DaikokuEnv(
                 implicit val ec: ExecutionContext = defaultExecutionContext
                 wsClient
                   .url(path)
-                  .withHttpHeaders(config.init.data.headers.toSeq: _*)
+                  .withHttpHeaders(config.init.data.headers.toSeq*)
                   .withMethod("GET")
                   .withRequestTimeout(10.seconds)
                   .get()
@@ -741,7 +785,7 @@ class DaikokuEnv(
       .filter(v => v)
       .take(1)
       .toMat(Sink.ignore)(Keep.right)
-      .run()(materializer)
+      .run()(using materializer)
       .map(_ => {
         dataStore.reportsInfoRepo.count().map {
           case 0 =>
@@ -764,7 +808,7 @@ class DaikokuEnv(
       mat: Materializer,
       ec: ExecutionContext
   ): Seq[EssentialFilter] =
-    Seq(new LoginFilter(this)(mat, ec))
+    Seq(new LoginFilter(this)(using mat, ec))
 
   def expositionFilters(implicit
       mat: Materializer,
@@ -779,7 +823,7 @@ class DaikokuEnv(
             configuration
               .get[String]("daikoku.exposition.otoroshi.stateRespHeaderName"),
             this
-          )(mat, ec)
+          )(using mat, ec)
         )
       case _ => Seq.empty
     }

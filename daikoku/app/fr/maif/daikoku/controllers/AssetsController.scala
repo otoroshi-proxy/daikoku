@@ -42,7 +42,7 @@ class TeamAssetsController(
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val ev: Env = env
 
-  val bodyParser: BodyParser[Source[ByteString, _]] =
+  val bodyParser: BodyParser[Source[ByteString, ?]] =
     BodyParser("Assets parser") { _ =>
       Accumulator.source[ByteString].map(Right.apply)
     }
@@ -50,7 +50,7 @@ class TeamAssetsController(
   val illegalTeamAssetContentTypes: Seq[String] =
     Seq("text/html", "text/css", "text/javascript", "application/x-javascript")
 
-  def storeAsset(teamId: String): Action[Source[ByteString, _]] =
+  def storeAsset(teamId: String): Action[Source[ByteString, ?]] =
     DaikokuAction.async(bodyParser) { ctx =>
       TeamApiEditorOnly(
         AuditTrailEvent(s"@{user.name} stores asset in team @{team.id}")
@@ -87,7 +87,7 @@ class TeamAssetsController(
                 desc,
                 contentType,
                 ctx.request.body
-              )(cfg)
+              )(using cfg)
               .map { res =>
                 Ok(Json.obj("done" -> true, "id" -> assetId.value))
               } recover {
@@ -107,7 +107,7 @@ class TeamAssetsController(
   def replaceAsset(
       teamId: String,
       assetId: String
-  ): Action[Source[ByteString, _]] =
+  ): Action[Source[ByteString, ?]] =
     DaikokuAction.async(bodyParser) { ctx =>
       TeamApiEditorOnly(
         AuditTrailEvent(s"@{user.name} replace asset in team @{team.id}")
@@ -134,7 +134,7 @@ class TeamAssetsController(
           case Some(cfg) =>
             env.assetsStore
               .getAssetMetaHeaders(ctx.tenant.id, team.id, AssetId(assetId))(
-                cfg
+                using cfg
               )
               .flatMap {
                 case None =>
@@ -180,7 +180,7 @@ class TeamAssetsController(
                       desc,
                       contentType,
                       ctx.request.body
-                    )(cfg)
+                    )(using cfg)
                     .flatMap { _ =>
                       val slug = filename.slugify
                       env.dataStore.assetRepo
@@ -223,7 +223,7 @@ class TeamAssetsController(
               NotFound(Json.obj("error" -> "No bucket config found !"))
             )
           case Some(cfg) =>
-            env.assetsStore.listAssets(ctx.tenant.id, team.id)(cfg).map { res =>
+            env.assetsStore.listAssets(ctx.tenant.id, team.id)(using cfg).map { res =>
               Ok(JsArray(res.map(_.asJson)))
             }
         }
@@ -243,7 +243,7 @@ class TeamAssetsController(
             )
           case Some(cfg) =>
             env.assetsStore
-              .deleteAsset(ctx.tenant.id, team.id, AssetId(assetId))(cfg)
+              .deleteAsset(ctx.tenant.id, team.id, AssetId(assetId))(using cfg)
               .map { res =>
                 Ok(Json.obj("done" -> true))
               }
@@ -277,7 +277,7 @@ class TeamAssetsController(
                   )
                 case Some(team) =>
                   env.assetsStore
-                    .getAsset(ctx.tenant.id, team.id, AssetId(assetId))(cfg)
+                    .getAsset(ctx.tenant.id, team.id, AssetId(assetId))(using cfg)
                     .map {
                       case (_, bytes, _) if bytes.isEmpty =>
                         NotFound(Json.obj("error" -> "Asset empty!"))
@@ -326,12 +326,12 @@ class TenantAssetsController(
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val ev: Env = env
 
-  val bodyParser: BodyParser[Source[ByteString, _]] =
+  val bodyParser: BodyParser[Source[ByteString, ?]] =
     BodyParser("Assets parser") { _ =>
       Accumulator.source[ByteString].map(Right.apply)
     }
 
-  def storeAssets(): Action[Source[ByteString, _]] =
+  def storeAssets(): Action[Source[ByteString, ?]] =
     DaikokuAction.async(bodyParser) { ctx =>
       TenantAdminOnly(
         AuditTrailEvent(s"@{user.name} syncs assets")
@@ -403,7 +403,7 @@ class UserAssetsController(
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val ev: Env = env
 
-  val bodyParser: BodyParser[Source[ByteString, _]] =
+  val bodyParser: BodyParser[Source[ByteString, ?]] =
     BodyParser("Assets parser") { _ =>
       Accumulator.source[ByteString].map(Right.apply)
     }
@@ -442,7 +442,7 @@ class UserAssetsController(
                 filename,
                 _contentType,
                 ctx.request.body
-              )(cfg)
+              )(using cfg)
               .map { _ =>
                 ctx.setCtxValue("assetId", assetId)
                 Ok(Json.obj("done" -> true, "id" -> assetId.value))
@@ -466,7 +466,7 @@ class UserAssetsController(
             )
           case Some(cfg) =>
             env.assetsStore
-              .getUserAsset(ctx.tenant.id, ctx.user.id, AssetId(assetId))(cfg)
+              .getUserAsset(ctx.tenant.id, ctx.user.id, AssetId(assetId))(using cfg)
               .map {
                 case (_, bytes, _) if bytes.isEmpty =>
                   NotFound(Json.obj("error" -> "Asset empty!"))
@@ -506,7 +506,7 @@ class AssetsThumbnailController(
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val ev: Env = env
 
-  val bodyParser: BodyParser[Source[ByteString, _]] =
+  val bodyParser: BodyParser[Source[ByteString, ?]] =
     BodyParser("Assets parser") { _ =>
       Accumulator.source[ByteString].map(Right.apply)
     }
@@ -522,7 +522,7 @@ class AssetsThumbnailController(
             )
           case Some(cfg) =>
             env.assetsStore
-              .storeThumbnail(ctx.tenant.id, assetId, ctx.request.body)(cfg)
+              .storeThumbnail(ctx.tenant.id, assetId, ctx.request.body)(using cfg)
               .map { _ =>
                 Ok(Json.obj("done" -> true, "id" -> assetId.value))
               } recover { case _ =>
@@ -541,7 +541,7 @@ class AssetsThumbnailController(
           )
         case Some(cfg) =>
           env.assetsStore
-            .getThumbnail(ctx.tenant.id, AssetId(assetId))(cfg)
+            .getThumbnail(ctx.tenant.id, AssetId(assetId))(using cfg)
             .map {
               case (_, bytes, _) if bytes.isEmpty =>
                 NotFound(Json.obj("error" -> "Asset empty!"))

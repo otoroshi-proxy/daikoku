@@ -47,6 +47,8 @@
   <logger name="com.gargoylesoftware.htmlunit.javascript" level="OFF"/>
   <logger name="audit-console" level="INFO"/>
   <logger name="evolution" level="INFO"/>
+  <logger name="APIkey-Synchronizer" level="INFO"/>
+  <logger name="Tic-Tac" level="DEBUG"/>
 
   <root level="INFO">
     <appender-ref ref="ASYNCSTDOUT"/>

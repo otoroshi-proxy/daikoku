@@ -1,0 +1,275 @@
+# Configure your instance
+
+There are a lot of things you may configure in Daikoku. By default, Daikoku provides a configuration that should be enough for testing purpose. But you'll likely need to update this configuration when you'll need to move Daikoku into production.
+
+Daikoku can be configured either via a configuration file or environment variables. Each property below shows the config key and its corresponding environment variable (in parentheses).
+
+Any configuration property can also be set at runtime using a `-D` flag when launching Daikoku, like:
+
+```sh
+java -Dhttp.port=8080 -jar daikoku.jar
+```
+
+or
+
+```sh
+./bin/daikoku -Dhttp.port=8080
+```
+
+## Common configuration
+
+| name <br /> (env.variable) | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.mode`<br />(`DAIKOKU_MODE`) | String | "prod" | Daikoku running mode. Supported values are `dev` or `prod` |
+| `daikoku.exposedOn`<br />(`DAIKOKU_EXPOSED_ON`) | String | http.port | The HTTP port exposed by Daikoku |
+| `daikoku.ssl.enabled`<br />(`DAIKOKU_SSL_ENABLED`) | Boolean | false | forces Daikoku to generate all exposed URLs using HTTPS |
+| `daikoku.singingkey`<br />(`DAIKOKU_SIGNING_KEY`) | String | "secret" | The secret used for signing the JWT token |
+| `daikoku.tenants.provider`<br />(`DAIKOKU_TENANT_PROVIDER`) | string | "local" | The way to get the tenant to display. Supported values are `local`, `header` or `hostname` |
+| `daikoku.tenants.hostheaderName`<br />(`DAIKOKU_TENANT_HOST_HEADERNAME`) | string | Otoroshi-Proxied-Host | The header key to get the host, in the case of daikoku.tenants.provider is `hostname` |
+| `daikoku.team.defaultApiKeyVisibility`<br />(`DAIKOKU_TEAM_DEFAULT_APIKEY_VISIBILITY`) | string | "User" | The default value of team apikeys visibility for its own members is based on Team permission. Supported values are `Administrator`, `ApiEditor` or `User` |
+| `daikoku.exposition.provider`<br />(`DAIKOKU_EXPOSITION_PROVIDER`) | string | "none" | Activate the exchange protocol. Supported values are `otoroshi` (for [Otoroshi Exchange Protocol](https://maif.github.io/otoroshi/manual/usage/2-services.html#otoroshi-exchange-protocol) and `none` |
+| `daikoku.snowflake.seed`<br />(`INSTANCE_NUMBER`) | number | 0 | This number will be used to generate unique IDs across the cluster. Each Otoroshi instance must have a unique seed. |
+| `daikoku.health.accessKey`<br />(`DAIKOKU_HEALTH_ACCESS_KEY`) | string | | The key to call detailed health endpoint |
+
+## Admin api
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.api.type`<br />(`DAIKOKU_API_TYPE`) | String | "local" | The provider of apikey for admin APIs. Supported values are `local` and `otoroshi` |
+| `daikoku.api.key`<br />(`DAIKOKU_API_KEY`) | String | "secret" | The local apikey of admin APIs |
+| `daikoku.api.headerName`<br />(`DAIKOKU_API_HEADERNAME`) | String | "Otoroshi-Claim" | |
+| `daikoku.api.headerSecret`<br />(`DAIKOKU_API_HEADERSECRET`) | String | "secret" | |
+
+## Otoroshi settings
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.exposition.otoroshi.stateHeaderName`<br />(`DAIKOKU_EXPOSITION_OTOROSHI_STATE_HEADER_NAME`) | string | "Otoroshi-State" | The Otoroshi exchange protocol header name |
+| `daikoku.exposition.otoroshi.stateRespHeaderName`<br />(`DAIKOKU_EXPOSITION_OTOROSHI_STATE_RESP_HEADER_NAME`) | string | "Otoroshi-State-resp" | The Otoroshi exchange protocol response header name |
+| `daikoku.otoroshi.groups.namePrefix`<br />(`DAIKOKU_OTOROSHI_GROUPS_NAME_PREFIX`) | string | | Value to filter Otoroshi groups based on the group name |
+| `daikoku.otoroshi.groups.idPrefix`<br />(`DAIKOKU_OTOROSHI_GROUPS_ID_PREFIX`) | string | | Value to filter Otoroshi groups based on the group id |
+| `daikoku.otoroshi.sync.mode`<br />(`DAIKOKU_OTOROSHI_SYNC_MODE`) | string | "interval" | Sync scheduling strategy: `interval` (fixed delay loop) or `cron` (cron expression) |
+| `daikoku.otoroshi.sync.master`<br />(`DAIKOKU_OTOROSHI_SYNC_MASTER`) | boolean | false | Value to define if the instance is the master to sync Otoroshi datas |
+| `daikoku.otoroshi.sync.key`<br />(`DAIKOKU_OTOROSHI_SYNC_KEY`) | string | "secret" | Access key to synchronize subscription with Otoroshi |
+| `daikoku.otoroshi.sync.cron`<br />(`DAIKOKU_OTOROSHI_SYNC_CRON`) | boolean | false | Value to define if Otoroshi values are sync by cron |
+| `daikoku.otoroshi.sync.cronExpression`<br />(`DAIKOKU_OTOROSHI_SYNC_CRON_EXPRESSION`) | string | | **Only used when `mode = cron`**. Cron expression (sec min hour day month weekday) |
+| `daikoku.otoroshi.sync.interval`<br />(`DAIKOKU_OTOROSHI_SYNC_INTERVAL`) | duration | 1hour | **Only used when `mode = interval`**. Delay in milliseconds between each sync run |
+| `daikoku.otoroshi.sync.instance`<br />(`INSTANCE_NUMBER`) | number | | Daikoku instance number |
+
+## Daikoku jobs settings
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.rotationJob.enabled`<br />(`DAIKOKU_ROTATION_JOB_ENABLED`) | boolean | false | Value to define if the job to check ang get secrets rotation is enabled |
+| `daikoku.rotationJob.mode`<br />(`DAIKOKU_ROTATION_JOB_MODE`) | string | "interval" | scheduling strategy: `interval` (fixed delay loop) or `cron` (cron expression) |
+| `daikoku.rotationJob.key`<br />(`DAIKOKU_ROTATION_JOB_ACCESS_KEY`) | string | "secret" | Access key to run rotation job |
+| `daikoku.rotationJob.cronExpression`<br />(`DAIKOKU_ROTATION_JOB_CRON_EXPRESSION`) | string | | **Only used when `mode = cron`**. Cron expression (sec min hour day month weekday) |
+| `daikoku.rotationJob.interval`<br />(`DAIKOKU_ROTATION_JOB_INTERVAL`) | duration | 1hour | **Only used when `mode = interval`**. Delay in milliseconds between each run |
+| `daikoku.verifierJob.enabled`<br />(`DAIKOKU_VERIFIER_JOB_ENABLED`) | boolean | false | Value to define if the job to check the otoroshi entities used in daikoku are still existing in otoroshi is enabled |
+| `daikoku.verifierJob.mode`<br />(`DAIKOKU_VERIFIER_JOB_MODE`) | string | "interval" | scheduling strategy: `interval` (fixed delay loop) or `cron` (cron expression) |
+| `daikoku.verifierJob.key`<br />(`DAIKOKU_VERIFIER_JOB_ACCESS_KEY`) | string | "secret" | Access key to run otoroshi entities verifier job |
+| `daikoku.verifierJob.cronExpression`<br />(`DAIKOKU_VERIFIER_JOB_CRON_EXPRESSION`) | string | | **Only used when `mode = cron`**. Cron expression (sec min hour day month weekday) |
+| `daikoku.verifierJob.interval`<br />(`DAIKOKU_VERIFIER_JOB_INTERVAL`) | duration | 1hour | **Only used when `mode = interval`**. Delay in milliseconds between each run |
+
+## Daikoku init
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.init.host`<br />(`DAIKOKU_INIT_HOST`) | String | "localhost" | |
+| `daikoku.init.admin.name`<br />(`DAIKOKU_INIT_ADMIN_NAME`) | String | "Daikoku admin" | Daikoku default admin name |
+| `daikoku.init.admin.email`<br />(`DAIKOKU_INIT_ADMIN_EMAIL`) | String | "admin@daikoku.io" | Daikoku default admin email |
+| `daikoku.init.admin.password`<br />(`DAIKOKU_INIT_ADMIN_PASSWORD`) | String | | Daikoku default admin password |
+| `daikoku.init.data.from`<br />(`DAIKOKU_INIT_DATA_FROM`) | string | | A file path or a URL to a Daikoku export file. If the datastore is empty on startup, this file will be used to import data to the empty DB |
+
+
+## DB configuration
+
+> Postgres configuration
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.postgres.port`<br />(`DAIKOKU_POSTGRES_PORT` / `POSTGRESQL_ADDON_PORT`) | int | 5432 | The port used to connect to datastore |
+| `daikoku.postgres.host`<br />(`DAIKOKU_POSTGRES_HOST` / `POSTGRESQL_ADDON_HOST`) | string | "localhost" | The host where the datastore is |
+| `daikoku.postgres.database`<br />(`DAIKOKU_POSTGRES_DATABASE` / `POSTGRESQL_ADDON_DB`) | string | "default" | The name of the database |
+| `daikoku.postgres.username`<br />(`DAIKOKU_POSTGRES_USERNAME` / `POSTGRESQL_ADDON_USER`) | string | "postgres" | The user used to connect to database |
+| `daikoku.postgres.password`<br />(`DAIKOKU_POSTGRES_PASSWORD` / `POSTGRESQL_ADDON_PASSWORD`) | string | "postgres" | The password used to connect to database |
+| `daikoku.postgres.schema`<br />(`DAIKOKU_POSTGRES_SCHEMA`) | string | "public" | The current schema |
+
+> Audit trail purge configuration
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.audit.purge.cron`<br />(`DAIKOKU_AUDIT_PURGE_CRON`) | boolean | false | Enable the automatic purge of audit trail in database |
+| `daikoku.audit.purge.interval`<br />(`DAIKOKU_AUDIT_PURGE_INTERVAL`) | string | "1hour" | The interval of purge run |
+| `daikoku.audit.purge.max.date`<br />(`DAIKOKU_AUDIT_PURGE_MAX_DATE`) | string | "60days" | Retention date for the audit trail |
+
+## Play specific configuration
+
+As Daikoku is a [Play app](https://www.playframework.com/), you should take a look at the [Play configuration documentation](https://www.playframework.com/documentation/2.6.x/Configuration) to tune its internal configuration
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `http.port`<br />(`PORT`) | number | 8080 | The HTTP port used by Daikoku. You can use 'disabled' as value if you don't want to use HTTP |
+| `https.port`<br />(`HTTPS_PORT`) | number | disabled | The HTTPS port used by Daikoku. You can use 'disabled' as value if you don't want to use HTTPS |
+| `play.http.secret.key`<br />(`PLAY_CRYPTO_SECRET`) | string | "secret" | The secret used to sign Daikoku session cookie |
+| `play.http.session.secure`<br />(`DAIKOKU_SESSION_SECURE`) | boolean | false | Whether or not the Daikoku backoffice session will be served over HTTPS only |
+| `play.http.session.httpOnly`<br />(`DAIKOKU_SESSION_HTTPONLY`) | boolean | true | Whether or not the Daikoku backoffice session will be accessible from JavaScript |
+| `play.http.session.maxAge`<br />(`DAIKOKU_SESSION_MAXAGE`) | number | 259200000 | The number of seconds before Daikoku backoffice session expired |
+| `play.http.session.domain`<br />(`DAIKOKU_SESSION_DOMAIN`) | string | null | The domain on which the Daikoku backoffice session is authorized |
+| `play.http.session.cookieName`<br />(`DAIKOKU_SESSION_NAME`) | string | "daikoku-session" | Name of the Daikoku backoffice session cookie |
+| `server.https.keyStore.path`<br />(`HTTPS_KEYSTORE_PATH`) | string | | The path to the keystore containing the private key and certificate, if not provided generates a keystore for you |
+| `server.https.keyStore.type`<br />(`HTTPS_KEYSTORE_TYPE`) | string | "JKS" | The keystore type |
+| `server.https.keyStore.password`<br />(`HTTPS_KEYSTORE_PASSWORD`) | string | "" | The password |
+| `server.https.keyStore.algorithm`<br />(`HTTPS_KEYSTORE_ALGO`) | string | | The keystore algorithm, defaults to the platforms default algorithm |
+
+## Anonymous reporting
+
+| name | type | default value | description |
+|------|:----:|---------------|-------------|
+| `daikoku.anonymous-reporting.enabled`<br />(`DAIKOKU_ANONYMOUS_REPORTING_ENABLED`) | boolean | true | Enabling or not the anonymous reporting. If it's set to true and in the frontend to false, no reporting will be sent. |
+| `daikoku.anonymous-reporting.timeout`<br />(`DAIKOKU_ANONYMOUS_REPORTING_TIMEOUT`) | number | 60000 | The request timeout for sending data to our anonymous reporting database. |
+| `daikoku.containerized`<br />(`IS_CONTAINERIZED`) | boolean | false | This is to know if you are running daikoku with docker or not (only used for the anonymous reporting) |
+
+## More config. options
+
+See https://github.com/MAIF/daikoku/blob/master/daikoku/conf/application.conf
+
+If you want to configure HTTPS on your Daikoku server, just read the [PlayFramework documentation about it](https://www.playframework.com/documentation/2.6.x/ConfiguringHttps)
+
+## Example of configuration file
+
+```conf
+daikoku {
+
+  mode = "prod"
+  signingKey = "secret"
+
+  exposedOn = ${http.port}
+
+  api {
+    type = "local"
+    key = "secret"
+    headerName = "Otoroshi-Claim"
+    headerSecret = "secret"
+  }
+
+  init {
+    host = "localhost"
+    admin {
+      name = "Daikoku admin"
+      email = "admin@daikoku.io"
+      password = "password"
+    }
+    data {
+      from = "/config/daikoku.ndjson"
+      headers = {}
+    }
+  }
+
+  snowflake {
+    seed = 0
+  }
+
+  tenants {
+    provider = "local"
+  }
+
+  exposition {
+    provider = "none"
+    otoroshi {
+      stateHeaderName = "Otoroshi-State"
+      stateRespHeaderName = "Otoroshi-State-Resp"
+    }
+  }
+
+  otoroshi {
+    groups {
+      namePrefix = "daikoku"
+    }
+    sync {
+      interval = 3600000
+      master = false
+      key = "secret"
+      cron = true
+      instance = 0
+    }
+  }
+
+  stats {
+    sync {
+      interval = 3600000
+      cron = true
+    }
+    call {
+      interval = 600000
+    }
+  }
+
+  audit {
+    purge {
+      cron = false
+      interval = 1hour
+      max.date = 60days
+    }
+  }
+
+  containerized = false
+  containerized = ${?IS_CONTAINERIZED}
+
+  anonymous-reporting {
+    enabled = true
+    enabled = ${?DAIKOKU_ANONYMOUS_REPORTING_ENABLED}
+    url = "https://reporting.otoroshi.io/daikoku/ingest"
+    timeout = 60000
+    timeout = ${?DAIKOKU_ANONYMOUS_REPORTING_TIMEOUT}
+  }
+}
+
+postgres {
+  database = "daikoku_test"
+  poolSize = 4
+}
+
+
+http.port = 8080
+https.port = disabled
+
+play {
+  application.loader = "fr.maif.otoroshi.daikoku.DaikokuLoader"
+  modules {}
+  filters {
+    enabled = []
+  }
+  http {
+    filters = play.api.http.NoHttpFilters
+    secret {
+      key = "secret"
+    }
+    session = {
+      cookieName = "daikoku-session"
+      secure = false
+      maxAge = 259200000
+      httpOnly = true
+      sameSite = "lax"
+      domain = null
+      path = ${play.http.context}
+      jwt {
+        signatureAlgorithm = "HS256"
+        expiresAfter = ${play.http.session.maxAge}
+        clockSkew = 5 minutes
+        dataClaim = "data"
+      }
+    }
+  }
+  server {
+    akka {
+      requestTimeout = 60s
+    }
+    http {
+      port = ${http.port}
+      idleTimeout = 60s
+    }
+  }
+}
+
+```

@@ -1,18 +1,17 @@
 name: Playwright Tests
 
 on:
-  # Triggered after build-docker pushes a new image
+  # Triggered after build-docker pushes a new image (code changes)
   workflow_run:
     workflows: ["Build Docker Image"]
     types: [completed]
 
-  # Triggered directly when only tests or this workflow change
+  # Triggered directly when only tests change — uses the existing branch image
   push:
     paths:
       - 'daikoku/javascript/tests/**'
+      - 'scripts/seed-subscriptions.mjs'
       - '.github/workflows/playwright-tests.yml'
-      - 'daikoku/javascript/tests/docker-compose.yml'
-      - 'daikoku/javascript/tests/docker-compose-openid.yml'
 
   workflow_dispatch:
 
@@ -40,6 +39,10 @@ jobs:
             compose-file: ./daikoku/javascript/tests/docker-compose-openid.yml
             playwright-config: playwright.oidc.config.js
             health-url: http://localhost:13200/health
+          - name: perf
+            compose-file: ./daikoku/javascript/tests/docker-compose.yml
+            playwright-config: playwright.perf.config.js
+            health-url: http://localhost:13200/health
     name: test-${{ matrix.suite.name }}
     steps:
       - name: Checkout repository
@@ -59,8 +62,9 @@ jobs:
 
       - name: Pull Daikoku image
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest maif/daikoku:latest
+          BRANCH=$(echo "${{ github.event.workflow_run.head_branch || github.ref_name }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${BRANCH} maif/daikoku:latest
 
       - name: Start environment
         uses: hoverkraft-tech/compose-action@v2.2.0
@@ -82,10 +86,26 @@ jobs:
           npm ci
           npx playwright install --with-deps chromium
 
+      - name: Seed perf data
+        if: matrix.suite.name == 'perf'
+        run: |
+          cd scripts
+          npm ci
+          seed-subscriptions-prodlike.mjs
+        env:
+          PG_HOST: localhost
+          PG_PORT: 5442
+          PG_DB: daikoku_demo_komainu
+          OTOROSHI_URL: http://otoroshi-api.oto.tools:8080
+
       - name: Run Playwright tests (${{ matrix.suite.name }})
         run: |
           cd ./daikoku/javascript/tests
-          npx playwright test --config ${{ matrix.suite.playwright-config }} --project chromium
+          if [[ "${{ matrix.suite.name }}" == "perf" ]]; then
+            npx playwright test --config ${{ matrix.suite.playwright-config }}
+          else
+            npx playwright test --config ${{ matrix.suite.playwright-config }} --project chromium
+          fi
         env:
           CI: true
           EXPOSED_PORT: 13200

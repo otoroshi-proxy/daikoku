@@ -165,3 +165,32 @@ case class ReportsInfo(
 ) extends CanJson[ReportsInfo] {
   override def asJson: JsValue = json.ReportsInfoFormat.writes(this)
 }
+
+enum JobStatus(val value: String):
+  case Idle      extends JobStatus("idle")
+  case Running extends JobStatus("running")
+  case Failed extends JobStatus("failed")
+  case Completed extends JobStatus("completed")
+
+enum JobName(val value: String):
+  case ApiKeySynchronization extends JobName("ApiKeySynchronization")
+  case ApiKeyRotationVerifier extends JobName("ApiKeyRotationVerifier")
+  case OtoroshiEntitiesVerifier extends JobName("OtoroshiEntitiesVerifier")
+
+case class JobInformation(
+    id: DatastoreId,
+    tenant: TenantId,
+    deleted: Boolean = false,
+    jobName: JobName,
+    lockedBy: String,
+    lockedAt: DateTime,
+    expiresAt: DateTime,
+    cursor: Long,
+    batchSize: Int = 500,
+    totalProcessed: BigDecimal = BigDecimal(0),
+    startedAt: DateTime,
+    lastBatchAt: DateTime,
+    status: JobStatus = JobStatus.Idle
+) extends CanJson[JobInformation] {
+  override def asJson: JsValue = json.JobInformationFormat.writes(this)
+}

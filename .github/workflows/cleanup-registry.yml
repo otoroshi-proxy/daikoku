@@ -1,0 +1,23 @@
+name: Cleanup Registry on Branch Delete
+
+on:
+  delete:
+    branches:
+      - '**'
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    # Never delete images from master
+    if: github.event.ref != 'master'
+    permissions:
+      packages: write
+    steps:
+      - name: Delete branch image from registry
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: daikoku
+          package-type: container
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Delete the tag matching the branch name
+          ignore-versions-include-tags: ${{ github.event.ref }}
