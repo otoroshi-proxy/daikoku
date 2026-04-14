@@ -171,40 +171,40 @@ export interface ISwagger {
 
 export type IValidationStep =
   | {
-      type: 'email';
-      id: string;
-      emails: Array<string>;
-      message: string;
-      title: string;
-    }
+    type: 'email';
+    id: string;
+    emails: Array<string>;
+    message: string;
+    title: string;
+  }
   | {
-      type: 'httpRequest';
-      id: string;
-      title: string;
-      url: string;
-      headers: object;
-    }
+    type: 'httpRequest';
+    id: string;
+    title: string;
+    url: string;
+    headers: object;
+  }
   | {
-      type: 'form';
-      id: string;
-      schema: Schema;
-      formatter: string;
-      title: string;
-      formKeysToMetadata?: Array<string>;
-      info?: string;
-    }
+    type: 'form';
+    id: string;
+    schema: Schema;
+    formatter: string;
+    title: string;
+    formKeysToMetadata?: Array<string>;
+    info?: string;
+  }
   | {
-      type: 'payment';
-      id: string;
-      thirdPartyPaymentSettingsId: string;
-      title?: string;
-    }
+    type: 'payment';
+    id: string;
+    thirdPartyPaymentSettingsId: string;
+    title?: string;
+  }
   | {
-      type: 'teamAdmin';
-      id: string;
-      title?: string;
-      team: string;
-    };
+    type: 'teamAdmin';
+    id: string;
+    title?: string;
+    team: string;
+  };
 
 export interface IBaseUsagePlan {
   _id: string;
@@ -331,7 +331,7 @@ export interface IDocPage {
 export interface IOtoroshiApiKey {
   clientId: string;
   clientSecret: string;
-  clientName: String;
+  clientName: string;
   authorizedEntities: IAuthorizedEntities;
   enabled: boolean;
   allowClientIdOnly: boolean;

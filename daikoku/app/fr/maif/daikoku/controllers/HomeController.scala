@@ -379,7 +379,7 @@ class HomeController(
                 .map(cmsPages =>
                   cmsPages.filter(p => p.path.exists(_.nonEmpty))
                 )
-                .flatMap((cmsPages) => {
+                .flatMap(cmsPages => {
                   val strictPage =
                     getMatchingRoutes(
                       ctx.request.path,
@@ -505,12 +505,16 @@ class HomeController(
   }
 
   private def cmsPageByIdWithoutAction[A](
-      ctx: DaikokuUnauthenticatedActionContext[A],
-      id: String,
-      fields: Map[String, JsValue] = Map.empty
-  ) = {
-    env.dataStore.cmsRepo.forTenant(ctx.tenant).findByIdNotDeleted(id).flatMap {
-      case None                        => cmsPageNotFound(ctx)
+                                           ctx: DaikokuUnauthenticatedActionContext[A],
+                                           entity: CmsPageId | Path,
+                                           fields: Map[String, JsValue] = Map.empty) = {
+    val maybePage = entity match {
+      case id: CmsPageId => env.dataStore.cmsRepo.forTenant(ctx.tenant).findByIdNotDeleted(id)
+      case path: Path => env.dataStore.cmsRepo.forTenant(ctx.tenant).findOneNotDeleted(Json.obj("path" -> path))
+    }
+
+    maybePage.flatMap {
+      case None => cmsPageNotFound(ctx)
       case Some(page) if !page.visible => cmsPageNotFound(ctx)
       case Some(page) if page.authenticated && ctx.user.isEmpty =>
         FastFuture.successful(
@@ -522,9 +526,22 @@ class HomeController(
     }
   }
 
-  def cmsPageById(id: String) =
+  type Path = String
+  def getCmsPageById(id: String) =
     DaikokuUnauthenticatedAction.async { ctx =>
-      cmsPageByIdWithoutAction(ctx, id)
+      cmsPageByIdWithoutAction(ctx, entity = CmsPageId(id))
+    }
+
+  def getCmsPageByPath(path: Option[String] = None) =
+    DaikokuUnauthenticatedAction.async { ctx =>
+//      val maybePath: Option[String] = ctx.request.getQueryString("path")
+
+      AppLogger.warn(path.getOrElse("no path"))
+
+      path match {
+        case Some(_path) => cmsPageByIdWithoutAction(ctx, _path)
+        case None => AppError.EntityNotFound("cms page").renderF()
+      }
     }
 
   def advancedRenderCmsPageById(id: String) =
