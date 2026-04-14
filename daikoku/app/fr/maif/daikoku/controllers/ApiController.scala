@@ -3342,7 +3342,7 @@ class ApiController(
         ctx.setCtxValue("search", search)
 
         val searchAsRegex =
-          Json.obj("$regex" -> s".*$search.*", "$options" -> "-i")
+          Json.obj("$regex" -> s".*${RegexUtil.cleanRegex(search)}.*", "$options" -> "-i")
         val teamUsersFilter =
           if (ctx.user.isDaikokuAdmin) Json.obj()
           else Json.obj("users.userId" -> ctx.user.id.value)
