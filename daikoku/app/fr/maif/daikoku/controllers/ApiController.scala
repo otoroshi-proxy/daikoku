@@ -46,18 +46,18 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
 class ApiController(
-                     DaikokuAction: DaikokuAction,
-                     DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
-                     DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
-                     apiService: ApiService,
-                     apiKeyStatsJob: ApiKeyStatsJob,
-                     env: Env,
-                     otoroshiClient: OtoroshiClient,
-                     cc: ControllerComponents,
-                     otoroshiSynchronisator: OtoroshiSynchronizerJob,
-                     translator: Translator,
-                     paymentClient: PaymentClient,
-                     deletionService: DeletionService
+    DaikokuAction: DaikokuAction,
+    DaikokuActionMaybeWithGuest: DaikokuActionMaybeWithGuest,
+    DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
+    apiService: ApiService,
+    apiKeyStatsJob: ApiKeyStatsJob,
+    env: Env,
+    otoroshiClient: OtoroshiClient,
+    cc: ControllerComponents,
+    otoroshiSynchronisator: OtoroshiSynchronizerJob,
+    translator: Translator,
+    paymentClient: PaymentClient,
+    deletionService: DeletionService
 ) extends AbstractController(cc)
     with I18nSupport {
 
@@ -2345,8 +2345,8 @@ class ApiController(
       json <- EitherT(apiService.archiveApiKey(tenant, subscription, plan, enabled = false))
       _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiSubscriptionRepo.forTenant(tenant)
         .deleteByIdLogically(subscription.id))
-      _ <- env.dataStore.notificationRepo.forTenant(tenant)
-        .delete(Json.obj("action.subscription" -> subscription.id.value))
+      _ <- EitherT.right[AppError](env.dataStore.notificationRepo.forTenant(tenant)
+        .delete(Json.obj("action.subscription" -> subscription.id.value)))
     } yield json
   }
 
@@ -2390,8 +2390,8 @@ class ApiController(
                         .save(futureParent.copy(parent = None))) //promot first or given sub id
                       _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
                         .deleteByIdLogically(subscriptionId))
-                      _ <- env.dataStore.notificationRepo.forTenant(ctx.tenant)
-                        .delete(Json.obj("action.subscription" -> subscription.id.value))
+                      _ <- EitherT.right[AppError](env.dataStore.notificationRepo.forTenant(ctx.tenant)
+                        .delete(Json.obj("action.subscription" -> subscription.id.value)))
                       _ <- EitherT.liftF[Future, AppError, Seq[Boolean]](Future.sequence(childs.filter(c => c.id != futureParent.id)
                         .map(child => env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
                           .save(child.copy(parent = futureParent.id.some))))) //update first child to remove parent
