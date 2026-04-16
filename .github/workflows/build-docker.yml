@@ -61,6 +61,8 @@ jobs:
         if: steps.changes.outputs.needs_build == 'true' || github.event_name == 'workflow_dispatch'
       - uses: coursier/cache-action@v6
         if: steps.changes.outputs.needs_build == 'true' || github.event_name == 'workflow_dispatch'
+        with:
+          extraKey: ${{ github.run_id }}
 
       - name: Install JS dependencies and build frontend
         if: steps.changes.outputs.needs_build == 'true' || github.event_name == 'workflow_dispatch'
