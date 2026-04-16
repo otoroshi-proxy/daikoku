@@ -1071,7 +1071,7 @@ class TeamController(
             params = params
           )
           .map {
-            case Some(user) => Ok(user.as(json.UserFormat).asSimpleJson)
+            case Some(user) => Ok(user.as(using json.UserFormat).asSimpleJson)
             case None       => NotFound(Json.obj("error" -> "user not found"))
           }
       }

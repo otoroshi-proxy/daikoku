@@ -1,17 +1,12 @@
 name: Playwright Tests
 
 on:
-  # Triggered after build-docker pushes a new image (code changes)
+  # Triggered after build-docker completes (whether or not it actually built)
   workflow_run:
     workflows: ["Build Docker Image"]
     types: [completed]
-
-  # Triggered directly when only tests change — uses the existing branch image
-  push:
-    paths:
-      - 'daikoku/javascript/tests/**'
-      - 'scripts/seed-subscriptions.mjs'
-      - '.github/workflows/playwright-tests.yml'
+    branches:
+      - '**'
 
   workflow_dispatch:
 
