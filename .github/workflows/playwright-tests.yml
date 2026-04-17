@@ -104,3 +104,9 @@ jobs:
         env:
           CI: true
           EXPOSED_PORT: 13200
+          DAIKOKU_URL: http://localhost:13200
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5442
+          POSTGRES_DB: daikoku_demo_komainu
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
