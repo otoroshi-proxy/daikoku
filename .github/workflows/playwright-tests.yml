@@ -86,7 +86,7 @@ jobs:
         run: |
           cd scripts
           npm ci
-          seed-subscriptions-prodlike.mjs
+          node seed-subscriptions-prodlike.mjs
         env:
           PG_HOST: localhost
           PG_PORT: 5442
