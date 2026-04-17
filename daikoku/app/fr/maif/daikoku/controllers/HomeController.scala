@@ -52,9 +52,9 @@ class HomeController(
         case Some(value) if value.homePageVisible =>
           (value.homeCmsPage, value.notFoundCmsPage) match {
             case (Some(pageId), _) =>
-              cmsPageByIdWithoutAction(ctx, pageId)
+              cmsPageByIdWithoutAction(ctx, entity = CmsPageId(pageId))
             case (_, Some(notFoundPage)) =>
-              cmsPageByIdWithoutAction(ctx, notFoundPage)
+              cmsPageByIdWithoutAction(ctx, entity = CmsPageId(notFoundPage))
             case _ if env.config.isDev =>
               FastFuture.successful(
                 Redirect(env.getDaikokuUrl(ctx.tenant, "/apis"))
@@ -544,7 +544,7 @@ class HomeController(
     DaikokuUnauthenticatedAction.async(parse.json) { ctx =>
       cmsPageByIdWithoutAction(
         ctx,
-        id,
+        entity = CmsPageId(id),
         fields = ctx.request.body
           .asOpt[JsObject]
           .flatMap(body => (body \ "fields").asOpt[Map[String, JsValue]])
