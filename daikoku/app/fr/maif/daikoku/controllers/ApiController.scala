@@ -5316,7 +5316,7 @@ class ApiController(
               |     AND s._deleted = false
               |     AND s.content->>'team' = ANY($2)
               |     AND s.content->>'validUntil' IS NOT NULL
-              |     AND (s.content->>'validUntil')::timestamptz < now() + interval '30 days') AS expire_count,
+              |     AND CASE WHEN (s.content->>'validUntil')::bigint > 9999999999 THEN to_timestamp((s.content->>'validUntil')::bigint / 1000) ELSE to_timestamp((s.content->>'validUntil')::bigint) END < now() + interval '30 days') AS expire_count,
               |
               |  (SELECT count(*)::int FROM apis a
               |   WHERE a._deleted = false
@@ -5348,7 +5348,7 @@ class ApiController(
               |         AND s.content->>'api' = a._id
               |         AND s.content->>'team' = ANY($2)
               |         AND s.content->>'validUntil' IS NOT NULL
-              |         AND (s.content->>'validUntil')::timestamptz < now() + interval '30 days'
+              |         AND CASE WHEN (s.content->>'validUntil')::bigint > 9999999999 THEN to_timestamp((s.content->>'validUntil')::bigint / 1000) ELSE to_timestamp((s.content->>'validUntil')::bigint) END < now() + interval '30 days'
               |     )) AS deprecated_expire_count,
               |
               |  (SELECT count(*)::int FROM notifications n

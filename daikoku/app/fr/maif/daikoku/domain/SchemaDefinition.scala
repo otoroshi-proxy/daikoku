@@ -128,7 +128,7 @@ object SchemaDefinition {
   def getSchema(env: Env, otoroshiClient: OtoroshiClient) = {
     implicit val e = env.defaultExecutionContext
     implicit val en = env
-    
+
     val MAX_BATCH_SIZE = 25
 
     lazy val tenantsFetcher = Fetcher(
@@ -1845,7 +1845,7 @@ object SchemaDefinition {
             ),
             Field(
               "apis",
-              OptionType(ListType(ApiWithAuthorizationType)),
+              OptionType(ListType(ApiType)),
               resolve = ctx => {
                 ctx.value.apis match {
                   case None => FastFuture.successful(None)
@@ -2682,11 +2682,11 @@ object SchemaDefinition {
             resolve = ctx =>
               apisFetcher.defer(ctx.value.api)
           ),
-          Field(
-            "subscription",
-            OptionType(ApiSubscriptionType),
-            resolve = ctx => apiSubscriptionsFetcher.defer(ctx.value.subscription)
-          )
+//          Field(
+//            "subscription",
+//            OptionType(ApiSubscriptionType),
+//            resolve = ctx => apiSubscriptionsFetcher.defer(ctx.value.subscription)
+//          )
         )
       )
     )

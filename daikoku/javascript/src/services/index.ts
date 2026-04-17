@@ -1352,11 +1352,9 @@ export const graphql = {
             _humanReadableId
           }
           apis {
-            api {
-              _id
-              _humanReadableId
-              name
-            }
+            _id
+            _humanReadableId
+            name
           }
         }
       }
@@ -1514,11 +1512,9 @@ export const graphql = {
               }
             }
             apis {
-              api {
-                _id
-                _humanReadableId
-                name
-              }
+              _id
+              _humanReadableId
+              name
             }
           }
           authorizations {
@@ -1883,16 +1879,6 @@ export const graphql = {
             }
             ... on ApiKeyDeletionInformationV2 {
             __typename
-              subscription {
-                _id
-                apiKey {
-                  clientId
-                }
-                plan {
-                  _id
-                  customName
-                }
-              }
               api {
                 _id
                 _humanReadableId

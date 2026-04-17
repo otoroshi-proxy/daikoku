@@ -58,7 +58,7 @@ export const Dashboard = (_: NewHomeProps) => {
           <CmsViewerByPath path={`/customization/dashboard/description/${language.toLocaleLowerCase()}`}
             fallBack={() => (
               <div className="organisation_header_wrapper d-flex flex-row align-items-center gap-5">
-                {themedLogo && <img className="organisation_logo" src={themedLogo} alt="logo" />}
+                {themedLogo && <img className="organisation__logo" src={themedLogo} alt="logo" />}
                 <div className="d-flex flex-column justify-content-center">
                   <h1 className="jumbotron-heading mt-3">
                     {tenant.title ?? tenant.name}

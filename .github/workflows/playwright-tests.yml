@@ -38,15 +38,15 @@ jobs:
             compose-file: ./daikoku/javascript/tests/docker-compose.yml
             playwright-config: playwright.perf.config.js
             health-url: http://localhost:13200/health
-    name: test-${{ matrix.suite.name }}
+    name: "test-${{ matrix.suite.name }} — ${{ github.event.workflow_run.display_title || github.event.head_commit.message }}"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: latest
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3

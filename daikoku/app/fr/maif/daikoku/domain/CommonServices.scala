@@ -486,7 +486,9 @@ object CommonServices {
           |    filtered_subscriptions as ( SELECT apis._id as api,
           |                                      count(*) as subscription_count,
           |                                      count(*) FILTER (WHERE sub.content->>'validUntil' IS NOT NULL
-          |                                                         AND (sub.content->>'validUntil')::timestamptz < now() + interval '1 month') as expire_count
+          |                                                         AND CASE WHEN (sub.content->>'validUntil')::bigint > 9999999999 
+          |                                                         THEN to_timestamp((sub.content->>'validUntil')::bigint / 1000) 
+          |                                                         ELSE to_timestamp((sub.content->>'validUntil')::bigint) END < now() + interval '1 month') as expire_count
           |                       FROM api_subscriptions sub
           |                       INNER JOIN filtered_apis apis ON apis._id = sub.content ->> 'api'
           |                       WHERE sub.content ->> 'team' = ANY (SELECT t.content ->> '_id' FROM my_teams t)
