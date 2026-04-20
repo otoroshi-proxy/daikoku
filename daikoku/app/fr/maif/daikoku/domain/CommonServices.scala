@@ -965,7 +965,9 @@ object CommonServices {
            |$sortClause
            |LIMIT $$8 OFFSET $$9;
            |""".stripMargin
-      
+
+
+
       (for {
         count <- EitherT.fromOptionF[Future, AppError, Long](
           env.dataStore
