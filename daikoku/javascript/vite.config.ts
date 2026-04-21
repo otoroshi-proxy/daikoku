@@ -11,14 +11,14 @@ export default defineConfig({
   },
   publicDir: "public",
   server: {
-    host: '0.0.0.0', // Accepte les connexions externes
-    port: 5173,
-    strictPort: true,
-    hmr: {
-      host: '*.oto.tools',
-      port: 5173,
-    },
-    allowedHosts: ['daikoku.oto.tools'],
+    // host: '0.0.0.0', // Accepte les connexions externes
+    // port: 5173,
+    // strictPort: true,
+    // hmr: {
+    //   host: '*.oto.tools',
+    //   port: 5173,
+    // },
+    // allowedHosts: ['daikoku.oto.tools'],
     watch: {
       usePolling: true,
     },
