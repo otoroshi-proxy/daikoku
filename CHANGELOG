@@ -890,3 +890,25 @@ We'd like to thank all the contributors who worked on this release!
 ## [v18.7.2] - 2026-02-27
 
 
+## [v18.8.0] - 2026-04-21
+
+## :star: New Features
+
+- Improve "Team" and "Tags" filters in the API list section [#1025](https://github.com/MAIF/daikoku/issues/1025)
+- CMS instead of text on homepage description [#1022](https://github.com/MAIF/daikoku/issues/1022)
+- Better graphql performance [#998](https://github.com/MAIF/daikoku/issues/998)
+- make Daikoku/Otoroshi sync resumable after interruption [#975](https://github.com/MAIF/daikoku/issues/975)
+- choose some claims provided by oidc server to set user metadata [#969](https://github.com/MAIF/daikoku/issues/969)
+
+## :beetle: Bug Fixes
+
+- Admin Api with authentication mode set to Otoroshi [#1013](https://github.com/MAIF/daikoku/issues/1013)
+- LDAP user lookup fails due to email case mismatch [#1008](https://github.com/MAIF/daikoku/issues/1008)
+- Deleted APIs still cause name/slug conflicts on creation [#1007](https://github.com/MAIF/daikoku/issues/1007)
+- Deleting a child API in an aggregagtion does not update the subscription in Daikoku [#992](https://github.com/MAIF/daikoku/issues/992)
+- Subscription view: delete button unresponsive and disable toggle slow to resolve [#991](https://github.com/MAIF/daikoku/issues/991)
+- Subscription view: table filters return empty rows but pagination unchanged [#990](https://github.com/MAIF/daikoku/issues/990)
+- typing "( " in the search field of the top bar causes Daikoku to crash with a 500 error. [#983](https://github.com/MAIF/daikoku/issues/983)
+- decouple sync endpoint from sync job env variable [#972](https://github.com/MAIF/daikoku/issues/972)
+- Improve Maintenance Mode Behavior [#971](https://github.com/MAIF/daikoku/issues/971)
+
