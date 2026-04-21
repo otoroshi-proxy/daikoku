@@ -25,9 +25,11 @@ jobs:
         with:
           path: temp_release_notes/${{ github.event.milestone.title }}.md
       - run: |
-          echo "## [${{ github.event.milestone.title }}] - `date +%F`" >> CHANGELOG
+          echo "## [${{ github.event.milestone.title }}] - $(date +%F)" >> CHANGELOG
           echo "" >> CHANGELOG
-          echo "${{ steps.release_text.outputs.text }}" >> CHANGELOG
+          echo "$RELEASE_TEXT" >> CHANGELOG
+        env:
+          RELEASE_TEXT: ${{ steps.release_text.outputs.text }}
       - name: Commit files
         run: |
           git config --local user.email "daikoku-github-actions@users.noreply.github.com"
