@@ -130,12 +130,15 @@ Authentication in daikoku can be tricky. It's a tenant configuration, we are her
 
     ## Expose your daikoku by Otoroshi
   :::warning
-    before exposing your daikoku instance with otoroshi, you need to setup exposing mode to Otoroshi.
+  The `daikoku proxy plugin` preset currently does not support public tenants. Even if your tenant is configured as public in Daikoku, all routes will require authentication through Otoroshi — meaning unauthenticated users will not be able to access it.
   :::
 
-    You ultimately have to add some plugins along the route to make this work :
-    - Authentication, select the created Auth module in configuration to use it
-    - Otoroshi info. token, you can configure the name of the header in which the authentication token will be passed and the secert to signe this token.
+  > Before exposing your Daikoku instance with Otoroshi, you need to set the exposition mode to Otoroshi in your Daikoku settings.
+
+  With Otoroshi `v17.15.0`, a new preset plugin called `daikoku proxy plugin` is available to simplify Daikoku exposition. It includes three components to configure:
+  - **Authentication**: select the Auth module you created. You need to exclude some routes from authentication to expose public routes.
+  - **Otoroshi info token**: configure the header name in which the authentication token will be passed, and the secret used to sign it.
+  - **X-Forwarded-* headers**
 
     ## Create an Authentication configuration
 

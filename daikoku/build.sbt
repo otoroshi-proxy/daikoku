@@ -200,6 +200,8 @@ assembly / assemblyJarName := "daikoku.jar"
 assembly / fullClasspath += Attributed.blank(PlayKeys.playPackageAssets.value)
 assembly / assemblyMergeStrategy := {
   // case PathList("META-INF", xs @ _*) => MergeStrategy.discard
+  case PathList("net", "jpountz", xs @ _*) =>
+    MergeStrategy.first
   case PathList("javax", xs @ _*) =>
     MergeStrategy.first
   case PathList("org", "apache", "commons", "logging", xs @ _*) =>
