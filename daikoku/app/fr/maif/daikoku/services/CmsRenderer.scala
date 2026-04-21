@@ -220,8 +220,8 @@ case class CmsPage(
           case Some(api) =>
             Await.result(
               CommonServices
-                .apiOfTeam(api.team.value, api.id.value, version)(
-                  using ctxUserContext,
+                .apiOfTeam(api.team.value, api.id.value, version)(using
+                  ctxUserContext,
                   env,
                   ec
                 )
@@ -260,8 +260,8 @@ case class CmsPage(
           case Some(api) =>
             Await.result(
               CommonServices
-                .apiOfTeam(api.team.value, api.id.value, version)(
-                  using ctx.asInstanceOf[DaikokuActionContext[Any]],
+                .apiOfTeam(api.team.value, api.id.value, version)(using
+                  ctx.asInstanceOf[DaikokuActionContext[Any]],
                   env,
                   ec
                 )
@@ -280,8 +280,8 @@ case class CmsPage(
       (_: CmsPage, _: Options) =>
         Await.result(
           CommonServices
-            .getVisibleApis(limit = Int.MaxValue, offset = 0)(
-              using maybeWithoutUserToUserContextConverter(ctx),
+            .getVisibleApis(limit = Int.MaxValue, offset = 0)(using
+              maybeWithoutUserToUserContextConverter(ctx),
               env,
               ec
             )
@@ -1075,12 +1075,12 @@ case class CmsPage(
       (
         key,
         value match {
-          case JsNull                   => null
-          case boolean: JsBoolean       => boolean
-          case JsNumber(value)          => value
-          case JsString(value)          => value
-          case JsArray(value)           => value
-          case o @ JsObject(_) => o
+          case JsNull             => null
+          case boolean: JsBoolean => boolean
+          case JsNumber(value)    => value
+          case JsString(value)    => value
+          case JsArray(value)     => value
+          case o @ JsObject(_)    => o
         }
       )
     }).foldLeft(context) { (acc, item) =>
@@ -1129,8 +1129,9 @@ case class CmsPage(
     implicit val ec: ExecutionContext = env.defaultExecutionContext
 
     val page = forwardRef match {
-      case Some(ref) => cmsFindByIdNotDeleted(ctx, ref.value, req).getOrElse(this)
-      case None     => this
+      case Some(ref) =>
+        cmsFindByIdNotDeleted(ctx, ref.value, req).getOrElse(this)
+      case None => this
     }
     try {
       import com.github.jknack.handlebars.EscapingStrategy
@@ -1416,8 +1417,8 @@ case class CmsPage(
             val str =
               renderString(ctx, parentId, variable, fields, jsonToCombine, req)
             Await.result(
-              env.translator.translate(str, ctx.tenant)(
-                using messagesApi,
+              env.translator.translate(str, ctx.tenant)(using
+                messagesApi,
                 ctx.user
                   .map(
                     _.defaultLanguage

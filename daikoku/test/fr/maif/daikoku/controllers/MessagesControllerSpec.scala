@@ -1,12 +1,6 @@
 package fr.maif.daikoku.controllers
 
-import fr.maif.daikoku.domain.{
-  Message,
-  MessageType,
-  DatastoreId,
-  User,
-  json
-}
+import fr.maif.daikoku.domain.{Message, MessageType, DatastoreId, User, json}
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import fr.maif.daikoku.utils.IdGenerator
 import org.joda.time.DateTime
@@ -117,9 +111,11 @@ class MessagesControllerSpec()
       )
       val session = loginWithBlocking(tenantAdmin, tenant)
 
-      val respGet = httpJsonCallBlocking(s"/api/me/messages")(using tenant, session)
+      val respGet =
+        httpJsonCallBlocking(s"/api/me/messages")(using tenant, session)
       respGet.status mustBe 200
-      val messages = (respGet.json \ "messages").as(using json.SeqMessagesFormat)
+      val messages =
+        (respGet.json \ "messages").as(using json.SeqMessagesFormat)
       messages.length mustBe 1
       messages.count(_.readBy.contains(tenantAdminId)) mustBe 0
 
@@ -164,7 +160,8 @@ class MessagesControllerSpec()
 
       respSend.status mustBe 200
 
-      val respGet = httpJsonCallBlocking("/api/me/messages")(using tenant, session)
+      val respGet =
+        httpJsonCallBlocking("/api/me/messages")(using tenant, session)
       respGet.status mustBe 200
       val messages =
         json.SeqMessagesFormat.reads((respGet.json \ "messages").as[JsArray])

@@ -137,7 +137,8 @@ class MockController(
     Action.async(parse.json) { req =>
       json.ActualOtoroshiApiKeyFormat.reads(req.body).asOpt match {
         case Some(apiKey) => Ok(apiKey.asJson).future
-        case None => BadRequest(Json.obj("error" -> "wrong apikey format")).future
+        case None =>
+          BadRequest(Json.obj("error" -> "wrong apikey format")).future
       }
     }
 

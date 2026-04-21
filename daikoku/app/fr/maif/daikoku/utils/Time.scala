@@ -15,7 +15,9 @@ object Time {
     result
   }
 
-  def concurrentTime[R](block: => Future[R], extraLog: String = "")(implicit ex: ExecutionContext): Future[R] = {
+  def concurrentTime[R](block: => Future[R], extraLog: String = "")(implicit
+      ex: ExecutionContext
+  ): Future[R] = {
     val t0 = java.lang.System.nanoTime()
     block.andThen { case _ =>
       val t1 = java.lang.System.nanoTime()

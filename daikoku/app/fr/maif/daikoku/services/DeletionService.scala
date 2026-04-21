@@ -96,7 +96,9 @@ class DeletionService(
         AppError.ApiNotFound
       )
       plan <- EitherT.fromOptionF[Future, AppError, UsagePlan](
-        env.dataStore.usagePlanRepo.forTenant(tenant).findById(subscription.plan),
+        env.dataStore.usagePlanRepo
+          .forTenant(tenant)
+          .findById(subscription.plan),
         AppError.PlanNotFound
       )
       notif = Notification(
@@ -127,11 +129,16 @@ class DeletionService(
           tenant.otoroshiSettings.find(s => s.id == target.otoroshiSettings),
           AppError.EntityNotFound("Otoroshi settings")
         )
-        _ <- otoroshiClient.deleteApiKey(ctx.subscription.apiKey.clientId)(using settings)
+        _ <- otoroshiClient.deleteApiKey(ctx.subscription.apiKey.clientId)(using
+          settings
+        )
       } yield ()
 
     (for {
-      _ <- EitherT.liftF(apiKeyStatsJob.syncForSubscription(ctx.subscription, tenant, completed = true))
+      _ <- EitherT.liftF(
+        apiKeyStatsJob
+          .syncForSubscription(ctx.subscription, tenant, completed = true)
+      )
       _ <- deleteOtoroshiKey
     } yield ctx).value
   }
@@ -144,26 +151,32 @@ class DeletionService(
       _ <- ctx.plan.paymentSettings match {
         case Some(settings) =>
           EitherT.liftF(
-            env.dataStore.operationRepo.forTenant(tenant).save(
-              Operation(
-                DatastoreId(IdGenerator.token(24)),
-                tenant = tenant.id,
-                itemId = ctx.subscription.id.value,
-                itemType = ItemType.ThirdPartySubscription,
-                action = OperationAction.Delete,
-                payload = Json.obj(
-                  "paymentSettings" -> settings.asJson,
-                  "thirdPartySubscriptionInformations" -> ctx.subscription.thirdPartySubscriptionInformations
-                    .map(_.asJson)
-                    .getOrElse(JsNull)
-                    .as[JsValue]
-                ).some
+            env.dataStore.operationRepo
+              .forTenant(tenant)
+              .save(
+                Operation(
+                  DatastoreId(IdGenerator.token(24)),
+                  tenant = tenant.id,
+                  itemId = ctx.subscription.id.value,
+                  itemType = ItemType.ThirdPartySubscription,
+                  action = OperationAction.Delete,
+                  payload = Json
+                    .obj(
+                      "paymentSettings" -> settings.asJson,
+                      "thirdPartySubscriptionInformations" -> ctx.subscription.thirdPartySubscriptionInformations
+                        .map(_.asJson)
+                        .getOrElse(JsNull)
+                        .as[JsValue]
+                    )
+                    .some
+                )
               )
-            )
           )
         case None => EitherT.pure[Future, AppError](())
       }
-      _ <- EitherT.liftF(env.dataStore.notificationRepo.forTenant(tenant).save(ctx.notif))
+      _ <- EitherT.liftF(
+        env.dataStore.notificationRepo.forTenant(tenant).save(ctx.notif)
+      )
     } yield ()).value
 
   /** delete logically all subscriptions add for each subscriptions an operation
@@ -184,7 +197,9 @@ class DeletionService(
     EitherT(
       Source(subscriptions)
         // Phase 1 — DB : find api, plan, build notif (séquence to not block DB access)
-        .mapAsync(1)(subscription => prepareSubscriptionContext(subscription, tenant, user))
+        .mapAsync(1)(subscription =>
+          prepareSubscriptionContext(subscription, tenant, user)
+        )
         .collect { case Right(ctx) => ctx }
         // Phase 2 — Otoroshi : syncStats + deleteApiKey (parallel, independant network calls)
         .mapAsync(5)(ctx => processOtoroshiForSubscription(ctx, tenant))
@@ -414,7 +429,9 @@ class DeletionService(
             Json.obj(
               "$or" -> Json.arr(
                 Json.obj("team" -> team.id.asJson),
-                Json.obj("api" -> Json.obj("$in" -> JsArray(apis.map(_.id.asJson))))
+                Json.obj(
+                  "api" -> Json.obj("$in" -> JsArray(apis.map(_.id.asJson)))
+                )
               )
             )
           )

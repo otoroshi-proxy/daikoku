@@ -2,11 +2,7 @@ package fr.maif.daikoku.services
 
 import fr.maif.daikoku.actions.{ApiActionContext}
 import fr.maif.daikoku.domain.json.IntlTranslationFormat
-import fr.maif.daikoku.domain.{
-  DatastoreId,
-  IntlTranslation,
-  Translation
-}
+import fr.maif.daikoku.domain.{DatastoreId, IntlTranslation, Translation}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.utils.IdGenerator
 import play.api.i18n.Langs

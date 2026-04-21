@@ -74,7 +74,11 @@ class ApiControllerSpec()
 
   private def countDaikokuMetadata(metadata: JsObject) =
     metadata.keys
-      .count(key => !key.startsWith("daikoku_") && key != "created_at" && key != "updated_at")
+      .count(key =>
+        !key.startsWith(
+          "daikoku_"
+        ) && key != "created_at" && key != "updated_at"
+      )
 
   "a tenant administrator" can {
     "not initialize apis for a tenant for which he's not admin" in {
@@ -500,7 +504,8 @@ class ApiControllerSpec()
       )(using tenant, session)
       resp.status mustBe 200
 
-      val sub = (resp.json \ "subscription").as(using json.ApiSubscriptionFormat)
+      val sub =
+        (resp.json \ "subscription").as(using json.ApiSubscriptionFormat)
       val expectedName =
         s"apk-test::api=${api.name}:${api.currentVersion.value}/${plan.customName}::team=${teamConsumer.name}"
       sub.apiKey.clientName mustBe expectedName
@@ -941,7 +946,7 @@ class ApiControllerSpec()
       respRoutesForConsumer.json
         .as[JsArray]
         .value
-        .length mustBe 5 //parent, child, other, admin, request
+        .length mustBe 5 // parent, child, other, admin, request
 
       val respUnauthRoute = httpJsonCallBlocking(
         path =
@@ -5311,7 +5316,9 @@ class ApiControllerSpec()
         port = container.mappedPort(8080)
       )(using tenant, session)
       (startingKey.json \ "enabled").as[Boolean] mustBe true
-      countDaikokuMetadata((startingKey.json \ "metadata").as[JsObject]) mustBe 0
+      countDaikokuMetadata(
+        (startingKey.json \ "metadata").as[JsObject]
+      ) mustBe 0
 
       // manipulate subscription as admin
       // - update plan metadata & check if metadata is in otoroshi

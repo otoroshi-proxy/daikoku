@@ -373,7 +373,10 @@ case class JWKSAlgoSettings(
   override def asAlgorithm(
       mode: AlgoMode
   )(implicit env: Env): Option[Algorithm] = {
-    Await.result(asAlgorithmF(mode)(using env, env.defaultExecutionContext), timeout)
+    Await.result(
+      asAlgorithmF(mode)(using env, env.defaultExecutionContext),
+      timeout
+    )
   }
 
   def asAlgorithmF(

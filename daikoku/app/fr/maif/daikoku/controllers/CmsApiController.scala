@@ -15,7 +15,12 @@ import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider.{OAuth2, Otoroshi}
 import fr.maif.daikoku.login.OAuth2Config
-import fr.maif.daikoku.services.{ApiService, AssetsService, CmsPage, TranslationsService}
+import fr.maif.daikoku.services.{
+  ApiService,
+  AssetsService,
+  CmsPage,
+  TranslationsService
+}
 import fr.maif.daikoku.storage.{DataStore, Repo}
 import fr.maif.daikoku.utils.Cypher.encrypt
 import fr.maif.daikoku.utils.future.EnhancedObject
@@ -39,13 +44,13 @@ case class CmsApiActionContext[A](
 ) extends ApiActionContext[A]
 
 class CmsApiController(
-                        CmsApiAction: CmsApiAction,
-                        env: Env,
-                        cc: ControllerComponents,
-                        DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
-                        translationsService: TranslationsService,
-                        apiService: ApiService,
-                        assetsService: AssetsService,
+    CmsApiAction: CmsApiAction,
+    env: Env,
+    cc: ControllerComponents,
+    DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
+    translationsService: TranslationsService,
+    apiService: ApiService,
+    assetsService: AssetsService
 ) extends AbstractController(cc) {
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext
@@ -138,8 +143,12 @@ class CmsApiController(
             .as(using Reads.seq(using CmsFileFormat))
             .map(page => {
               val path = page.path()
-              val fixedIdPages = Set("style.css", "script.js", "color-theme.css")
-              if (path.startsWith("/customization/") && fixedIdPages.contains(page.name)) {
+              val fixedIdPages =
+                Set("style.css", "script.js", "color-theme.css")
+              if (
+                path.startsWith("/customization/") && fixedIdPages
+                  .contains(page.name)
+              ) {
                 env.dataStore.cmsRepo
                   .forTenant(ctx.tenant)
                   .delete(Json.obj("path" -> page.path()))
@@ -149,7 +158,11 @@ class CmsApiController(
                       .save(
                         page
                           .toCmsPage(ctx.tenant.id)
-                          .copy(id = CmsPageId(s"${ctx.tenant.id.value}-${page.name.split("\\.").head}"))
+                          .copy(id =
+                            CmsPageId(
+                              s"${ctx.tenant.id.value}-${page.name.split("\\.").head}"
+                            )
+                          )
                       )
                   )
               } else if (path.startsWith("/customization/")) {
@@ -181,8 +194,10 @@ class CmsApiController(
 
   def health() =
     CmsApiAction.async { ctx =>
-      ctx.request.headers.get("Otoroshi-" +
-        "Health-Check-Logic-Test") match {
+      ctx.request.headers.get(
+        "Otoroshi-" +
+          "Health-Check-Logic-Test"
+      ) match {
         case Some(value) =>
           Ok.withHeaders(
             "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString

@@ -33,15 +33,23 @@ class TeamControllerSpec()
     with ForAllTestContainer {
 
   val pwd = System.getProperty("user.dir")
-  implicit val ecc: ExecutionContext = daikokuComponents.env.defaultExecutionContext
+  implicit val ecc: ExecutionContext =
+    daikokuComponents.env.defaultExecutionContext
   implicit val ev: Env = daikokuComponents.env
 
-  private def getMyOwnTeam(user: User, session: UserSession, tenant: Tenant = tenant): Team = {
+  private def getMyOwnTeam(
+      user: User,
+      session: UserSession,
+      tenant: Tenant = tenant
+  ): Team = {
     httpJsonCallBlocking(
-      path = s"/api/me",
+      path = s"/api/me"
     )(using tenant, session)
 
-    val userTeams = Await.result(daikokuComponents.env.dataStore.teamRepo.myTeams(tenant, user), 5.seconds)
+    val userTeams = Await.result(
+      daikokuComponents.env.dataStore.teamRepo.myTeams(tenant, user),
+      5.seconds
+    )
     val maybeUserTeam = userTeams.find(_.`type` == TeamType.Personal)
     maybeUserTeam.isDefined mustBe true
     maybeUserTeam.get
@@ -94,8 +102,8 @@ class TeamControllerSpec()
       respUpdate.status mustBe 200
 
       val respGet =
-        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(using
+          tenant,
           session
         )
       val updatedTeam =
@@ -183,8 +191,8 @@ class TeamControllerSpec()
       respUpdate.status mustBe 200
 
       val respGet =
-        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(using
+          tenant,
           session
         )
       val updatedTeam =
@@ -329,8 +337,8 @@ class TeamControllerSpec()
       respCreation.status mustBe 200
 
       val respGet =
-        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(using
+          tenant,
           session
         )
       val updatedTeam =
@@ -388,8 +396,8 @@ class TeamControllerSpec()
             )
           )
         )
-      )(
-        using tenant,
+      )(using
+        tenant,
         userSession
       )
 
@@ -495,8 +503,8 @@ class TeamControllerSpec()
       )
       val session = loginWithBlocking(tenantAdmin, tenant)
       val resp =
-        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}/members")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}/members")(using
+          tenant,
           session
         )
       resp.status mustBe 200
@@ -655,8 +663,8 @@ class TeamControllerSpec()
       respCreation.status mustBe 200
 
       val respGet =
-        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(using
+          tenant,
           session
         )
       val updatedTeam =
@@ -713,8 +721,8 @@ class TeamControllerSpec()
             )
           )
         )
-      )(
-        using tenant,
+      )(using
+        tenant,
         userSession
       )
 
@@ -824,8 +832,8 @@ class TeamControllerSpec()
       )
       val session = loginWithBlocking(userAdmin, tenant)
       val resp =
-        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}/members")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}/members")(using
+          tenant,
           session
         )
       resp.status mustBe 200
@@ -841,7 +849,8 @@ class TeamControllerSpec()
 
       val respForbidden =
         httpJsonCallBlocking(s"/api/teams/${teamConsumerId.value}/members")(
-          using tenant,
+          using
+          tenant,
           session
         )
       respForbidden.status mustBe 403
@@ -947,8 +956,8 @@ class TeamControllerSpec()
       respUpdate.status mustBe 200
 
       val respGet =
-        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/teams/${teamOwnerId.value}")(using
+          tenant,
           session
         )
       val updatedTeam =
@@ -1432,7 +1441,8 @@ class TeamControllerSpec()
       logger.warn(Json.stringify(respOtoApikey.json))
       respOtoApikey.status mustBe 200
 
-      val otoApiKey = respOtoApikey.json.as(using json.ActualOtoroshiApiKeyFormat)
+      val otoApiKey =
+        respOtoApikey.json.as(using json.ActualOtoroshiApiKeyFormat)
       otoApiKey.clientSecret mustBe personalSub.apiKey.clientSecret
 
       val respDelete = httpJsonCallBlocking(

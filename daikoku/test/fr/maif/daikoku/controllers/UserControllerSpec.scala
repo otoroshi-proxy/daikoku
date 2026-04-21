@@ -38,7 +38,7 @@ class UserControllerSpec()
         "/container/service/slapd/assets/config/bootstrap/ldif/custom/50-bootstrap.ldif",
         BindMode.READ_ONLY
       )
-    ),
+    )
   )
 
   "a daikoku admin" can {
@@ -75,8 +75,8 @@ class UserControllerSpec()
       val session = loginWithBlocking(daikokuAdmin, tenant)
 
       val resp =
-        httpJsonCallBlocking(s"/api/admin/users/${user.id.value}")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/admin/users/${user.id.value}")(using
+          tenant,
           session
         )
       resp.status mustBe 200
@@ -332,8 +332,8 @@ class UserControllerSpec()
       respDelete.status mustBe 401
 
       val respDelete2 =
-        httpJsonCallBlocking(path = s"/api/me", method = "DELETE")(
-          using tenant,
+        httpJsonCallBlocking(path = s"/api/me", method = "DELETE")(using
+          tenant,
           session
         )
       respDelete2.status mustBe 200

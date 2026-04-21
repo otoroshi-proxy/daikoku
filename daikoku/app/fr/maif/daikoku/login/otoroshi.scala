@@ -90,372 +90,419 @@ object OtoroshiIdentityFilter {
       ec: ExecutionContext
   ): Future[Result] = {
 
-    LoginFilter.handleWhitelistedRoute(request, tenant, nextFilter, env).getOrElse {
+    LoginFilter
+      .handleWhitelistedRoute(request, tenant, nextFilter, env)
+      .getOrElse {
 
-    val sessionMaxAge =
-      tenant.authProviderSettings.\("sessionMaxAge").asOpt[Int].getOrElse(86400)
-    val claimSecret = tenant.authProviderSettings.\("claimSecret").as[String]
-    val claimHeaderName =
-      tenant.authProviderSettings.\("claimHeaderName").as[String]
-    val otoroshiJwtAlgo = Algorithm.HMAC512(claimSecret)
-    val otoroshiJwtVerifier =
-      JWT.require(otoroshiJwtAlgo).acceptLeeway(10).build()
+        val sessionMaxAge =
+          tenant.authProviderSettings
+            .\("sessionMaxAge")
+            .asOpt[Int]
+            .getOrElse(86400)
+        val claimSecret =
+          tenant.authProviderSettings.\("claimSecret").as[String]
+        val claimHeaderName =
+          tenant.authProviderSettings.\("claimHeaderName").as[String]
+        val otoroshiJwtAlgo = Algorithm.HMAC512(claimSecret)
+        val otoroshiJwtVerifier =
+          JWT.require(otoroshiJwtAlgo).acceptLeeway(10).build()
 
-    request.headers.get(claimHeaderName) match {
-      case None =>
-        Errors.craftResponseResultF(
-          "Not authorized here",
-          Results.Unauthorized
-        )
-      case Some(token) =>
-        Try(otoroshiJwtVerifier.verify(token)) match {
-          case Failure(exception) =>
+        request.headers.get(claimHeaderName) match {
+          case None =>
             Errors.craftResponseResultF(
               "Not authorized here",
               Results.Unauthorized
             )
-          case Success(jwt) =>
-            Option(jwt.getClaim("user"))
-              .flatMap(b => Try(b.toString).toOption)
-              .flatMap(b =>
-                Try(Json.parse(b).as(using OtoroshiUser.fmt)).toOption
-              ) match {
-              case None =>
+          case Some(token) =>
+            Try(otoroshiJwtVerifier.verify(token)) match {
+              case Failure(exception) =>
                 Errors.craftResponseResultF(
-                  "No user provided",
-                  Results.BadRequest
+                  "Not authorized here",
+                  Results.Unauthorized
                 )
-              case Some(user) =>
-                val isDaikokuAdmin: Boolean =
-                  user.metadata
-                    .get("daikokuAdmin")
-                    .exists(s =>
-                      s.asOpt[String]
-                        .flatMap(_.toBooleanOption)
-                        .orElse(s.asOpt[Boolean])
-                        .getOrElse(false)
+              case Success(jwt) =>
+                Option(jwt.getClaim("user"))
+                  .flatMap(b => Try(b.toString).toOption)
+                  .flatMap(b =>
+                    Try(Json.parse(b).as(using OtoroshiUser.fmt)).toOption
+                  ) match {
+                  case None =>
+                    Errors.craftResponseResultF(
+                      "No user provided",
+                      Results.BadRequest
                     )
-
-                def createSessionFromOtoroshi(
-                    maybeUser: Option[User] = None,
-                    maybeSession: Option[UserSession] = None
-                ): Future[Result] = {
-                  maybeUser match {
-                    case None =>
-                      env.dataStore.userRepo
-                        .findOne(
-                          Json.obj("_deleted" -> false, "email" -> user.email)
+                  case Some(user) =>
+                    val isDaikokuAdmin: Boolean =
+                      user.metadata
+                        .get("daikokuAdmin")
+                        .exists(s =>
+                          s.asOpt[String]
+                            .flatMap(_.toBooleanOption)
+                            .orElse(s.asOpt[Boolean])
+                            .getOrElse(false)
                         )
-                        .flatMap {
-                          case None =>
-                            val userId = UserId(IdGenerator.token(32))
-                            val defaultUser = User(
-                              id = userId,
-                              tenants = Set(tenant.id),
-                              origins = Set(AuthProvider.Otoroshi),
-                              name = user.name,
-                              email = user.email,
-                              picture =
-                                user.picture.getOrElse(user.email.gravatar),
-                              isDaikokuAdmin = isDaikokuAdmin,
-                              lastTenant = Some(tenant.id),
-                              personalToken = Some(IdGenerator.token(32)),
-                              defaultLanguage = None
+
+                    def createSessionFromOtoroshi(
+                        maybeUser: Option[User] = None,
+                        maybeSession: Option[UserSession] = None
+                    ): Future[Result] = {
+                      maybeUser match {
+                        case None =>
+                          env.dataStore.userRepo
+                            .findOne(
+                              Json
+                                .obj("_deleted" -> false, "email" -> user.email)
                             )
-                            val newTeam = Team(
-                              id = TeamId(IdGenerator.token(32)),
-                              tenant = tenant.id,
-                              `type` = TeamType.Personal,
-                              name = s"${user.name}",
-                              description =
-                                s"The personal team of ${user.name}",
-                              users =
-                                Set(UserWithPermission(userId, Administrator)),
-                              authorizedOtoroshiEntities = None,
-                              contact = user.email
-                            )
-                            val session = maybeSession.getOrElse(
-                              UserSession(
-                                id = DatastoreId(IdGenerator.token(32)),
-                                userId = defaultUser.id,
-                                userName = defaultUser.name,
-                                userEmail = defaultUser.email,
-                                impersonatorId = None,
-                                impersonatorName = None,
-                                impersonatorEmail = None,
-                                impersonatorSessionId = None,
-                                sessionId = UserSessionId(IdGenerator.token),
-                                created = DateTime.now(),
-                                expires =
-                                  DateTime.now().plusSeconds(sessionMaxAge),
-                                ttl = FiniteDuration(
-                                  sessionMaxAge,
-                                  TimeUnit.SECONDS
+                            .flatMap {
+                              case None =>
+                                val userId = UserId(IdGenerator.token(32))
+                                val defaultUser = User(
+                                  id = userId,
+                                  tenants = Set(tenant.id),
+                                  origins = Set(AuthProvider.Otoroshi),
+                                  name = user.name,
+                                  email = user.email,
+                                  picture =
+                                    user.picture.getOrElse(user.email.gravatar),
+                                  isDaikokuAdmin = isDaikokuAdmin,
+                                  lastTenant = Some(tenant.id),
+                                  personalToken = Some(IdGenerator.token(32)),
+                                  defaultLanguage = None
                                 )
-                              )
-                            )
-                            for {
-                              _ <-
-                                env.dataStore.teamRepo
-                                  .forTenant(tenant.id)
-                                  .save(newTeam)
-                              _ <- env.dataStore.userRepo.save(defaultUser)
-                              _ <- env.dataStore.userSessionRepo.save(session)
-                              impersonator <-
-                                session.impersonatorId
-                                  .map(id =>
-                                    env.dataStore.userRepo
-                                      .findByIdNotDeleted(id)
-                                  )
-                                  .getOrElse(FastFuture.successful(None))
-                              rr <- nextFilter(
-                                request
-                                  .addAttr(IdentityAttrs.TeamKey, newTeam)
-                                  .addAttr(
-                                    IdentityAttrs.UserKey,
-                                    defaultUser
-                                  ) // not tenant admin because new user
-                                  .addAttr(
-                                    IdentityAttrs.ImpersonatorKey,
-                                    impersonator
-                                  )
-                                  .addAttr(IdentityAttrs.TenantKey, tenant)
-                                  .addAttr(IdentityAttrs.SessionKey, session)
-                              )
-                              r <- FastFuture.successful(
-                                rr.removingFromSession("sessionId")(using request)
-                                  .withSession(
-                                    "sessionId" -> session.sessionId.value
-                                  )
-                              )
-                            } yield {
-                              r
-                            }
-                          case Some(u) =>
-                            val updatedTeam = Team(
-                              id = TeamId(IdGenerator.token(32)),
-                              tenant = tenant.id,
-                              `type` = TeamType.Personal,
-                              name = s"${user.name}",
-                              description =
-                                s"The personal team of ${user.name}",
-                              users =
-                                Set(UserWithPermission(u.id, Administrator)),
-                              authorizedOtoroshiEntities = None,
-                              contact = user.email
-                            )
-                            val session = maybeSession.getOrElse(
-                              UserSession(
-                                id = DatastoreId(IdGenerator.token(32)),
-                                userId = u.id,
-                                userName = u.name,
-                                userEmail = u.email,
-                                impersonatorId = None,
-                                impersonatorName = None,
-                                impersonatorEmail = None,
-                                impersonatorSessionId = None,
-                                sessionId = UserSessionId(IdGenerator.token),
-                                created = DateTime.now(),
-                                expires =
-                                  DateTime.now().plusSeconds(sessionMaxAge),
-                                ttl = FiniteDuration(
-                                  sessionMaxAge,
-                                  TimeUnit.SECONDS
+                                val newTeam = Team(
+                                  id = TeamId(IdGenerator.token(32)),
+                                  tenant = tenant.id,
+                                  `type` = TeamType.Personal,
+                                  name = s"${user.name}",
+                                  description =
+                                    s"The personal team of ${user.name}",
+                                  users = Set(
+                                    UserWithPermission(userId, Administrator)
+                                  ),
+                                  authorizedOtoroshiEntities = None,
+                                  contact = user.email
                                 )
-                              )
-                            )
-                            val updatedUser = u
-                            for {
-                              tenantTeam <-
-                                env.dataStore.teamRepo
-                                  .forTenant(tenant)
-                                  .findNotDeleted(Json.obj("type" -> "Admin"))
-                              userTeamOpt <-
-                                findUserTeam(tenant.id, updatedUser)(using ec, env)
-                              userTeam <-
-                                if (userTeamOpt.isDefined)
-                                  FastFuture.successful(userTeamOpt.get)
-                                else
-                                  env.dataStore.teamRepo
-                                    .forTenant(tenant.id)
-                                    .save(updatedTeam)
-                                    .map(_ => updatedTeam)
-                              _ <- env.dataStore.userRepo.save(updatedUser)
-                              _ <- env.dataStore.userSessionRepo.save(session)
-                              impersonator <-
-                                session.impersonatorId
-                                  .map(id =>
-                                    env.dataStore.userRepo
-                                      .findByIdNotDeleted(id)
-                                  )
-                                  .getOrElse(FastFuture.successful(None))
-                              rr <- nextFilter(
-                                request
-                                  .addAttr(IdentityAttrs.TeamKey, userTeam)
-                                  .addAttr(IdentityAttrs.UserKey, updatedUser)
-                                  .addAttr(
-                                    IdentityAttrs.TenantAdminKey,
-                                    tenantTeam.exists(t =>
-                                      t.users.exists(u =>
-                                        u.userId == updatedUser.id && u.teamPermission == TeamPermission.Administrator
-                                      )
+                                val session = maybeSession.getOrElse(
+                                  UserSession(
+                                    id = DatastoreId(IdGenerator.token(32)),
+                                    userId = defaultUser.id,
+                                    userName = defaultUser.name,
+                                    userEmail = defaultUser.email,
+                                    impersonatorId = None,
+                                    impersonatorName = None,
+                                    impersonatorEmail = None,
+                                    impersonatorSessionId = None,
+                                    sessionId =
+                                      UserSessionId(IdGenerator.token),
+                                    created = DateTime.now(),
+                                    expires =
+                                      DateTime.now().plusSeconds(sessionMaxAge),
+                                    ttl = FiniteDuration(
+                                      sessionMaxAge,
+                                      TimeUnit.SECONDS
                                     )
                                   )
-                                  .addAttr(
-                                    IdentityAttrs.ImpersonatorKey,
-                                    impersonator
-                                  )
-                                  .addAttr(IdentityAttrs.TenantKey, tenant)
-                                  .addAttr(IdentityAttrs.SessionKey, session)
-                              )
-                              r <- FastFuture.successful(
-                                rr.removingFromSession("sessionId")(using request)
-                                  .withSession(
-                                    "sessionId" -> session.sessionId.value
-                                  )
-                              )
-                            } yield {
-                              r
-                            }
-                        }
-                    case Some(daikokuUser) =>
-                      val updatedTeam = Team(
-                        id = TeamId(IdGenerator.token(32)),
-                        tenant = tenant.id,
-                        `type` = TeamType.Personal,
-                        name = s"${daikokuUser.name}",
-                        description = s"The personal team of ${daikokuUser.name}",
-                        users = Set(UserWithPermission(daikokuUser.id, Administrator)),
-                        authorizedOtoroshiEntities = None,
-                        contact = daikokuUser.email
-                      )
-                      val session = maybeSession.getOrElse(
-                        UserSession(
-                          id = DatastoreId(IdGenerator.token(32)),
-                          userId = daikokuUser.id,
-                          userName = daikokuUser.name,
-                          userEmail = daikokuUser.email,
-                          impersonatorId = None,
-                          impersonatorName = None,
-                          impersonatorEmail = None,
-                          impersonatorSessionId = None,
-                          sessionId = UserSessionId(IdGenerator.token),
-                          created = DateTime.now(),
-                          expires = DateTime.now().plusSeconds(sessionMaxAge),
-                          ttl = FiniteDuration(sessionMaxAge, TimeUnit.SECONDS)
-                        )
-                      )
-                      val updatedUser =
-                        if (session.impersonatorId.isDefined)
-                          daikokuUser.copy()
-                        else
-                          daikokuUser.copy(
-                            name = user.name,
-                            email = user.email,
-                            picture =
-                              if (daikokuUser.pictureFromProvider) daikokuUser.picture
-                              else daikokuUser.picture,
-                            tenants = daikokuUser.tenants + tenant.id,
-                            origins = daikokuUser.origins + AuthProvider.Otoroshi,
-                            isDaikokuAdmin = isDaikokuAdmin
-                          )
-                      for {
-                        tenantTeam <-
-                          env.dataStore.teamRepo
-                            .forTenant(tenant)
-                            .findNotDeleted(Json.obj("type" -> "Admin"))
-                        userTeamOpt <-
-                          findUserTeam(tenant.id, updatedUser)(using ec, env)
-                        userTeam <-
-                          if (userTeamOpt.isDefined)
-                            FastFuture.successful(userTeamOpt.get)
-                          else
-                            env.dataStore.teamRepo
-                              .forTenant(tenant.id)
-                              .save(updatedTeam)
-                              .map(_ => updatedTeam)
-                        _ <- env.dataStore.userRepo.save(updatedUser)
-                        impersonator <-
-                          session.impersonatorId
-                            .map(id =>
-                              env.dataStore.userRepo.findByIdNotDeleted(id)
-                            )
-                            .getOrElse(FastFuture.successful(None))
-                        rr <- nextFilter(
-                          request
-                            .addAttr(IdentityAttrs.TeamKey, userTeam)
-                            .addAttr(IdentityAttrs.UserKey, updatedUser)
-                            .addAttr(
-                              IdentityAttrs.TenantAdminKey,
-                              tenantTeam.exists(t =>
-                                t.users.exists(u =>
-                                  u.userId == updatedUser.id && u.teamPermission == TeamPermission.Administrator
                                 )
+                                for {
+                                  _ <-
+                                    env.dataStore.teamRepo
+                                      .forTenant(tenant.id)
+                                      .save(newTeam)
+                                  _ <- env.dataStore.userRepo.save(defaultUser)
+                                  _ <- env.dataStore.userSessionRepo.save(
+                                    session
+                                  )
+                                  impersonator <-
+                                    session.impersonatorId
+                                      .map(id =>
+                                        env.dataStore.userRepo
+                                          .findByIdNotDeleted(id)
+                                      )
+                                      .getOrElse(FastFuture.successful(None))
+                                  rr <- nextFilter(
+                                    request
+                                      .addAttr(IdentityAttrs.TeamKey, newTeam)
+                                      .addAttr(
+                                        IdentityAttrs.UserKey,
+                                        defaultUser
+                                      ) // not tenant admin because new user
+                                      .addAttr(
+                                        IdentityAttrs.ImpersonatorKey,
+                                        impersonator
+                                      )
+                                      .addAttr(IdentityAttrs.TenantKey, tenant)
+                                      .addAttr(
+                                        IdentityAttrs.SessionKey,
+                                        session
+                                      )
+                                  )
+                                  r <- FastFuture.successful(
+                                    rr.removingFromSession("sessionId")(using
+                                      request
+                                    ).withSession(
+                                      "sessionId" -> session.sessionId.value
+                                    )
+                                  )
+                                } yield {
+                                  r
+                                }
+                              case Some(u) =>
+                                val updatedTeam = Team(
+                                  id = TeamId(IdGenerator.token(32)),
+                                  tenant = tenant.id,
+                                  `type` = TeamType.Personal,
+                                  name = s"${user.name}",
+                                  description =
+                                    s"The personal team of ${user.name}",
+                                  users = Set(
+                                    UserWithPermission(u.id, Administrator)
+                                  ),
+                                  authorizedOtoroshiEntities = None,
+                                  contact = user.email
+                                )
+                                val session = maybeSession.getOrElse(
+                                  UserSession(
+                                    id = DatastoreId(IdGenerator.token(32)),
+                                    userId = u.id,
+                                    userName = u.name,
+                                    userEmail = u.email,
+                                    impersonatorId = None,
+                                    impersonatorName = None,
+                                    impersonatorEmail = None,
+                                    impersonatorSessionId = None,
+                                    sessionId =
+                                      UserSessionId(IdGenerator.token),
+                                    created = DateTime.now(),
+                                    expires =
+                                      DateTime.now().plusSeconds(sessionMaxAge),
+                                    ttl = FiniteDuration(
+                                      sessionMaxAge,
+                                      TimeUnit.SECONDS
+                                    )
+                                  )
+                                )
+                                val updatedUser = u
+                                for {
+                                  tenantTeam <-
+                                    env.dataStore.teamRepo
+                                      .forTenant(tenant)
+                                      .findNotDeleted(
+                                        Json.obj("type" -> "Admin")
+                                      )
+                                  userTeamOpt <-
+                                    findUserTeam(tenant.id, updatedUser)(using
+                                      ec,
+                                      env
+                                    )
+                                  userTeam <-
+                                    if (userTeamOpt.isDefined)
+                                      FastFuture.successful(userTeamOpt.get)
+                                    else
+                                      env.dataStore.teamRepo
+                                        .forTenant(tenant.id)
+                                        .save(updatedTeam)
+                                        .map(_ => updatedTeam)
+                                  _ <- env.dataStore.userRepo.save(updatedUser)
+                                  _ <- env.dataStore.userSessionRepo.save(
+                                    session
+                                  )
+                                  impersonator <-
+                                    session.impersonatorId
+                                      .map(id =>
+                                        env.dataStore.userRepo
+                                          .findByIdNotDeleted(id)
+                                      )
+                                      .getOrElse(FastFuture.successful(None))
+                                  rr <- nextFilter(
+                                    request
+                                      .addAttr(IdentityAttrs.TeamKey, userTeam)
+                                      .addAttr(
+                                        IdentityAttrs.UserKey,
+                                        updatedUser
+                                      )
+                                      .addAttr(
+                                        IdentityAttrs.TenantAdminKey,
+                                        tenantTeam.exists(t =>
+                                          t.users.exists(u =>
+                                            u.userId == updatedUser.id && u.teamPermission == TeamPermission.Administrator
+                                          )
+                                        )
+                                      )
+                                      .addAttr(
+                                        IdentityAttrs.ImpersonatorKey,
+                                        impersonator
+                                      )
+                                      .addAttr(IdentityAttrs.TenantKey, tenant)
+                                      .addAttr(
+                                        IdentityAttrs.SessionKey,
+                                        session
+                                      )
+                                  )
+                                  r <- FastFuture.successful(
+                                    rr.removingFromSession("sessionId")(using
+                                      request
+                                    ).withSession(
+                                      "sessionId" -> session.sessionId.value
+                                    )
+                                  )
+                                } yield {
+                                  r
+                                }
+                            }
+                        case Some(daikokuUser) =>
+                          val updatedTeam = Team(
+                            id = TeamId(IdGenerator.token(32)),
+                            tenant = tenant.id,
+                            `type` = TeamType.Personal,
+                            name = s"${daikokuUser.name}",
+                            description =
+                              s"The personal team of ${daikokuUser.name}",
+                            users = Set(
+                              UserWithPermission(daikokuUser.id, Administrator)
+                            ),
+                            authorizedOtoroshiEntities = None,
+                            contact = daikokuUser.email
+                          )
+                          val session = maybeSession.getOrElse(
+                            UserSession(
+                              id = DatastoreId(IdGenerator.token(32)),
+                              userId = daikokuUser.id,
+                              userName = daikokuUser.name,
+                              userEmail = daikokuUser.email,
+                              impersonatorId = None,
+                              impersonatorName = None,
+                              impersonatorEmail = None,
+                              impersonatorSessionId = None,
+                              sessionId = UserSessionId(IdGenerator.token),
+                              created = DateTime.now(),
+                              expires =
+                                DateTime.now().plusSeconds(sessionMaxAge),
+                              ttl =
+                                FiniteDuration(sessionMaxAge, TimeUnit.SECONDS)
+                            )
+                          )
+                          val updatedUser =
+                            if (session.impersonatorId.isDefined)
+                              daikokuUser.copy()
+                            else
+                              daikokuUser.copy(
+                                name = user.name,
+                                email = user.email,
+                                picture =
+                                  if (daikokuUser.pictureFromProvider)
+                                    daikokuUser.picture
+                                  else daikokuUser.picture,
+                                tenants = daikokuUser.tenants + tenant.id,
+                                origins =
+                                  daikokuUser.origins + AuthProvider.Otoroshi,
+                                isDaikokuAdmin = isDaikokuAdmin
                               )
+                          for {
+                            tenantTeam <-
+                              env.dataStore.teamRepo
+                                .forTenant(tenant)
+                                .findNotDeleted(Json.obj("type" -> "Admin"))
+                            userTeamOpt <-
+                              findUserTeam(tenant.id, updatedUser)(using
+                                ec,
+                                env
+                              )
+                            userTeam <-
+                              if (userTeamOpt.isDefined)
+                                FastFuture.successful(userTeamOpt.get)
+                              else
+                                env.dataStore.teamRepo
+                                  .forTenant(tenant.id)
+                                  .save(updatedTeam)
+                                  .map(_ => updatedTeam)
+                            _ <- env.dataStore.userRepo.save(updatedUser)
+                            impersonator <-
+                              session.impersonatorId
+                                .map(id =>
+                                  env.dataStore.userRepo.findByIdNotDeleted(id)
+                                )
+                                .getOrElse(FastFuture.successful(None))
+                            rr <- nextFilter(
+                              request
+                                .addAttr(IdentityAttrs.TeamKey, userTeam)
+                                .addAttr(IdentityAttrs.UserKey, updatedUser)
+                                .addAttr(
+                                  IdentityAttrs.TenantAdminKey,
+                                  tenantTeam.exists(t =>
+                                    t.users.exists(u =>
+                                      u.userId == updatedUser.id && u.teamPermission == TeamPermission.Administrator
+                                    )
+                                  )
+                                )
+                                .addAttr(
+                                  IdentityAttrs.ImpersonatorKey,
+                                  impersonator
+                                )
+                                .addAttr(IdentityAttrs.TenantKey, tenant)
+                                .addAttr(IdentityAttrs.SessionKey, session)
                             )
-                            .addAttr(
-                              IdentityAttrs.ImpersonatorKey,
-                              impersonator
+                            r <- FastFuture.successful(
+                              rr.removingFromSession("sessionId")(using request)
+                                .withSession(
+                                  "sessionId" -> session.sessionId.value
+                                )
                             )
-                            .addAttr(IdentityAttrs.TenantKey, tenant)
-                            .addAttr(IdentityAttrs.SessionKey, session)
-                        )
-                        r <- FastFuture.successful(
-                          rr.removingFromSession("sessionId")(using request)
-                            .withSession("sessionId" -> session.sessionId.value)
-                        )
-                      } yield {
-                        r
+                          } yield {
+                            r
+                          }
                       }
-                  }
-                }
-
-                request.session
-                  .get("sessionId")
-                  .orElse(request.getQueryString("sessionId")) match {
-                  case None => createSessionFromOtoroshi()
-                  case Some(_) =>
-                    val maybeSession = for {
-                      session <-
-                        env.dataStore.userSessionRepo
-                          .findOne(Json.obj("userEmail" -> user.email))
-                      impersonatedSession <-
-                        env.dataStore.userSessionRepo
-                          .findOne(Json.obj("impersonatorEmail" -> user.email))
-                    } yield {
-                      impersonatedSession.orElse(session)
                     }
 
-                    maybeSession.flatMap {
-                      case Some(session)
-                          if session.expires.isBefore(DateTime.now()) =>
-                        for {
-                          _ <-
-                            env.dataStore.userSessionRepo.deleteById(session.id)
-                          result <- createSessionFromOtoroshi()
-                        } yield result
+                    request.session
+                      .get("sessionId")
+                      .orElse(request.getQueryString("sessionId")) match {
+                      case None => createSessionFromOtoroshi()
+                      case Some(_) =>
+                        val maybeSession = for {
+                          session <-
+                            env.dataStore.userSessionRepo
+                              .findOne(Json.obj("userEmail" -> user.email))
+                          impersonatedSession <-
+                            env.dataStore.userSessionRepo
+                              .findOne(
+                                Json.obj("impersonatorEmail" -> user.email)
+                              )
+                        } yield {
+                          impersonatedSession.orElse(session)
+                        }
 
-                      case Some(session)
-                          if session.expires.isAfter(DateTime.now()) =>
-                        env.dataStore.userRepo
-                          .findByIdNotDeleted(session.userId)
-                          .flatMap {
-                            case None =>
-                              createSessionFromOtoroshi(
-                                maybeSession = Some(session)
-                              )
-                            case Some(u) =>
-                              createSessionFromOtoroshi(
-                                maybeUser = Some(u),
-                                maybeSession = Some(session)
-                              )
-                          }
-                      case _ => createSessionFromOtoroshi()
+                        maybeSession.flatMap {
+                          case Some(session)
+                              if session.expires.isBefore(DateTime.now()) =>
+                            for {
+                              _ <-
+                                env.dataStore.userSessionRepo.deleteById(
+                                  session.id
+                                )
+                              result <- createSessionFromOtoroshi()
+                            } yield result
+
+                          case Some(session)
+                              if session.expires.isAfter(DateTime.now()) =>
+                            env.dataStore.userRepo
+                              .findByIdNotDeleted(session.userId)
+                              .flatMap {
+                                case None =>
+                                  createSessionFromOtoroshi(
+                                    maybeSession = Some(session)
+                                  )
+                                case Some(u) =>
+                                  createSessionFromOtoroshi(
+                                    maybeUser = Some(u),
+                                    maybeSession = Some(session)
+                                  )
+                              }
+                          case _ => createSessionFromOtoroshi()
+                        }
                     }
                 }
             }
         }
-    }
-    } // end getOrElse (whitelisted routes)
+      } // end getOrElse (whitelisted routes)
   }
 }

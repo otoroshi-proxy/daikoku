@@ -503,7 +503,10 @@ class AuditActorSupervizer(
       logger.debug("Restarting analytics actor child")
       context.watch(
         context
-          .actorOf(AuditActor.props(using env, messagesApi, translator), childName)
+          .actorOf(
+            AuditActor.props(using env, messagesApi, translator),
+            childName
+          )
       )
     case evt => context.child(childName).map(_ ! evt)
   }

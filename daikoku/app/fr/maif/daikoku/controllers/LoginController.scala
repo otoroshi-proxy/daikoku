@@ -665,7 +665,9 @@ class LoginController(
               ctx.ctx,
               AuthorizationLevel.AuthorizedSelf
             )
-            Redirect(redirectURI).removingFromSession("sessionId")(using ctx.request)
+            Redirect(redirectURI).removingFromSession("sessionId")(using
+              ctx.request
+            )
           }
       }
     }
@@ -1035,8 +1037,8 @@ class LoginController(
               Seq(email),
               body,
               ctx.tenant
-            )(
-              using ec = ec,
+            )(using
+              ec = ec,
               translator = tr,
               messagesApi = messagesApi,
               env = env,

@@ -656,7 +656,7 @@ case class Api(
     state: ApiState = ApiState.Created,
     metadata: Map[String, String] = Map.empty,
     createdAt: DateTime = DateTime.now(),
-    lastUpdate: DateTime,
+    lastUpdate: DateTime
 ) extends CanJson[User] {
   def humanReadableId: String = name.urlPathSegmentSanitized
   override def asJson: JsValue = json.ApiFormat.writes(this)

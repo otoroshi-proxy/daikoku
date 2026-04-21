@@ -7,7 +7,13 @@ import fr.maif.daikoku.audit.AuditActorSupervizer
 import fr.maif.daikoku.domain.SchedulingMode.Interval
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
-import fr.maif.daikoku.domain.{DatastoreId, SchedulingMode, ReportsInfo, TeamApiKeyVisibility, Tenant}
+import fr.maif.daikoku.domain.{
+  DatastoreId,
+  SchedulingMode,
+  ReportsInfo,
+  TeamApiKeyVisibility,
+  Tenant
+}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.login.AuthProvider.Local
 import fr.maif.daikoku.login.{AuthProvider, LoginFilter, OAuth2Config}

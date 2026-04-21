@@ -3,7 +3,11 @@ package fr.maif.daikoku.utils
 import fr.maif.daikoku.domain.*
 import org.apache.pekko.Done
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.model.{ContentType, ContentTypes, HttpHeader}
+import org.apache.pekko.http.scaladsl.model.{
+  ContentType,
+  ContentTypes,
+  HttpHeader
+}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.connectors.s3.*
 import org.apache.pekko.stream.connectors.s3.headers.CannedAcl
@@ -236,7 +240,10 @@ class AssetsDataStore(actorSystem: ActorSystem)(implicit
   }
 
   def checkBucket()(implicit conf: S3Configuration): Future[BucketAccess] = {
-    S3.checkIfBucketExists(conf.bucket)(using actorSystem, s3ClientSettingsAttrs)
+    S3.checkIfBucketExists(conf.bucket)(using
+      actorSystem,
+      s3ClientSettingsAttrs
+    )
   }
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -451,12 +458,14 @@ class AssetsDataStore(actorSystem: ActorSystem)(implicit
       .build()
 
     try {
-      val getObjectRequest = GetObjectRequest.builder()
+      val getObjectRequest = GetObjectRequest
+        .builder()
         .bucket(conf.bucket)
         .key(path)
         .build()
 
-      val presignRequest = GetObjectPresignRequest.builder()
+      val presignRequest = GetObjectPresignRequest
+        .builder()
         .signatureDuration(java.time.Duration.ofNanos(1.hour.toNanos))
         .getObjectRequest(getObjectRequest)
         .build()

@@ -4,7 +4,23 @@ import cats.data.EitherT
 import fr.maif.daikoku.audit.ApiKeyRotationEvent
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.domain.json.ApiSubscriptionyRotationFormat
-import fr.maif.daikoku.domain.{ApiId, ApiSubscription, ApiSubscriptionId, DatastoreId, JobInformation, JobName, JobStatus, Notification, NotificationAction, NotificationId, NotificationType, SchedulingMode, Tenant, UsagePlan, UsagePlanId}
+import fr.maif.daikoku.domain.{
+  ApiId,
+  ApiSubscription,
+  ApiSubscriptionId,
+  DatastoreId,
+  JobInformation,
+  JobName,
+  JobStatus,
+  Notification,
+  NotificationAction,
+  NotificationId,
+  NotificationType,
+  SchedulingMode,
+  Tenant,
+  UsagePlan,
+  UsagePlanId
+}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient, Time, Translator}
 import org.apache.pekko.stream.Materializer
@@ -22,11 +38,11 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.*
 
 class ApiKeySecretRotationJob(
-                               client: OtoroshiClient,
-                               env: Env,
-                               translator: Translator,
-                               messagesApi: MessagesApi
-                             ) {
+    client: OtoroshiClient,
+    env: Env,
+    translator: Translator,
+    messagesApi: MessagesApi
+) {
   private val logger = Logger("APIkey-Rotation-Synchronizer")
 
   private val ref = new AtomicReference[Cancellable]()
@@ -38,11 +54,10 @@ class ApiKeySecretRotationJob(
   implicit val tr: Translator = translator
 
   def start(): Unit = {
-    val syncAvalaible = env.config.rotationJobEnabled && env.config.otoroshiSyncMaster //FIXME: use also otoroshiSyncMaster ???
+    val syncAvalaible =
+      env.config.rotationJobEnabled && env.config.otoroshiSyncMaster // FIXME: use also otoroshiSyncMaster ???
 
-    if (
-      syncAvalaible && ref.get() == null
-    ) {
+    if (syncAvalaible && ref.get() == null) {
       env.config.rotationJobSchedulingMode match {
         case SchedulingMode.Cron =>
           val cronExpr = env.config.rotationJobCronExpr.map(Cron.unsafeParse)
@@ -51,10 +66,13 @@ class ApiKeySecretRotationJob(
             val now = DateTime.now()
             cronExpr.flatMap(_.next[DateTime](now)) match {
               case Some(nextRun) =>
-                val delayMillis = Math.max(nextRun.getMillis - now.getMillis, 1000)
+                val delayMillis =
+                  Math.max(nextRun.getMillis - now.getMillis, 1000)
                 val delay = delayMillis.millis
 
-                logger.info(s"next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
+                logger.info(
+                  s"next cron run scheduled at $nextRun (in ${delay.toSeconds}s)"
+                )
 
                 ref.set(
                   env.defaultActorSystem.scheduler.scheduleOnce(delay) {
@@ -63,7 +81,9 @@ class ApiKeySecretRotationJob(
                       .findAllNotDeleted()
                       .flatMap(tenants =>
                         Future.sequence(
-                          tenants.map(tenant => run(SyncAllSubscription(), tenant))
+                          tenants.map(tenant =>
+                            run(SyncAllSubscription(), tenant)
+                          )
                         )
                       )
                       .map(_ => ())
@@ -78,7 +98,9 @@ class ApiKeySecretRotationJob(
                 )
 
               case None =>
-                logger.error(s"could not compute next run from cron expression: ${env.config.rotationJobCronExpr.getOrElse("")}")
+                logger.error(
+                  s"could not compute next run from cron expression: ${env.config.rotationJobCronExpr.getOrElse("")}"
+                )
             }
           }
 
@@ -87,18 +109,21 @@ class ApiKeySecretRotationJob(
         case SchedulingMode.Interval =>
           ref.set(
             env.defaultActorSystem.scheduler
-              .scheduleAtFixedRate(10.seconds, env.config.rotationJobInterval) { () =>
-                env.dataStore.tenantRepo
-                  .findAllNotDeleted()
-                  .flatMap(tenants =>
-                    Future.sequence(
-                      tenants.map(tenant => run(SyncAllSubscription(), tenant))
+              .scheduleAtFixedRate(10.seconds, env.config.rotationJobInterval) {
+                () =>
+                  env.dataStore.tenantRepo
+                    .findAllNotDeleted()
+                    .flatMap(tenants =>
+                      Future.sequence(
+                        tenants.map(tenant =>
+                          run(SyncAllSubscription(), tenant)
+                        )
+                      )
                     )
-                  )
-                  .map(_ => ())
-                  .recover { case e: Throwable =>
-                    logger.error("interval sync failed", e)
-                  }
+                    .map(_ => ())
+                    .recover { case e: Throwable =>
+                      logger.error("interval sync failed", e)
+                    }
               }
           )
       }
@@ -109,7 +134,7 @@ class ApiKeySecretRotationJob(
     Option(ref.get()).foreach(_.cancel())
   }
 
-  //FIXME: better perf
+  // FIXME: better perf
   private def checkRotation(query: JsObject) = {
     for {
       allSubscriptions <-
@@ -215,15 +240,15 @@ class ApiKeySecretRotationJob(
               .reduce((_, _) => ())
           )
           apk <- EitherT(
-            client.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
+            client.getApikey(subscription.apiKey.clientId)(using
+              otoroshiSettings
+            )
           ).leftMap(e =>
             JobUtils.sendErrorNotification(
               NotificationAction.OtoroshiSyncSubscriptionError(
                 subscription,
-                s"Unable to fetch apikey from otoroshi: ${
-                  Json
-                    .stringify(AppError.toJson(e))
-                }"
+                s"Unable to fetch apikey from otoroshi: ${Json
+                    .stringify(AppError.toJson(e))}"
               ),
               api.team,
               api.tenant,
@@ -357,13 +382,18 @@ class ApiKeySecretRotationJob(
     }
   }
 
-  def run(entryPoint: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(), tenant: Tenant): Future[Unit] = {
+  def run(
+      entryPoint: ApiId | UsagePlanId | ApiSubscriptionId |
+        SyncAllSubscription = SyncAllSubscription(),
+      tenant: Tenant
+  ): Future[Unit] = {
     logger.info(s"run apikey rotation check with entry point as $entryPoint")
 
     val query = entryPoint match {
-      case apiId: ApiId => Json.obj("api" -> apiId.asJson)
+      case apiId: ApiId             => Json.obj("api" -> apiId.asJson)
       case usagePlanId: UsagePlanId => Json.obj("plan" -> usagePlanId.asJson)
-      case subscriptionId: ApiSubscriptionId => Json.obj("_id" -> subscriptionId.asJson)
+      case subscriptionId: ApiSubscriptionId =>
+        Json.obj("_id" -> subscriptionId.asJson)
       case _: SyncAllSubscription => Json.obj()
     }
 
@@ -371,15 +401,19 @@ class ApiKeySecretRotationJob(
     val jobId = DatastoreId(s"sync-${IdGenerator.token(16)}")
     val now = DateTime.now()
 
-
     Time.concurrentTime(
       jobRepo
-        .findOneNotDeleted(Json.obj(
-          "jobName" -> JobName.ApiKeyRotationVerifier.value,
-          "status" -> JobStatus.Running.value))
+        .findOneNotDeleted(
+          Json.obj(
+            "jobName" -> JobName.ApiKeyRotationVerifier.value,
+            "status" -> JobStatus.Running.value
+          )
+        )
         .flatMap {
           case Some(_) =>
-            logger.info("can't run another ApiKeyRotationVerifier, already one is running")
+            logger.info(
+              "can't run another ApiKeyRotationVerifier, already one is running"
+            )
             Future.successful(())
           case None =>
             val jobInfo = JobInformation(
@@ -398,16 +432,29 @@ class ApiKeySecretRotationJob(
               checkRotation(query)
                 .flatMap { _ =>
                   logger.info("verify rotation ended")
-                  jobRepo.save(jobInfo.copy(status = JobStatus.Completed, lastBatchAt = DateTime.now()))
+                  jobRepo
+                    .save(
+                      jobInfo.copy(
+                        status = JobStatus.Completed,
+                        lastBatchAt = DateTime.now()
+                      )
+                    )
                     .map(_ => ())
                 }
                 .recoverWith { case e =>
                   logger.error(s"verify rotation failed: ${e.getMessage}", e)
-                  jobRepo.save(jobInfo.copy(status = JobStatus.Failed, lastBatchAt = DateTime.now()))
+                  jobRepo
+                    .save(
+                      jobInfo.copy(
+                        status = JobStatus.Failed,
+                        lastBatchAt = DateTime.now()
+                      )
+                    )
                     .map(_ => ())
                 }
             }
-        }, "Rotation verifying run"
+        },
+      "Rotation verifying run"
     )
   }
 }

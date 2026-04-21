@@ -3,7 +3,12 @@ package fr.maif.daikoku.controllers
 import cats.implicits.catsSyntaxOptionId
 import controllers.Assets
 import fr.maif.daikoku.BuildInfo
-import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionMaybeWithGuest, DaikokuUnauthenticatedAction, DaikokuUnauthenticatedActionContext}
+import fr.maif.daikoku.actions.{
+  DaikokuAction,
+  DaikokuActionMaybeWithGuest,
+  DaikokuUnauthenticatedAction,
+  DaikokuUnauthenticatedActionContext
+}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.async.TenantAdminOnly
 import fr.maif.daikoku.domain.*
@@ -30,7 +35,6 @@ enum ServiceStatus(val value: String):
   case Up extends ServiceStatus("UP")
   case Down extends ServiceStatus("DOWN")
   case Absent extends ServiceStatus("ABSENT")
-
 
 class HomeController(
     DaikokuUnauthenticatedAction: DaikokuUnauthenticatedAction,
@@ -96,20 +100,24 @@ class HomeController(
   def health(): Action[AnyContent] = {
     Action.async { ctx =>
       ctx.headers.get("Otoroshi-Health-Check-Logic-Test") match {
-        case Some(value) => Ok.withHeaders(
-          "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString
-        ).future
-        case None => (env.dataStore match {
-          case dataStore: PostgresDataStore =>
-            dataStore
-              .checkDatabase()
-              .map(_ => ServiceStatus.Up)
-        })
-          .recover { case _ => ServiceStatus.Down }
-          .map(status => Ok(Json.obj("status" -> (status match {
-            case ServiceStatus.Up => "ready"
-            case _ => "initializing"
-          }))))
+        case Some(value) =>
+          Ok.withHeaders(
+            "Otoroshi-Health-Check-Logic-Test-Result" -> (value.toLong + 42L).toString
+          ).future
+        case None =>
+          (env.dataStore match {
+            case dataStore: PostgresDataStore =>
+              dataStore
+                .checkDatabase()
+                .map(_ => ServiceStatus.Up)
+          })
+            .recover { case _ => ServiceStatus.Down }
+            .map(status =>
+              Ok(Json.obj("status" -> (status match {
+                case ServiceStatus.Up => "ready"
+                case _                => "initializing"
+              })))
+            )
       }
     }
   }
@@ -136,7 +144,7 @@ class HomeController(
                         mailerHealth <- tenant.mailer
                           .testConnection(tenant) map (b =>
                           if (b) ServiceStatus.Up else ServiceStatus.Down
-                          )
+                        )
 
                         s3HealthFuture =
                           tenant.bucketSettings match {
@@ -144,9 +152,12 @@ class HomeController(
                               Future.successful(ServiceStatus.Absent)
                             case Some(cfg: S3Configuration) =>
                               env.assetsStore.checkBucket()(using cfg).map {
-                                case BucketAccess.AccessDenied => ServiceStatus.Down
-                                case BucketAccess.AccessGranted => ServiceStatus.Up
-                                case BucketAccess.NotExists => ServiceStatus.Absent
+                                case BucketAccess.AccessDenied =>
+                                  ServiceStatus.Down
+                                case BucketAccess.AccessGranted =>
+                                  ServiceStatus.Up
+                                case BucketAccess.NotExists =>
+                                  ServiceStatus.Absent
                               }
                           }
                         s3Health <- s3HealthFuture
@@ -155,24 +166,36 @@ class HomeController(
                           val checks =
                             tenant.otoroshiSettings.map { otoSettings =>
                               OtoroshiClient(env)
-                                .getApikey(otoSettings.clientId)(using otoroshiSettings =
-                                  otoSettings
+                                .getApikey(otoSettings.clientId)(using
+                                  otoroshiSettings = otoSettings
                                 )
                                 .map { _ =>
                                   (otoSettings, ServiceStatus.Up)
                                 }
-                                .recover { case _ => (otoSettings, ServiceStatus.Down)}
+                                .recover { case _ =>
+                                  (otoSettings, ServiceStatus.Down)
+                                }
                             }
                           Future.sequence(checks)
                         }
 
                       } yield Json.obj(
                         "tenantName" -> tenant.name,
-                        "tenantMode" -> tenant.tenantMode.map(_.name).getOrElse(TenantMode.Default.name),
+                        "tenantMode" -> tenant.tenantMode
+                          .map(_.name)
+                          .getOrElse(TenantMode.Default.name),
                         "status" -> Json.obj(
                           "mailer" -> mailerHealth.value,
                           "S3" -> s3Health.value,
-                          "otoroshi" -> JsArray(otoroshiHealth.map(oto => Json.obj(s"${oto._1.url} (${oto._1.host})" -> oto._2.value )).toSeq)
+                          "otoroshi" -> JsArray(
+                            otoroshiHealth
+                              .map(oto =>
+                                Json.obj(
+                                  s"${oto._1.url} (${oto._1.host})" -> oto._2.value
+                                )
+                              )
+                              .toSeq
+                          )
                         )
                       )
                     }
@@ -184,22 +207,21 @@ class HomeController(
                     val withoutNom = item.as[JsObject] - "tenantName"
                     acc + (tenantName -> withoutNom)
                   }
-                  Ok(Json.obj(
-                    "status" -> datastore.value,
-                    "datastore" -> datastore.value,
-                    "version" -> BuildInfo.version,
-                  ) ++ resultObj)
+                  Ok(
+                    Json.obj(
+                      "status" -> datastore.value,
+                      "datastore" -> datastore.value,
+                      "version" -> BuildInfo.version
+                    ) ++ resultObj
+                  )
                 }
-                .recover { case _ => Ok(Json.obj("status" -> ServiceStatus.Down.value)) }
+                .recover { case _ =>
+                  Ok(Json.obj("status" -> ServiceStatus.Down.value))
+                }
             )
         }
         case _ => AppError.Unauthorized.renderF()
       }
-
-
-
-
-
 
     }
   }
@@ -319,7 +341,8 @@ class HomeController(
 
   def renderCmsPageFromBody(path: String) =
     DaikokuUnauthenticatedAction.async(parse.json) { ctx =>
-      val req = ctx.request.body.as[JsObject].as(using CmsRequestRenderingFormat)
+      val req =
+        ctx.request.body.as[JsObject].as(using CmsRequestRenderingFormat)
 
       val currentPage = req.content.find(_.path() == req.current_page)
 
@@ -505,16 +528,21 @@ class HomeController(
   }
 
   private def cmsPageByIdWithoutAction[A](
-                                           ctx: DaikokuUnauthenticatedActionContext[A],
-                                           entity: CmsPageId | Path,
-                                           fields: Map[String, JsValue] = Map.empty) = {
+      ctx: DaikokuUnauthenticatedActionContext[A],
+      entity: CmsPageId | Path,
+      fields: Map[String, JsValue] = Map.empty
+  ) = {
     val maybePage = entity match {
-      case id: CmsPageId => env.dataStore.cmsRepo.forTenant(ctx.tenant).findByIdNotDeleted(id)
-      case path: Path => env.dataStore.cmsRepo.forTenant(ctx.tenant).findOneNotDeleted(Json.obj("path" -> path))
+      case id: CmsPageId =>
+        env.dataStore.cmsRepo.forTenant(ctx.tenant).findByIdNotDeleted(id)
+      case path: Path =>
+        env.dataStore.cmsRepo
+          .forTenant(ctx.tenant)
+          .findOneNotDeleted(Json.obj("path" -> path))
     }
 
     maybePage.flatMap {
-      case None => cmsPageNotFound(ctx)
+      case None                        => cmsPageNotFound(ctx)
       case Some(page) if !page.visible => cmsPageNotFound(ctx)
       case Some(page) if page.authenticated && ctx.user.isEmpty =>
         FastFuture.successful(
@@ -536,7 +564,7 @@ class HomeController(
     DaikokuUnauthenticatedAction.async { ctx =>
       path match {
         case Some(_path) => cmsPageByIdWithoutAction(ctx, _path)
-        case None => AppError.EntityNotFound("cms page").renderF()
+        case None        => AppError.EntityNotFound("cms page").renderF()
       }
     }
 

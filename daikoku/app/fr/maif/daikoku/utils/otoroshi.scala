@@ -205,9 +205,11 @@ class OtoroshiClient(env: Env) {
     ) {
       Future.failed(new RuntimeException(s"Bad group id"))
     } else {
-      getServiceGroup(groupId)(using otoroshiSettings).flatMap(g => f).recoverWith {
-        case e => Future.failed(e)
-      }
+      getServiceGroup(groupId)(using otoroshiSettings)
+        .flatMap(g => f)
+        .recoverWith { case e =>
+          Future.failed(e)
+        }
     }
   }
 
@@ -415,7 +417,9 @@ class OtoroshiClient(env: Env) {
                     Json.obj(
                       "terms" -> Json.obj(
                         "identity.identity.keyword" -> JsArray(
-                          subscriptions.map(_.apiKey.clientId).map(JsString.apply)
+                          subscriptions
+                            .map(_.apiKey.clientId)
+                            .map(JsString.apply)
                         )
                       )
                     )
@@ -483,8 +487,8 @@ class OtoroshiClient(env: Env) {
               .filter(_.id != otoroshiSettings.id) + updatedSettings
           )
           _ <- EitherT.liftF(env.dataStore.tenantRepo.save(updatedTenant))
-          r <- getSubscriptionLastUsage(subscriptions)(
-            using updatedSettings,
+          r <- getSubscriptionLastUsage(subscriptions)(using
+            updatedSettings,
             updatedTenant
           )
         } yield r
@@ -500,7 +504,8 @@ class OtoroshiClient(env: Env) {
         if (resp.status == 200) {
           val config = resp.json.as[JsObject]
           val elasticReadConfig =
-            (config \ "elasticReadsConfig").asOpt(using ElasticAnalyticsConfig.format)
+            (config \ "elasticReadsConfig")
+              .asOpt(using ElasticAnalyticsConfig.format)
           elasticReadConfig
         } else {
           None

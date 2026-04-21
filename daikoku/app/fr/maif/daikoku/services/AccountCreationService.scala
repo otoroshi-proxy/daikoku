@@ -306,8 +306,8 @@ class AccountCreationService {
             )
         )
         title <- EitherT.liftF(
-          translator.translate("mail.rejection.title", tenant)(
-            using messagesApi,
+          translator.translate("mail.rejection.title", tenant)(using
+            messagesApi,
             language,
             env
           )
@@ -325,8 +325,8 @@ class AccountCreationService {
           )(using messagesApi, language, env)
         )
         _ <- EitherT.liftF(
-          tenant.mailer.send(title, Seq(demand.email), body, tenant)(
-            using ec,
+          tenant.mailer.send(title, Seq(demand.email), body, tenant)(using
+            ec,
             translator,
             messagesApi,
             env,

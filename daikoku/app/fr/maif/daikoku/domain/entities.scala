@@ -167,7 +167,7 @@ case class ReportsInfo(
 }
 
 enum JobStatus(val value: String):
-  case Idle      extends JobStatus("idle")
+  case Idle extends JobStatus("idle")
   case Running extends JobStatus("running")
   case Failed extends JobStatus("failed")
   case Completed extends JobStatus("completed")

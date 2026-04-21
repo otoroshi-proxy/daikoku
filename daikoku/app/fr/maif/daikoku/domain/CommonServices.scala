@@ -581,24 +581,24 @@ object CommonServices {
       for {
         result <-
           Time.concurrentTime(
-          env.dataStore
-            .asInstanceOf[PostgresDataStore]
-            .queryOneRaw(
-              query,
-              "result",
-              Seq(
-                ctx.user.id.value,
-                ctx.tenant.id.value,
-                research.orNull,
-                teams.orNull,
-                tags.orNull,
-                java.lang.Boolean.valueOf(subscribeOnly.getOrElse(false)),
-                java.lang.Integer.valueOf(limit),
-                java.lang.Integer.valueOf(offset),
-                apiGroupId.orNull,
-                categories.orNull
-              )
-            ),
+            env.dataStore
+              .asInstanceOf[PostgresDataStore]
+              .queryOneRaw(
+                query,
+                "result",
+                Seq(
+                  ctx.user.id.value,
+                  ctx.tenant.id.value,
+                  research.orNull,
+                  teams.orNull,
+                  tags.orNull,
+                  java.lang.Boolean.valueOf(subscribeOnly.getOrElse(false)),
+                  java.lang.Integer.valueOf(limit),
+                  java.lang.Integer.valueOf(offset),
+                  apiGroupId.orNull,
+                  categories.orNull
+                )
+              ),
             "just la query sql"
           )
       } yield {
@@ -965,8 +965,6 @@ object CommonServices {
            |$sortClause
            |LIMIT $$8 OFFSET $$9;
            |""".stripMargin
-
-
 
       (for {
         count <- EitherT.fromOptionF[Future, AppError, Long](

@@ -223,8 +223,9 @@ class TeamAssetsController(
               NotFound(Json.obj("error" -> "No bucket config found !"))
             )
           case Some(cfg) =>
-            env.assetsStore.listAssets(ctx.tenant.id, team.id)(using cfg).map { res =>
-              Ok(JsArray(res.map(_.asJson)))
+            env.assetsStore.listAssets(ctx.tenant.id, team.id)(using cfg).map {
+              res =>
+                Ok(JsArray(res.map(_.asJson)))
             }
         }
       }
@@ -277,7 +278,9 @@ class TeamAssetsController(
                   )
                 case Some(team) =>
                   env.assetsStore
-                    .getAsset(ctx.tenant.id, team.id, AssetId(assetId))(using cfg)
+                    .getAsset(ctx.tenant.id, team.id, AssetId(assetId))(using
+                      cfg
+                    )
                     .map {
                       case (_, bytes, _) if bytes.isEmpty =>
                         NotFound(Json.obj("error" -> "Asset empty!"))
@@ -466,7 +469,9 @@ class UserAssetsController(
             )
           case Some(cfg) =>
             env.assetsStore
-              .getUserAsset(ctx.tenant.id, ctx.user.id, AssetId(assetId))(using cfg)
+              .getUserAsset(ctx.tenant.id, ctx.user.id, AssetId(assetId))(using
+                cfg
+              )
               .map {
                 case (_, bytes, _) if bytes.isEmpty =>
                   NotFound(Json.obj("error" -> "Asset empty!"))
@@ -522,7 +527,9 @@ class AssetsThumbnailController(
             )
           case Some(cfg) =>
             env.assetsStore
-              .storeThumbnail(ctx.tenant.id, assetId, ctx.request.body)(using cfg)
+              .storeThumbnail(ctx.tenant.id, assetId, ctx.request.body)(using
+                cfg
+              )
               .map { _ =>
                 Ok(Json.obj("done" -> true, "id" -> assetId.value))
               } recover { case _ =>

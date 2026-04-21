@@ -7,11 +7,24 @@ import cron4s._
 import cron4s.lib.joda._
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.json.{ApiSubscriptionyRotationFormat, OtoroshiApiKeyFormat, OtoroshiTargetFormat, TeamFormat}
-import fr.maif.daikoku.domain.NotificationAction.{OtoroshiSyncApiError, OtoroshiSyncSubscriptionError}
+import fr.maif.daikoku.domain.json.{
+  ApiSubscriptionyRotationFormat,
+  OtoroshiApiKeyFormat,
+  OtoroshiTargetFormat,
+  TeamFormat
+}
+import fr.maif.daikoku.domain.NotificationAction.{
+  OtoroshiSyncApiError,
+  OtoroshiSyncSubscriptionError
+}
 import fr.maif.daikoku.audit.{ApiKeyRotationEvent, JobEvent}
 import fr.maif.daikoku.env.Env
-import fr.maif.daikoku.storage.drivers.postgres.{Col, ColJson, ColJsonArray, PostgresDataStore}
+import fr.maif.daikoku.storage.drivers.postgres.{
+  Col,
+  ColJson,
+  ColJsonArray,
+  PostgresDataStore
+}
 import fr.maif.daikoku.utils.*
 import fr.maif.daikoku.utils.future.EnhancedObject
 import org.apache.pekko.Done
@@ -28,11 +41,14 @@ import java.util.concurrent.atomic.AtomicReference
 import scala.concurrent.duration.*
 import scala.concurrent.{ExecutionContext, Future}
 
-
-
 case class SyncAllSubscription()
 
-case class SyncApiSubscriptionContext(subscription: ApiSubscription, api: Api, usagePlan: UsagePlan, by: User)
+case class SyncApiSubscriptionContext(
+    subscription: ApiSubscription,
+    api: Api,
+    usagePlan: UsagePlan,
+    by: User
+)
 
 object LongExtensions {
   implicit class HumanReadableExtension(duration: Long) {
@@ -45,20 +61,21 @@ object LongExtensions {
         TimeUnit.MILLISECONDS
       )
 
-      val timeStrings = units
-        .foldLeft((Seq.empty[String], duration))({
-          case ((humanReadable, rest), unit) =>
-            val name = unit.toString.toLowerCase()
-            val result = unit.convert(rest, TimeUnit.NANOSECONDS)
-            val diff = rest - TimeUnit.NANOSECONDS.convert(result, unit)
-            val str = result match {
-              case 0    => humanReadable
-              case 1    => humanReadable :+ s"1 ${name.init}" // Drop last 's'
-              case more => humanReadable :+ s"$more $name"
-            }
-            (str, diff)
-        })
-        ._1
+      val timeStrings =
+        units
+          .foldLeft((Seq.empty[String], duration))({
+            case ((humanReadable, rest), unit) =>
+              val name = unit.toString.toLowerCase()
+              val result = unit.convert(rest, TimeUnit.NANOSECONDS)
+              val diff = rest - TimeUnit.NANOSECONDS.convert(result, unit)
+              val str = result match {
+                case 0    => humanReadable
+                case 1    => humanReadable :+ s"1 ${name.init}" // Drop last 's'
+                case more => humanReadable :+ s"$more $name"
+              }
+              (str, diff)
+          })
+          ._1
 
       timeStrings.size match {
         case 0 => ""
@@ -74,32 +91,39 @@ object ApiForSync {
   def readFromJson(json: JsValue): ApiForSync = ApiForSync(
     id = ApiId((json \ "_id").as[String]),
     name = (json \ "name").as[String],
-    metadata = (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
+    metadata =
+      (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
   )
 }
 
-case class UserForSync(id: UserId, name: String, email: String, metadata: Map[String, String])
+case class UserForSync(
+    id: UserId,
+    name: String,
+    email: String,
+    metadata: Map[String, String]
+)
 object UserForSync {
   def readFromJson(json: JsValue): UserForSync = UserForSync(
     id = UserId((json \ "_id").as[String]),
     name = (json \ "name").as[String],
     email = (json \ "email").as[String],
-    metadata = (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
+    metadata =
+      (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
   )
 }
 
 case class SubscriptionForSync(
-                                apiKey: OtoroshiApiKey,
-                                customMetadata: Option[JsObject],
-                                metadata: Option[JsObject],
-                                enabled: Boolean,
-                                rotation: Option[ApiSubscriptionRotation],
-                                validUntil: Option[DateTime],
-                                customMaxPerSecond: Option[Long],
-                                customMaxPerDay: Option[Long],
-                                customMaxPerMonth: Option[Long],
-                                customReadOnly: Option[Boolean]
-                              )
+    apiKey: OtoroshiApiKey,
+    customMetadata: Option[JsObject],
+    metadata: Option[JsObject],
+    enabled: Boolean,
+    rotation: Option[ApiSubscriptionRotation],
+    validUntil: Option[DateTime],
+    customMaxPerSecond: Option[Long],
+    customMaxPerDay: Option[Long],
+    customMaxPerMonth: Option[Long],
+    customReadOnly: Option[Boolean]
+)
 object SubscriptionForSync {
   def readFromJson(json: JsValue): SubscriptionForSync = SubscriptionForSync(
     apiKey = (json \ "apiKey").as(using OtoroshiApiKeyFormat),
@@ -116,39 +140,46 @@ object SubscriptionForSync {
 }
 
 case class PlanForSync(
-                        id: UsagePlanId,
-                        customName: String,
-                        otoroshiTarget: Option[OtoroshiTarget],
-                        maxPerSecond: Option[Long],
-                        maxPerDay: Option[Long],
-                        maxPerMonth: Option[Long],
-                        autoRotation: Option[Boolean],
-                        metadata: Map[String, String]
-                      )
+    id: UsagePlanId,
+    customName: String,
+    otoroshiTarget: Option[OtoroshiTarget],
+    maxPerSecond: Option[Long],
+    maxPerDay: Option[Long],
+    maxPerMonth: Option[Long],
+    autoRotation: Option[Boolean],
+    metadata: Map[String, String]
+)
 object PlanForSync {
   def readFromJson(json: JsValue): PlanForSync = PlanForSync(
     id = UsagePlanId((json \ "_id").as[String]),
     customName = (json \ "customName").asOpt[String].getOrElse(""),
-    otoroshiTarget = (json \ "otoroshiTarget").asOpt(using OtoroshiTargetFormat),
+    otoroshiTarget =
+      (json \ "otoroshiTarget").asOpt(using OtoroshiTargetFormat),
     maxPerSecond = (json \ "maxPerSecond").asOpt[Long],
     maxPerDay = (json \ "maxPerDay").asOpt[Long],
     maxPerMonth = (json \ "maxPerMonth").asOpt[Long],
     autoRotation = (json \ "autoRotation").asOpt[Boolean],
-    metadata = (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
+    metadata =
+      (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
   )
 }
 
-case class Child(subscription: SubscriptionForSync, api: ApiForSync, user: UserForSync, plan: PlanForSync) {
+case class Child(
+    subscription: SubscriptionForSync,
+    api: ApiForSync,
+    user: UserForSync,
+    plan: PlanForSync
+) {
 
   private def metadataObjectToMap(
-                                   obj: Map[String, JsValue]
-                                 ): Map[String, String] = {
+      obj: Map[String, JsValue]
+  ): Map[String, String] = {
     obj.map {
-      case (k, JsString(v)) => k -> v
+      case (k, JsString(v))  => k -> v
       case (k, JsBoolean(v)) => k -> v.toString
-      case (k, JsNumber(v)) => k -> v.toString
-      case (k, JsNull) => k -> ""
-      case (k, v) => k -> Json.stringify(v)
+      case (k, JsNumber(v))  => k -> v.toString
+      case (k, JsNull)       => k -> ""
+      case (k, v)            => k -> Json.stringify(v)
     }
   }
 
@@ -202,8 +233,8 @@ case class Child(subscription: SubscriptionForSync, api: ApiForSync, user: UserF
     )
 
     val newMetaFromDk =
-      (planMeta ++ customMetaFromSub ++ metadataFromSub).map {
-        case (a, b) => a -> OtoroshiTarget.processValue(b, getContext(team, tenant))
+      (planMeta ++ customMetaFromSub ++ metadataFromSub).map { case (a, b) =>
+        a -> OtoroshiTarget.processValue(b, getContext(team, tenant))
       }
 
     newMetaFromDk
@@ -211,7 +242,8 @@ case class Child(subscription: SubscriptionForSync, api: ApiForSync, user: UserF
 
   def asOtoroshiApikey(team: Team, tenant: Tenant): ActualOtoroshiApiKey = {
     val maybeTarget: Option[OtoroshiTarget] = plan.otoroshiTarget
-    val maybeCustomization: Option[ApikeyCustomization] = maybeTarget.map(_.apikeyCustomization)
+    val maybeCustomization: Option[ApikeyCustomization] =
+      maybeTarget.map(_.apikeyCustomization)
     val meta = computeMetadata(team, tenant)
     val tags = computeTags(team, tenant)
 
@@ -219,54 +251,71 @@ case class Child(subscription: SubscriptionForSync, api: ApiForSync, user: UserF
       clientId = subscription.apiKey.clientId,
       clientSecret = subscription.apiKey.clientSecret,
       clientName = subscription.apiKey.clientName,
-      authorizedEntities = maybeTarget.flatMap(t => t.authorizedEntities).getOrElse(AuthorizedEntities()),
+      authorizedEntities = maybeTarget
+        .flatMap(t => t.authorizedEntities)
+        .getOrElse(AuthorizedEntities()),
       enabled = subscription.enabled,
       allowClientIdOnly = maybeCustomization.exists(_.clientIdOnly),
-      readOnly = subscription.customReadOnly.getOrElse(maybeCustomization.exists(_.readOnly)),
-      constrainedServicesOnly = maybeCustomization.exists(_.constrainedServicesOnly),
-      throttlingQuota = subscription.customMaxPerSecond.orElse(plan.maxPerSecond).getOrElse(RemainingQuotas.MaxValue),
-      dailyQuota = subscription.customMaxPerDay.orElse(plan.maxPerDay).getOrElse(RemainingQuotas.MaxValue),
-      monthlyQuota = subscription.customMaxPerMonth.orElse(plan.maxPerMonth).getOrElse(RemainingQuotas.MaxValue),
+      readOnly = subscription.customReadOnly.getOrElse(
+        maybeCustomization.exists(_.readOnly)
+      ),
+      constrainedServicesOnly =
+        maybeCustomization.exists(_.constrainedServicesOnly),
+      throttlingQuota = subscription.customMaxPerSecond
+        .orElse(plan.maxPerSecond)
+        .getOrElse(RemainingQuotas.MaxValue),
+      dailyQuota = subscription.customMaxPerDay
+        .orElse(plan.maxPerDay)
+        .getOrElse(RemainingQuotas.MaxValue),
+      monthlyQuota = subscription.customMaxPerMonth
+        .orElse(plan.maxPerMonth)
+        .getOrElse(RemainingQuotas.MaxValue),
       tags = tags,
       metadata = meta ++ Map(
         "daikoku__metadata" -> meta.keys.mkString(" | "),
         "daikoku__tags" -> tags.mkString(" | ")
       ),
-      restrictions = maybeCustomization.map(_.restrictions).getOrElse(ApiKeyRestrictions()),
-      rotation = subscription.rotation.map(r =>
+      restrictions =
+        maybeCustomization.map(_.restrictions).getOrElse(ApiKeyRestrictions()),
+      rotation = subscription.rotation
+        .map(r =>
           ApiKeyRotation(
             enabled = r.enabled || plan.autoRotation.exists(e => e),
             rotationEvery = r.rotationEvery,
             gracePeriod = r.gracePeriod
-          ))
-        .orElse(plan.autoRotation.map(enabled => ApiKeyRotation(enabled = enabled))),
-      validUntil = subscription.validUntil.map(_.getMillis),
+          )
+        )
+        .orElse(
+          plan.autoRotation.map(enabled => ApiKeyRotation(enabled = enabled))
+        ),
+      validUntil = subscription.validUntil.map(_.getMillis)
     )
   }
 }
 object Child {
   def readFromJson(json: JsValue): Child = {
     Child(
-      subscription = SubscriptionForSync.readFromJson((json \ "subscription").as[JsObject]),
+      subscription =
+        SubscriptionForSync.readFromJson((json \ "subscription").as[JsObject]),
       api = ApiForSync.readFromJson((json \ "api").as[JsObject]),
       user = UserForSync.readFromJson((json \ "user").as[JsObject]),
-      plan = PlanForSync.readFromJson((json \ "plan").as[JsObject]),
+      plan = PlanForSync.readFromJson((json \ "plan").as[JsObject])
     )
   }
 }
 
 case class SyncInformation(
-                            parent: SyncApiSubscriptionContext,
-                            childs: Seq[SyncApiSubscriptionContext],
-                            team: Team,
-                            apk: ActualOtoroshiApiKey,
-                            otoroshiSettings: OtoroshiSettings,
-                            tenant: Tenant,
-                            tenantAdminTeam: Team
-                          )
+    parent: SyncApiSubscriptionContext,
+    childs: Seq[SyncApiSubscriptionContext],
+    team: Team,
+    apk: ActualOtoroshiApiKey,
+    otoroshiSettings: OtoroshiSettings,
+    tenant: Tenant,
+    tenantAdminTeam: Team
+)
 
 class OtoroshiSynchronizerJob(
-                           client: OtoroshiClient,
+    client: OtoroshiClient,
     env: Env,
     translator: Translator,
     messagesApi: MessagesApi
@@ -283,9 +332,9 @@ class OtoroshiSynchronizerJob(
   implicit val tr: Translator = translator
 
   def getListFromMeta(
-                       key: String,
-                       metadata: Map[String, String]
-                     ): Set[String] = {
+      key: String,
+      metadata: Map[String, String]
+  ): Set[String] = {
     metadata
       .get(key)
       .map(_.split('|').toSeq.map(_.trim).toSet)
@@ -293,31 +342,30 @@ class OtoroshiSynchronizerJob(
   }
 
   def mergeMetaValue(
-                      key: String,
-                      meta1: Map[String, String],
-                      meta2: Map[String, String]
-                    ): String = {
+      key: String,
+      meta1: Map[String, String],
+      meta2: Map[String, String]
+  ): String = {
     val list1 = getListFromMeta(key, meta1)
     val list2 = getListFromMeta(key, meta2)
     (list1 ++ list2).mkString(" | ")
   }
 
   case class ComputedInformation(
-                                  parent: ApiSubscription,
-                                  childs: Seq[ApiSubscription],
-                                  apk: ActualOtoroshiApiKey,
-                                  computedApk: ActualOtoroshiApiKey,
-                                  otoroshiSettings: OtoroshiSettings,
-                                  tenant: Tenant,
-                                  tenantAdminTeam: Team
-                                )
+      parent: ApiSubscription,
+      childs: Seq[ApiSubscription],
+      apk: ActualOtoroshiApiKey,
+      computedApk: ActualOtoroshiApiKey,
+      otoroshiSettings: OtoroshiSettings,
+      tenant: Tenant,
+      tenantAdminTeam: Team
+  )
 
   def start(): Unit = {
-    val syncAvalaible = env.config.otoroshiSyncByCron && env.config.otoroshiSyncMaster
+    val syncAvalaible =
+      env.config.otoroshiSyncByCron && env.config.otoroshiSyncMaster
 
-    if (
-      syncAvalaible && ref.get() == null
-    ) {
+    if (syncAvalaible && ref.get() == null) {
       env.config.otoroshiSyncSchedulingMode match {
         case SchedulingMode.Cron =>
           val cronExpr = env.config.otoroshiSyncCronExpr.map(Cron.unsafeParse)
@@ -326,10 +374,13 @@ class OtoroshiSynchronizerJob(
             val now = DateTime.now()
             cronExpr.flatMap(_.next[DateTime](now)) match {
               case Some(nextRun) =>
-                val delayMillis = Math.max(nextRun.getMillis - now.getMillis, 1000)
+                val delayMillis =
+                  Math.max(nextRun.getMillis - now.getMillis, 1000)
                 val delay = delayMillis.millis
 
-                logger.info(s"[OtoroshiSync] next cron run scheduled at $nextRun (in ${delay.toSeconds}s)")
+                logger.info(
+                  s"[OtoroshiSync] next cron run scheduled at $nextRun (in ${delay.toSeconds}s)"
+                )
 
                 ref.set(
                   env.defaultActorSystem.scheduler.scheduleOnce(delay) {
@@ -338,7 +389,9 @@ class OtoroshiSynchronizerJob(
                       .findAllNotDeleted()
                       .flatMap(tenants =>
                         Future.sequence(
-                          tenants.map(tenant => run(SyncAllSubscription(), tenant))
+                          tenants.map(tenant =>
+                            run(SyncAllSubscription(), tenant)
+                          )
                         )
                       )
                       .map(_ => ())
@@ -353,7 +406,9 @@ class OtoroshiSynchronizerJob(
                 )
 
               case None =>
-                logger.error(s"[OtoroshiSync] could not compute next run from cron expression: ${env.config.otoroshiSyncCronExpr.getOrElse("")}")
+                logger.error(
+                  s"[OtoroshiSync] could not compute next run from cron expression: ${env.config.otoroshiSyncCronExpr.getOrElse("")}"
+                )
             }
           }
 
@@ -362,7 +417,10 @@ class OtoroshiSynchronizerJob(
         case SchedulingMode.Interval =>
           ref.set(
             env.defaultActorSystem.scheduler
-              .scheduleAtFixedRate(10.seconds, env.config.otoroshiSyncInterval) { () =>
+              .scheduleAtFixedRate(
+                10.seconds,
+                env.config.otoroshiSyncInterval
+              ) { () =>
                 env.dataStore.tenantRepo
                   .findAllNotDeleted()
                   .flatMap(tenants =>
@@ -383,7 +441,6 @@ class OtoroshiSynchronizerJob(
   def stop(): Unit = {
     Option(ref.get()).foreach(_.cancel())
   }
-
 
   private def subscriptionFields(alias: String) =
     s"""json_build_object(
@@ -429,16 +486,27 @@ class OtoroshiSynchronizerJob(
        |  'metadata', $alias.content -> 'metadata'
        |)""".stripMargin
 
-  private def getOtoroshiTarget(tenant: Tenant, usagePlan: PlanForSync): Option[OtoroshiSettings] = {
+  private def getOtoroshiTarget(
+      tenant: Tenant,
+      usagePlan: PlanForSync
+  ): Option[OtoroshiSettings] = {
     usagePlan.otoroshiTarget
-      .flatMap(target => tenant.otoroshiSettings.find(s => s.id == target.otoroshiSettings))
+      .flatMap(target =>
+        tenant.otoroshiSettings.find(s => s.id == target.otoroshiSettings)
+      )
   }
 
-  private def mergeOtoroshiApikeys(oldApiKey: ActualOtoroshiApiKey, newApikey: ActualOtoroshiApiKey, forceNewValue: Boolean = false): ActualOtoroshiApiKey = {
+  private def mergeOtoroshiApikeys(
+      oldApiKey: ActualOtoroshiApiKey,
+      newApikey: ActualOtoroshiApiKey,
+      forceNewValue: Boolean = false
+  ): ActualOtoroshiApiKey = {
     oldApiKey.copy(
       enabled = true,
-      validUntil = List(oldApiKey.validUntil, newApikey.validUntil).flatten.minOption,
-      tags = if (forceNewValue) newApikey.tags else oldApiKey.tags ++ newApikey.tags,
+      validUntil =
+        List(oldApiKey.validUntil, newApikey.validUntil).flatten.minOption,
+      tags =
+        if (forceNewValue) newApikey.tags else oldApiKey.tags ++ newApikey.tags,
       metadata = oldApiKey.metadata ++
         newApikey.metadata ++
         Map(
@@ -465,42 +533,66 @@ class OtoroshiSynchronizerJob(
         notFound =
           oldApiKey.restrictions.notFound ++ newApikey.restrictions.notFound
       ),
-      authorizedEntities = if (forceNewValue)
-        // forceNewValue = on applique le résultat de mergeAggregation (état désiré calculé depuis zéro)
-        // → on remplace, pas d'union avec le stale Otoroshi state
-        newApikey.authorizedEntities
-      else
-        // Fusion inter-subscriptions dans mergeAggregation : on union les entités de chaque child
-        AuthorizedEntities(
-          groups =
-            oldApiKey.authorizedEntities.groups | newApikey.authorizedEntities.groups,
-          services =
-            oldApiKey.authorizedEntities.services | newApikey.authorizedEntities.services,
-          routes =
-            oldApiKey.authorizedEntities.routes | newApikey.authorizedEntities.routes
-        ),
-      throttlingQuota = if (forceNewValue) newApikey.throttlingQuota else math.min(oldApiKey.throttlingQuota, newApikey.throttlingQuota),
-      dailyQuota = if (forceNewValue) newApikey.dailyQuota else math.min(oldApiKey.dailyQuota, newApikey.dailyQuota),
-      monthlyQuota = if (forceNewValue) newApikey.monthlyQuota else math.min(oldApiKey.monthlyQuota, newApikey.monthlyQuota),
-      readOnly = if (forceNewValue) newApikey.readOnly else oldApiKey.readOnly && newApikey.readOnly,
-      allowClientIdOnly = if (forceNewValue) newApikey.allowClientIdOnly else oldApiKey.allowClientIdOnly && newApikey.allowClientIdOnly
+      authorizedEntities =
+        if (forceNewValue)
+          // forceNewValue = on applique le résultat de mergeAggregation (état désiré calculé depuis zéro)
+          // → on remplace, pas d'union avec le stale Otoroshi state
+          newApikey.authorizedEntities
+        else
+          // Fusion inter-subscriptions dans mergeAggregation : on union les entités de chaque child
+          AuthorizedEntities(
+            groups =
+              oldApiKey.authorizedEntities.groups | newApikey.authorizedEntities.groups,
+            services =
+              oldApiKey.authorizedEntities.services | newApikey.authorizedEntities.services,
+            routes =
+              oldApiKey.authorizedEntities.routes | newApikey.authorizedEntities.routes
+          ),
+      throttlingQuota =
+        if (forceNewValue) newApikey.throttlingQuota
+        else math.min(oldApiKey.throttlingQuota, newApikey.throttlingQuota),
+      dailyQuota =
+        if (forceNewValue) newApikey.dailyQuota
+        else math.min(oldApiKey.dailyQuota, newApikey.dailyQuota),
+      monthlyQuota =
+        if (forceNewValue) newApikey.monthlyQuota
+        else math.min(oldApiKey.monthlyQuota, newApikey.monthlyQuota),
+      readOnly =
+        if (forceNewValue) newApikey.readOnly
+        else oldApiKey.readOnly && newApikey.readOnly,
+      allowClientIdOnly =
+        if (forceNewValue) newApikey.allowClientIdOnly
+        else oldApiKey.allowClientIdOnly && newApikey.allowClientIdOnly
     )
   }
 
-  private def mergeAggregation(parent: Child, children: Seq[Child], team: Team, tenant: Tenant): Option[ActualOtoroshiApiKey] = {
+  private def mergeAggregation(
+      parent: Child,
+      children: Seq[Child],
+      team: Team,
+      tenant: Tenant
+  ): Option[ActualOtoroshiApiKey] = {
     if (parent.subscription.enabled)
       children
-        .foldLeft(parent.asOtoroshiApikey(team, tenant)) {
-          case (acc, item) => mergeOtoroshiApikeys(acc, item.asOtoroshiApikey(team, tenant))
+        .foldLeft(parent.asOtoroshiApikey(team, tenant)) { case (acc, item) =>
+          mergeOtoroshiApikeys(acc, item.asOtoroshiApikey(team, tenant))
         }
         .some
     else
       None
   }
 
-  private def clearApikey(apikey: ActualOtoroshiApiKey): ActualOtoroshiApiKey = {
-    val metadata = apikey.metadata.get("daikoku__metadata").map(_.split("\\|").map(_.trim).toSeq).getOrElse(Seq.empty)
-    val tags = apikey.metadata.get("daikoku__tags").map(_.split("\\|").map(_.trim).toSeq).getOrElse(Seq.empty)
+  private def clearApikey(
+      apikey: ActualOtoroshiApiKey
+  ): ActualOtoroshiApiKey = {
+    val metadata = apikey.metadata
+      .get("daikoku__metadata")
+      .map(_.split("\\|").map(_.trim).toSeq)
+      .getOrElse(Seq.empty)
+    val tags = apikey.metadata
+      .get("daikoku__tags")
+      .map(_.split("\\|").map(_.trim).toSeq)
+      .getOrElse(Seq.empty)
 
     apikey.copy(
       metadata = apikey.metadata.removedAll(metadata),
@@ -508,46 +600,63 @@ class OtoroshiSynchronizerJob(
     )
   }
 
-  private def isEqual(apikey: ActualOtoroshiApiKey, apikeyFromSubscriptions: ActualOtoroshiApiKey): Boolean = {
-    val daikokuMetaKeys = apikeyFromSubscriptions.metadata.getOrElse("daikoku__metadata", "").split("\\|").map(_.trim).filter(_.nonEmpty).toSet
+  private def isEqual(
+      apikey: ActualOtoroshiApiKey,
+      apikeyFromSubscriptions: ActualOtoroshiApiKey
+  ): Boolean = {
+    val daikokuMetaKeys = apikeyFromSubscriptions.metadata
+      .getOrElse("daikoku__metadata", "")
+      .split("\\|")
+      .map(_.trim)
+      .filter(_.nonEmpty)
+      .toSet
     val metadataIsEqual = daikokuMetaKeys.forall(k =>
       apikey.metadata.get(k) == apikeyFromSubscriptions.metadata.get(k)
-    ) && apikey.metadata.getOrElse("daikoku__metadata", "") == apikeyFromSubscriptions.metadata.getOrElse("daikoku__metadata", "")
+    ) && apikey.metadata.getOrElse(
+      "daikoku__metadata",
+      ""
+    ) == apikeyFromSubscriptions.metadata.getOrElse("daikoku__metadata", "")
 
     val tagsIsEqual = apikey.tags == apikeyFromSubscriptions.tags
 
-    val restrictionsIsEqual = apikey.restrictions == apikeyFromSubscriptions.restrictions
+    val restrictionsIsEqual =
+      apikey.restrictions == apikeyFromSubscriptions.restrictions
 
     val rotationIsEqual = apikey.rotation == apikeyFromSubscriptions.rotation
 
-    val throttlingQuotaIsEqual = apikey.throttlingQuota == apikeyFromSubscriptions.throttlingQuota
-    val dailyQuotaIsEqual = apikey.dailyQuota == apikeyFromSubscriptions.dailyQuota
-    val monthlyQuotaIsEqual = apikey.monthlyQuota == apikeyFromSubscriptions.monthlyQuota
+    val throttlingQuotaIsEqual =
+      apikey.throttlingQuota == apikeyFromSubscriptions.throttlingQuota
+    val dailyQuotaIsEqual =
+      apikey.dailyQuota == apikeyFromSubscriptions.dailyQuota
+    val monthlyQuotaIsEqual =
+      apikey.monthlyQuota == apikeyFromSubscriptions.monthlyQuota
 
-    val authorizedEntitiesIsEqual = apikey.authorizedEntities == apikeyFromSubscriptions.authorizedEntities
+    val authorizedEntitiesIsEqual =
+      apikey.authorizedEntities == apikeyFromSubscriptions.authorizedEntities
 
     val readOnlyIsEqual = apikey.readOnly == apikeyFromSubscriptions.readOnly
-    val allowClientIdOnlyIsEqual = apikey.allowClientIdOnly == apikeyFromSubscriptions.allowClientIdOnly
+    val allowClientIdOnlyIsEqual =
+      apikey.allowClientIdOnly == apikeyFromSubscriptions.allowClientIdOnly
 
     metadataIsEqual &&
-      tagsIsEqual &&
-      restrictionsIsEqual &&
-      rotationIsEqual &&
-      dailyQuotaIsEqual &&
-      monthlyQuotaIsEqual &&
-      authorizedEntitiesIsEqual &&
-      readOnlyIsEqual &&
-      allowClientIdOnlyIsEqual
+    tagsIsEqual &&
+    restrictionsIsEqual &&
+    rotationIsEqual &&
+    dailyQuotaIsEqual &&
+    monthlyQuotaIsEqual &&
+    authorizedEntitiesIsEqual &&
+    readOnlyIsEqual &&
+    allowClientIdOnlyIsEqual
   }
 
-
   private def synchronizeApikeys(
-                                        entity: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(),
-                                        tenant: Tenant,
-                                        parallelism: Int = 25,
-                                        saveCursor: Long => Future[Boolean],
-                                        maybeLastCursor: Option[Long]
-                                      ): Future[Unit] = {
+      entity: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription =
+        SyncAllSubscription(),
+      tenant: Tenant,
+      parallelism: Int = 25,
+      saveCursor: Long => Future[Boolean],
+      maybeLastCursor: Option[Long]
+  ): Future[Unit] = {
 
     val predicate: String = entity match {
       case apiId: ApiId =>
@@ -584,7 +693,13 @@ class OtoroshiSynchronizerJob(
          |        teams.content AS team
          |FROM (
          |    SELECT s._id as parent_id, s.content ->> 'team' as team_id, s.content ->> 'createdAt' as created_at,
-         |           (${subscriptionFields("s")})::jsonb as subscription, (${userFields("users")})::jsonb as "user", (${planFields("usage_plans")})::jsonb as plan, (${apiFields("apis")})::jsonb as api
+         |           (${subscriptionFields(
+          "s"
+        )})::jsonb as subscription, (${userFields(
+          "users"
+        )})::jsonb as "user", (${planFields(
+          "usage_plans"
+        )})::jsonb as plan, (${apiFields("apis")})::jsonb as api
          |    FROM api_subscriptions s
          |    INNER JOIN apis ON apis._id = s.content ->> 'api'
          |    INNER JOIN users ON users._id = s.content ->> 'by'
@@ -607,17 +722,24 @@ class OtoroshiSynchronizerJob(
     val skipped = new java.util.concurrent.atomic.AtomicLong(0)
     val errored = new java.util.concurrent.atomic.AtomicLong(0)
 
-    val lastCursor = new java.util.concurrent.atomic.AtomicLong(maybeLastCursor.getOrElse(0L))
+    val lastCursor =
+      new java.util.concurrent.atomic.AtomicLong(maybeLastCursor.getOrElse(0L))
 
     val startTime = System.nanoTime()
 
-    logger.debug(s"Starting fullyStreamedSync for tenant ${tenant.id.value} with parallelism=$parallelism, cursor=${maybeLastCursor.getOrElse(0L)}")
+    logger.debug(
+      s"Starting fullyStreamedSync for tenant ${tenant.id.value} with parallelism=$parallelism, cursor=${maybeLastCursor.getOrElse(0L)}"
+    )
 
     env.dataStore
       .asInstanceOf[PostgresDataStore]
       .queryRawMappedStream(
         findAllSubscriptionsFromEntityStreamSql,
-        Seq(Col("parent", ColJson), Col("children", ColJsonArray), Col("team", ColJson)),
+        Seq(
+          Col("parent", ColJson),
+          Col("children", ColJsonArray),
+          Col("team", ColJson)
+        )
       )
       .mapAsync(parallelism) { row =>
         val parent = Child.readFromJson((row \ "parent").as[JsObject])
@@ -627,40 +749,64 @@ class OtoroshiSynchronizerJob(
           .getOrElse(Seq.empty)
         val team = (row \ "team").as(using TeamFormat)
         // createdAt est inclus dans subscriptionFields, accessible via parent > subscription
-        val createdAt = (row \ "parent" \ "subscription" \ "createdAt").asOpt[Long].getOrElse(0L)
+        val createdAt = (row \ "parent" \ "subscription" \ "createdAt")
+          .asOpt[Long]
+          .getOrElse(0L)
 
         (for {
           otoroshiSettings <- EitherT.fromOption[Future](
-            getOtoroshiTarget(tenant, parent.plan), AppError.EntityNotFound("otoroshi target"))
-          apikey <- EitherT(client.getApikey(parent.subscription.apiKey.clientId)(using otoroshiSettings))
+            getOtoroshiTarget(tenant, parent.plan),
+            AppError.EntityNotFound("otoroshi target")
+          )
+          apikey <- EitherT(
+            client.getApikey(parent.subscription.apiKey.clientId)(using
+              otoroshiSettings
+            )
+          )
           apk <- mergeAggregation(parent, children, team, tenant) match {
             case Some(apikeyFromSubscriptions) =>
               val equals = isEqual(apikey, apikeyFromSubscriptions)
               if (!equals) {
                 val cleanApikey = clearApikey(apikey)
-                val computedKey = mergeOtoroshiApikeys(cleanApikey, apikeyFromSubscriptions, forceNewValue = true)
-                logger.debug(s"Updating apikey ${parent.subscription.apiKey.clientId} (${children.size} children)")
-                EitherT(client.updateApiKey(key = computedKey)(using otoroshiSettings))
+                val computedKey = mergeOtoroshiApikeys(
+                  cleanApikey,
+                  apikeyFromSubscriptions,
+                  forceNewValue = true
+                )
+                logger.debug(
+                  s"Updating apikey ${parent.subscription.apiKey.clientId} (${children.size} children)"
+                )
+                EitherT(
+                  client.updateApiKey(key = computedKey)(using otoroshiSettings)
+                )
               } else {
                 EitherT.pure[Future, AppError](apikey)
               }
             case None =>
               // parent subscription is disabled — disable the key in Otoroshi if not already
               if (apikey.enabled) {
-                logger.debug(s"Disabling apikey ${parent.subscription.apiKey.clientId} in Otoroshi (subscription disabled in Daikoku)")
-                EitherT(client.updateApiKey(key = apikey.copy(enabled = false))(using otoroshiSettings))
+                logger.debug(
+                  s"Disabling apikey ${parent.subscription.apiKey.clientId} in Otoroshi (subscription disabled in Daikoku)"
+                )
+                EitherT(
+                  client.updateApiKey(key = apikey.copy(enabled = false))(using
+                    otoroshiSettings
+                  )
+                )
               } else {
                 EitherT.pure[Future, AppError](apikey)
               }
           }
         } yield apk).value
-          .recover {
-            case e => Left(AppError.InternalServerError(e.getMessage))
+          .recover { case e =>
+            Left(AppError.InternalServerError(e.getMessage))
           }
           .map {
             case Left(error) =>
               errored.incrementAndGet()
-              logger.error(s"Error synchronizing apikey ${parent.subscription.apiKey.clientId}: ${error.getErrorMessage()}")
+              logger.error(
+                s"Error synchronizing apikey ${parent.subscription.apiKey.clientId}: ${error.getErrorMessage()}"
+              )
             case Right(_) =>
               synced.incrementAndGet()
           }
@@ -674,85 +820,133 @@ class OtoroshiSynchronizerJob(
         if (count % 100 == 0) {
           val elapsed = (System.nanoTime() - startTime) / 1000000000.0
           val rate = count / elapsed
-          logger.debug(f"Progress: $count processed ($synced synced, $skipped skipped, $errored errors) — $rate%.1f/s")
-          saveCursor(lastCursor.get()).recover {
-            case e => logger.warn(s"[OtoroshiSync] Failed to save cursor at $createdAt: ${e.getMessage}")
+          logger.debug(
+            f"Progress: $count processed ($synced synced, $skipped skipped, $errored errors) — $rate%.1f/s"
+          )
+          saveCursor(lastCursor.get()).recover { case e =>
+            logger.warn(
+              s"[OtoroshiSync] Failed to save cursor at $createdAt: ${e.getMessage}"
+            )
           }
         }
       }
       .runWith(Sink.ignore)
       .map { _ =>
         val elapsed = (System.nanoTime() - startTime) / 1000000000.0
-        logger.debug(f"Sync completed in $elapsed%.1fs — ${processed.get()} processed, ${synced.get()} synced, ${skipped.get()} skipped, ${errored.get()} errors")
+        logger.debug(
+          f"Sync completed in $elapsed%.1fs — ${processed.get()} processed, ${synced.get()} synced, ${skipped.get()} skipped, ${errored.get()} errors"
+        )
       }
-      .recover {
-        case e =>
-          val elapsed = (System.nanoTime() - startTime) / 1000000000.0
-          logger.error(f"Sync stream failed after $elapsed%.1fs — ${processed.get()} processed, ${errored.get()} errors", e)
+      .recover { case e =>
+        val elapsed = (System.nanoTime() - startTime) / 1000000000.0
+        logger.error(
+          f"Sync stream failed after $elapsed%.1fs — ${processed.get()} processed, ${errored.get()} errors",
+          e
+        )
       }
 
   }
 
-    def run(entryPoint: ApiId | UsagePlanId | ApiSubscriptionId | SyncAllSubscription = SyncAllSubscription(), tenant: Tenant, parallelism: Int = 25): Future[Unit] = {
-      logger.info(s"run apikey synchronisation with entry point as $entryPoint")
+  def run(
+      entryPoint: ApiId | UsagePlanId | ApiSubscriptionId |
+        SyncAllSubscription = SyncAllSubscription(),
+      tenant: Tenant,
+      parallelism: Int = 25
+  ): Future[Unit] = {
+    logger.info(s"run apikey synchronisation with entry point as $entryPoint")
 
-      val jobRepo = env.dataStore.JobInformationRepo.forTenant(tenant)
-      val jobId = DatastoreId(s"sync-${IdGenerator.token(16)}")
-      val now = DateTime.now()
+    val jobRepo = env.dataStore.JobInformationRepo.forTenant(tenant)
+    val jobId = DatastoreId(s"sync-${IdGenerator.token(16)}")
+    val now = DateTime.now()
 
-      val jobInfo = JobInformation(
-        id = jobId,
-        tenant = tenant.id,
-        jobName = JobName.ApiKeySynchronization,
-        lockedBy = "otoroshi-verifier-job",
-        lockedAt = now,
-        expiresAt = now.plusMinutes(5),
-        cursor = 0L,
-        startedAt = now,
-        lastBatchAt = now,
-        status = JobStatus.Running
+    val jobInfo = JobInformation(
+      id = jobId,
+      tenant = tenant.id,
+      jobName = JobName.ApiKeySynchronization,
+      lockedBy = "otoroshi-verifier-job",
+      lockedAt = now,
+      expiresAt = now.plusMinutes(5),
+      cursor = 0L,
+      startedAt = now,
+      lastBatchAt = now,
+      status = JobStatus.Running
+    )
+
+    // expiresAt est rafraîchi à chaque appel pour servir de heartbeat :
+    // si Daikoku crash, expiresAt ne sera plus mis à jour et le job sera considéré comme stale
+    def saveCursor(cursor: Long) = jobRepo.save(
+      jobInfo.copy(cursor = cursor, expiresAt = DateTime.now().plusMinutes(5))
+    )
+
+    def doRun(maybeLastCursor: Option[Long] = None): Future[Unit] =
+      synchronizeApikeys(
+        entryPoint,
+        tenant,
+        parallelism,
+        saveCursor,
+        maybeLastCursor
       )
+        .flatMap { _ =>
+          logger.info("[OtoroshiSync] Sync ended")
+          jobRepo
+            .save(
+              jobInfo.copy(
+                status = JobStatus.Completed,
+                lastBatchAt = DateTime.now()
+              )
+            )
+            .map(_ => ())
+        }
+        .recoverWith { case e =>
+          logger.error(s"[OtoroshiSync] Sync failed: ${e.getMessage}", e)
+          jobRepo
+            .save(
+              jobInfo
+                .copy(status = JobStatus.Failed, lastBatchAt = DateTime.now())
+            )
+            .map(_ => ())
+        }
 
-      // expiresAt est rafraîchi à chaque appel pour servir de heartbeat :
-      // si Daikoku crash, expiresAt ne sera plus mis à jour et le job sera considéré comme stale
-      def saveCursor(cursor: Long) = jobRepo.save(jobInfo.copy(cursor = cursor, expiresAt = DateTime.now().plusMinutes(5)))
+    // FIXME: remove the timer after dev
+    Time.concurrentTime(
+      jobRepo
+        .find(
+          Json.obj("jobName" -> JobName.ApiKeySynchronization.value),
+          sort = Some(Json.obj("startedAt" -> -1)),
+          maxDocs = 1
+        )
+        .map(_.headOption)
+        .flatMap {
+          case Some(lastJob)
+              if lastJob.status == JobStatus.Running && lastJob.expiresAt.isAfterNow =>
+            logger.info(
+              "[OtoroshiSync] can't run another ApiKeySynchronization, already one is running"
+            )
+            Future.successful(())
 
-      def doRun(maybeLastCursor: Option[Long] = None): Future[Unit] =
-        synchronizeApikeys(entryPoint, tenant, parallelism, saveCursor, maybeLastCursor)
-          .flatMap { _ =>
-            logger.info("[OtoroshiSync] Sync ended")
-            jobRepo.save(jobInfo.copy(status = JobStatus.Completed, lastBatchAt = DateTime.now())).map(_ => ())
-          }
-          .recoverWith { case e =>
-            logger.error(s"[OtoroshiSync] Sync failed: ${e.getMessage}", e)
-            jobRepo.save(jobInfo.copy(status = JobStatus.Failed, lastBatchAt = DateTime.now())).map(_ => ())
-          }
+          case Some(lastJob)
+              if lastJob.status == JobStatus.Running && lastJob.expiresAt.isBeforeNow =>
+            logger.info(
+              s"[OtoroshiSync] Stale running job detected (expiresAt=${lastJob.expiresAt}), marking as Failed and resuming from cursor ${lastJob.cursor}"
+            )
+            jobRepo
+              .save(lastJob.copy(status = JobStatus.Failed))
+              .flatMap(_ => jobRepo.save(jobInfo.copy(cursor = lastJob.cursor)))
+              .flatMap(_ => doRun(Some(lastJob.cursor)))
 
-      //FIXME: remove the timer after dev
-      Time.concurrentTime(
-        jobRepo
-          .find(Json.obj("jobName" -> JobName.ApiKeySynchronization.value), sort = Some(Json.obj("startedAt" -> -1)), maxDocs = 1)
-          .map(_.headOption)
-          .flatMap {
-            case Some(lastJob) if lastJob.status == JobStatus.Running && lastJob.expiresAt.isAfterNow =>
-              logger.info("[OtoroshiSync] can't run another ApiKeySynchronization, already one is running")
-              Future.successful(())
+          case Some(lastJob) if lastJob.status == JobStatus.Failed =>
+            logger.info(
+              s"[OtoroshiSync] Previous job failed, resuming from cursor ${lastJob.cursor}"
+            )
+            jobRepo
+              .save(jobInfo.copy(cursor = lastJob.cursor))
+              .flatMap(_ => doRun(Some(lastJob.cursor)))
 
-            case Some(lastJob) if lastJob.status == JobStatus.Running && lastJob.expiresAt.isBeforeNow =>
-              logger.info(s"[OtoroshiSync] Stale running job detected (expiresAt=${lastJob.expiresAt}), marking as Failed and resuming from cursor ${lastJob.cursor}")
-              jobRepo.save(lastJob.copy(status = JobStatus.Failed))
-                .flatMap(_ => jobRepo.save(jobInfo.copy(cursor = lastJob.cursor)))
-                .flatMap(_ => doRun(Some(lastJob.cursor)))
-
-            case Some(lastJob) if lastJob.status == JobStatus.Failed =>
-              logger.info(s"[OtoroshiSync] Previous job failed, resuming from cursor ${lastJob.cursor}")
-              jobRepo.save(jobInfo.copy(cursor = lastJob.cursor))
-                .flatMap(_ => doRun(Some(lastJob.cursor)))
-
-            case _ =>
-              logger.info("[OtoroshiSync] Starting fresh sync")
-              jobRepo.save(jobInfo).flatMap(_ => doRun())
-          }, "Synchronization run"
-      )
-    }
+          case _ =>
+            logger.info("[OtoroshiSync] Starting fresh sync")
+            jobRepo.save(jobInfo).flatMap(_ => doRun())
+        },
+      "Synchronization run"
+    )
+  }
 }

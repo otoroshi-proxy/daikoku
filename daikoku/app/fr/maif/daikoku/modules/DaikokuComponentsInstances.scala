@@ -6,7 +6,13 @@ import fr.maif.daikoku.actions.*
 import fr.maif.daikoku.controllers.*
 import fr.maif.daikoku.env.{DaikokuEnv, DaikokuMode, Env}
 import fr.maif.daikoku.jobs.*
-import fr.maif.daikoku.services.{AccountCreationService, ApiService, AssetsService, DeletionService, TranslationsService}
+import fr.maif.daikoku.services.{
+  AccountCreationService,
+  ApiService,
+  AssetsService,
+  DeletionService,
+  TranslationsService
+}
 import fr.maif.daikoku.utils.*
 import fr.maif.daikoku.utils.RequestImplicits.EnhancedRequestHeader
 import io.vertx.core.Vertx
@@ -136,7 +142,7 @@ class DaikokuComponentsInstances(context: Context)
 
   private lazy val poolOptions: PoolOptions = new PoolOptions()
     .setMaxSize(configuration.get[Int]("daikoku.postgres.poolSize"))
-  
+
   private lazy val options: PgConnectOptions = {
     val options = new PgConnectOptions()
       .setPort(configuration.get[Int]("daikoku.postgres.port"))
@@ -184,7 +190,7 @@ class DaikokuComponentsInstances(context: Context)
 
       ssl
         .getOptional[Long]("ssl-handshake-timeout")
-        .foreach(timeout =>  clientSSLOptions.setSslHandshakeTimeout(timeout))
+        .foreach(timeout => clientSSLOptions.setSslHandshakeTimeout(timeout))
 
       ssl.getOptional[Seq[String]]("client-certs-path").map { paths =>
         paths.map(p => pemKeyCertOptions.addCertPath(p))
@@ -214,8 +220,8 @@ class DaikokuComponentsInstances(context: Context)
       clientSSLOptions
         .setKeyCertOptions(pemKeyCertOptions)
 
-
-      ssl.getOptional[Boolean]("trust-all")
+      ssl
+        .getOptional[Boolean]("trust-all")
         .foreach(trustAll => clientSSLOptions.setTrustAll(trustAll))
 
       options
@@ -225,7 +231,8 @@ class DaikokuComponentsInstances(context: Context)
   }
   lazy val vertxInstance: io.vertx.core.Vertx = vertx()
 
-  lazy val pgPool: Pool = PgBuilder.pool()
+  lazy val pgPool: Pool = PgBuilder
+    .pool()
     .`with`(poolOptions)
     .connectingTo(options)
     .using(vertxInstance)

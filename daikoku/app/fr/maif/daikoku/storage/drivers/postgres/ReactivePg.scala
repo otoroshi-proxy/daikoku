@@ -2,7 +2,11 @@ package fr.maif.daikoku.storage.drivers.postgres
 
 import io.vertx.sqlclient.{Pool, Row, RowSet}
 import org.apache.pekko.http.scaladsl.util.FastFuture
-import org.apache.pekko.stream.{Materializer, OverflowStrategy, QueueOfferResult}
+import org.apache.pekko.stream.{
+  Materializer,
+  OverflowStrategy,
+  QueueOfferResult
+}
 import org.apache.pekko.stream.scaladsl.Source
 import play.api.libs.json.{JsArray, JsObject, Json}
 import play.api.{Configuration, Logger}
@@ -171,27 +175,33 @@ class ReactivePg(pool: Pool, configuration: Configuration)(implicit
       params: Seq[AnyRef] = Seq.empty,
       fetchSize: Int = 50
   )(f: Row => Option[A])(implicit mat: Materializer): Source[A, ?] = {
-    val (queue, source) = Source.queue[Row](fetchSize * 2, OverflowStrategy.backpressure)
+    val (queue, source) = Source
+      .queue[Row](fetchSize * 2, OverflowStrategy.backpressure)
       .preMaterialize()
 
     pool
       .withTransaction(conn =>
         conn.prepare(sql).compose { ps =>
-          val stream = ps.createStream(fetchSize, io.vertx.sqlclient.Tuple.from(params.toArray))
+          val stream = ps.createStream(
+            fetchSize,
+            io.vertx.sqlclient.Tuple.from(params.toArray)
+          )
           val streamDone = io.vertx.core.Promise.promise[Void]()
           stream.pause()
 
           def feedNext(): Unit = stream.fetch(1)
 
           stream.handler { row =>
-            queue.offer(row).foreach {
-              case QueueOfferResult.Enqueued    => feedNext()
-              case QueueOfferResult.Dropped     => feedNext()
-              case QueueOfferResult.QueueClosed => stream.close()
-              case QueueOfferResult.Failure(e) =>
-                logger.error(s"Queue offer failed: ${e.getMessage}", e)
-                stream.close()
-            }(using ec)
+            queue
+              .offer(row)
+              .foreach {
+                case QueueOfferResult.Enqueued    => feedNext()
+                case QueueOfferResult.Dropped     => feedNext()
+                case QueueOfferResult.QueueClosed => stream.close()
+                case QueueOfferResult.Failure(e) =>
+                  logger.error(s"Queue offer failed: ${e.getMessage}", e)
+                  stream.close()
+              }(using ec)
           }
           stream.endHandler { _ =>
             queue.complete()

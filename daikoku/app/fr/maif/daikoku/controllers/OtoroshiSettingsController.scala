@@ -541,7 +541,9 @@ class OtoroshiSettingsController(
             AppError.EntityNotFound("Otoroshi settings")
           )
           apiKey = createApiKey(clientName, authorizedEntities, tag)
-          createdKey <- EitherT(otoroshiClient.createApiKey(apiKey)(using settings))
+          createdKey <- EitherT(
+            otoroshiClient.createApiKey(apiKey)(using settings)
+          )
         } yield Ok(createdKey.asJson))
           .leftMap(_.render())
           .merge
@@ -567,7 +569,9 @@ class OtoroshiSettingsController(
         ): EitherT[Future, AppError, ActualOtoroshiApiKey] = {
           if (previousSettings != actualSettings) {
             for {
-              _ <- otoroshiClient.deleteApiKey(key.clientId)(using previousSettings)
+              _ <- otoroshiClient.deleteApiKey(key.clientId)(using
+                previousSettings
+              )
               newKey <-
                 EitherT(otoroshiClient.createApiKey(key)(using actualSettings))
             } yield newKey
@@ -607,7 +611,9 @@ class OtoroshiSettingsController(
             AppError.EntityNotFound("Otoroshi settings")
           )
           apiKey <- EitherT(
-            otoroshiClient.getApikey(testingConfig.clientName)(using previousSettings)
+            otoroshiClient.getApikey(testingConfig.clientName)(using
+              previousSettings
+            )
           )
           lastMetadata: Map[String, String] =
             testing.config

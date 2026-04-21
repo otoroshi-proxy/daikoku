@@ -28,11 +28,17 @@ object JobUtils {
   )
 
   def sendErrorNotification(
-                             err: OtoroshiSyncNotificationAction,
-                             teamId: TeamId,
-                             tenantId: TenantId,
-                             otoHost: Option[String] = None
-                           )(implicit env: Env, ec: ExecutionContext, tr: Translator, message: MessagesApi, language: String): Unit = {
+      err: OtoroshiSyncNotificationAction,
+      teamId: TeamId,
+      tenantId: TenantId,
+      otoHost: Option[String] = None
+  )(implicit
+      env: Env,
+      ec: ExecutionContext,
+      tr: Translator,
+      message: MessagesApi,
+      language: String
+  ): Unit = {
     env.dataStore.notificationRepo
       .forTenant(tenantId)
       .save(
@@ -53,7 +59,9 @@ object JobUtils {
           tenant,
           jobUser,
           err match {
-            case NotificationAction.OtoroshiSyncSubscriptionError(subscription, _) => Json.obj(
+            case NotificationAction
+                  .OtoroshiSyncSubscriptionError(subscription, _) =>
+              Json.obj(
                 "subscription" -> subscription.asJson,
                 "team" -> teamId.value,
                 "tenant" -> tenantId.value

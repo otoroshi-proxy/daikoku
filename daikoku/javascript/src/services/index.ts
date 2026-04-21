@@ -22,7 +22,7 @@ import {
   ITranslation,
   IUser,
   IUserSimple,
-  OAuthSettings
+  OAuthSettings,
 } from '../types';
 import {
   IApi,
@@ -43,7 +43,7 @@ import {
   ITestingConfig,
   IUsagePlan,
   ResponseDone,
-  ResponseError
+  ResponseError,
 } from '../types/api';
 import { IChatInfo } from '../types/chat';
 
@@ -59,7 +59,7 @@ const customFetch = <T>(
 ) =>
   fetch(url, { headers, method, body, ...props }).then((r) => {
     if (r.status === 503) {
-      location.href = "/maintenance"
+      location.href = '/maintenance';
     }
     if (r.status === 204 || r.headers.get('content-length') === '0') {
       return null;
@@ -1283,7 +1283,7 @@ export const getCmsPage = (id: string, fields: any) =>
 export const getCmsPageByPath = (path: string): PromiseWithError<string> =>
   fetch(`/cms/pages?path=${encodeURIComponent(path)}`, {
     method: 'GET',
-  }).then((r) => r.ok ? r.text() : r.json());
+  }).then((r) => (r.ok ? r.text() : r.json()));
 
 export const createCmsPage = (id: any, cmsPage: any) =>
   customFetch('/api/cms/pages', {

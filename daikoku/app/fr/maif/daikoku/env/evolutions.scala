@@ -106,7 +106,9 @@ object evolution_102 extends EvolutionScript {
 
           dataStore.apiRepo
             .forAllTenant()
-            .save(Json.obj("_id" -> (goodApi \ "_id").as[String]), goodApi)(using ec)
+            .save(Json.obj("_id" -> (goodApi \ "_id").as[String]), goodApi)(
+              using ec
+            )
         }
         .runWith(Sink.ignore)(using mat)
     }
@@ -612,7 +614,8 @@ object evolution_1612_a extends EvolutionScript {
               .updateManyByQuery(
                 Json.obj(
                   "parent" -> JsNull,
-                  "_id" -> Json.obj("$nin" -> JsArray(parents.map(JsString.apply)))
+                  "_id" -> Json
+                    .obj("$nin" -> JsArray(parents.map(JsString.apply)))
                 ),
                 Json.obj(
                   "$set" -> Json.obj(
@@ -872,7 +875,9 @@ object evolution_1613_b extends EvolutionScript {
           val sender = (value \ "sender")
             .asOpt(using json.UserFormat)
             .map(_.asNotificationSender)
-            .getOrElse((value \ "sender").as(using json.NotificationSenderFormat))
+            .getOrElse(
+              (value \ "sender").as(using json.NotificationSenderFormat)
+            )
           val date = (value \ "date").as(using json.DateTimeFormat)
           val apiId = (action \ "api").as(using json.ApiIdFormat)
           val planId = (action \ "plan").as(using json.UsagePlanIdFormat)
@@ -929,7 +934,8 @@ object evolution_1613_b extends EvolutionScript {
               sender = sender,
               date = date,
               notificationType = NotificationType.AcceptOrReject,
-              status = (value \ "status").as(using json.NotificationStatusFormat),
+              status =
+                (value \ "status").as(using json.NotificationStatusFormat),
               action = NotificationAction.ApiSubscriptionDemand(
                 api = apiId,
                 plan = planId,
@@ -1144,7 +1150,6 @@ object evolution_1750 extends EvolutionScript {
       )
 
       implicit val executionContext: ExecutionContext = ec
-
 
       for {
         tenants <- dataStore.tenantRepo.findAll()
@@ -1451,7 +1456,8 @@ object evolution_1840_a extends EvolutionScript {
                 formatter = (oldAdminStep \ "formatter").asOpt[String]
               )
               // creer le nouveau step d'admin
-              val newAdminStep = oldAdminStep.as(using json.ValidationStepFormat)
+              val newAdminStep =
+                oldAdminStep.as(using json.ValidationStepFormat)
               // save le plan modifié
               val subscriptionProcess = json.SeqValidationStepFormat.reads(
                 JsArray(
@@ -1664,7 +1670,9 @@ object evolution_1840_c extends EvolutionScript {
                   )
                 keyWithBearer <- EitherT(
                   otoroshiClient
-                    .getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
+                    .getApikey(subscription.apiKey.clientId)(using
+                      otoroshiSettings
+                    )
                 ).leftMap[Option[Unit]](_ => None)
                 _ <- EitherT.liftF[Future, Option[Unit], Boolean](
                   dataStore.apiSubscriptionRepo

@@ -327,8 +327,8 @@ class UsersController(
                       else
                         Redirect(
                           ctx.request.session.get("redirect").getOrElse("/")
-                        ).removingFromSession("sessionId", "redirect")(
-                          using ctx.request
+                        ).removingFromSession("sessionId", "redirect")(using
+                          ctx.request
                         ).withSession(("sessionId", sessionId.value))
                     }
                 case None => FastFuture.successful(Redirect("/logout"))

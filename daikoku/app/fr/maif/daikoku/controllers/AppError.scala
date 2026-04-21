@@ -119,9 +119,10 @@ object AppError {
       case SubscriptionAggregationOtoroshiConflict => Conflict(toJson(error))
       case MissingParentSubscription               => NotFound(toJson(error))
       case TranslationNotFound                     => NotFound(toJson(error))
-      case Unauthorized    => play.api.mvc.Results.Unauthorized(toJson(error))
-      case UnauthorizedExplicit(_) => play.api.mvc.Results.Unauthorized(toJson(error))
-      case Forbidden(_)    => play.api.mvc.Results.Forbidden(toJson(error))
+      case Unauthorized => play.api.mvc.Results.Unauthorized(toJson(error))
+      case UnauthorizedExplicit(_) =>
+        play.api.mvc.Results.Unauthorized(toJson(error))
+      case Forbidden(_) => play.api.mvc.Results.Forbidden(toJson(error))
       case ParsingPayloadError(message)      => BadRequest(toJson(error))
       case NameAlreadyExists                 => Conflict(toJson(error))
       case ThirdPartyPaymentSettingsNotFound => NotFound(toJson(error))
@@ -192,11 +193,11 @@ object AppError {
         "The subscribed plan has another otoroshi of the parent plan"
       case MissingParentSubscription =>
         "The parent of this subscription is missing"
-      case TranslationNotFound   => "Translation not found"
-      case Unauthorized          => "You're not authorized here"
+      case TranslationNotFound           => "Translation not found"
+      case Unauthorized                  => "You're not authorized here"
       case UnauthorizedExplicit(message) => message
-      case Forbidden(message)    => message
-      case NameAlreadyExists     => "Resource with same name already exists"
+      case Forbidden(message)            => message
+      case NameAlreadyExists => "Resource with same name already exists"
       case ThirdPartyPaymentSettingsNotFound =>
         "Third-party payment settings not found"
       case SecurityError(s)    => s"Forbidden action due to security : $s"
@@ -208,7 +209,7 @@ object AppError {
         s"User $email is not allowed to access this application"
       case AppErrors(errors) =>
         errors.map(_.getErrorMessage()).mkString("\n")
-        
+
     }
 
   def toJson(error: AppError) = {

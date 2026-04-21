@@ -155,8 +155,10 @@ object Tenant {
       metadata = Map(),
       contentType = contentType,
       body = body,
-      path = s"/customization/$pageId.${if (contentType.contains("css")) "css"
-        else "js"}".some
+      path = s"/customization/$pageId.${
+          if (contentType.contains("css")) "css"
+          else "js"
+        }".some
     )
 
 }

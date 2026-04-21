@@ -24,16 +24,16 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.jdk.CollectionConverters.IterableHasAsScala
 
 sealed trait ColType
-case object ColString       extends ColType
-case object ColUUID         extends ColType
-case object ColInt          extends ColType
-case object ColLong         extends ColType
+case object ColString extends ColType
+case object ColUUID extends ColType
+case object ColInt extends ColType
+case object ColLong extends ColType
 //case object ColDouble       extends ColType
 //case object ColFloat        extends ColType
 //case object ColBigDecimal   extends ColType
-case object ColBoolean      extends ColType
-case object ColJson         extends ColType
-case object ColJsonArray    extends ColType
+case object ColBoolean extends ColType
+case object ColJson extends ColType
+case object ColJsonArray extends ColType
 //case object ColInstant      extends ColType
 //case object ColLocalDate    extends ColType
 //case object ColLocalTime    extends ColType
@@ -44,16 +44,16 @@ case object ColJsonArray    extends ColType
 case class Col(name: String, tpe: ColType)
 
 object Col {
-  def str(name: String)      = Col(name, ColString)
-  def uuid(name: String)     = Col(name, ColUUID)
-  def int(name: String)      = Col(name, ColInt)
-  def long(name: String)     = Col(name, ColLong)
+  def str(name: String) = Col(name, ColString)
+  def uuid(name: String) = Col(name, ColUUID)
+  def int(name: String) = Col(name, ColInt)
+  def long(name: String) = Col(name, ColLong)
 //  def dbl(name: String)      = Col(name, ColDouble)
 //  def float(name: String)    = Col(name, ColFloat)
 //  def decimal(name: String)  = Col(name, ColBigDecimal)
-  def bool(name: String)     = Col(name, ColBoolean)
-  def array(name: String)    = Col(name, ColJsonArray)
-  def json(name: String)     = Col(name, ColJson)
+  def bool(name: String) = Col(name, ColBoolean)
+  def array(name: String) = Col(name, ColJsonArray)
+  def json(name: String) = Col(name, ColJson)
 //  def instant(name: String)  = Col(name, ColInstant)
 //  def date(name: String)     = Col(name, ColLocalDate)
 //  def time(name: String)     = Col(name, ColLocalTime)
@@ -64,16 +64,16 @@ object Col {
 
 private def readCol(row: Row, col: Col): Option[JsValue] =
   col.tpe match {
-    case ColString       => row.optString(col.name).map(JsString(_))
-    case ColUUID         => row.optString(col.name).map(JsString(_))
-    case ColInt          => row.optLong(col.name).map(v => JsNumber(v))
-    case ColLong         => row.optLong(col.name).map(v => JsNumber(v))
+    case ColString => row.optString(col.name).map(JsString(_))
+    case ColUUID   => row.optString(col.name).map(JsString(_))
+    case ColInt    => row.optLong(col.name).map(v => JsNumber(v))
+    case ColLong   => row.optLong(col.name).map(v => JsNumber(v))
 //    case ColDouble       => row.optDouble(col.name).map(v => JsNumber(v))
 //    case ColFloat        => row.optFloat(col.name).map(v => JsNumber(v.toDouble))
 //    case ColBigDecimal   => row.optBigDecimal(col.name).map(v => JsNumber(v))
-    case ColBoolean      => row.optBoolean(col.name).map(JsBoolean(_))
-    case ColJson         => row.optJsObject(col.name)
-    case ColJsonArray    => row.optJsArray(col.name)
+    case ColBoolean   => row.optBoolean(col.name).map(JsBoolean(_))
+    case ColJson      => row.optJsObject(col.name)
+    case ColJsonArray => row.optJsArray(col.name)
 //    case ColInstant      => row.optInstant(col.name).map(v => JsString(v.toString))
 //    case ColLocalDate    => row.optLocalDate(col.name).map(v => JsString(v.toString))
 //    case ColLocalTime    => row.optLocalTime(col.name).map(v => JsString(v.toString))
@@ -755,7 +755,12 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
     }
   }
 
-  def queryRawMappedStream(query: String, columns: Seq[Col], params: Seq[AnyRef] = Seq.empty, fetchSize: Int = 50)(implicit mat: org.apache.pekko.stream.Materializer): Source[JsObject, ?] = {
+  def queryRawMappedStream(
+      query: String,
+      columns: Seq[Col],
+      params: Seq[AnyRef] = Seq.empty,
+      fetchSize: Int = 50
+  )(implicit mat: org.apache.pekko.stream.Materializer): Source[JsObject, ?] = {
     logger.debug(s"queryRawMappedStream($query)")
 
     reactivePg.queryStreamSource(query, params, fetchSize) { row =>
@@ -2598,9 +2603,11 @@ abstract class CommonRepo[Of, Id <: ValueType](env: Env, reactivePg: ReactivePg)
           val (sql, params) = convertQuery(query)
           reactivePg.querySeq(
             s"SELECT * FROM $tableName WHERE $sql ORDER BY ${sortedKeys
-                .mkString(",")} ${order.map(_.name).getOrElse(Asc.name)} ${if (pageSize > 0)
-                s"LIMIT ${Integer.valueOf(pageSize)}"
-              else ""} OFFSET ${Integer.valueOf(page * pageSize)}",
+                .mkString(",")} ${order.map(_.name).getOrElse(Asc.name)} ${
+                if (pageSize > 0)
+                  s"LIMIT ${Integer.valueOf(pageSize)}"
+                else ""
+              } OFFSET ${Integer.valueOf(page * pageSize)}",
             params.map {
               case x: String => x.replace("\"", "")
               case x         => x

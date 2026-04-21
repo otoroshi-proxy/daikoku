@@ -71,7 +71,8 @@ class NotificationControllerSpec()
               customMetadata = (json \ "customMetadata").asOpt[JsObject],
               customMaxPerSecond =
                 (json \ "customMaxPerSecond").asOpt(using LongFormat),
-              customMaxPerDay = (json \ "customMaxPerDay").asOpt(using LongFormat),
+              customMaxPerDay =
+                (json \ "customMaxPerDay").asOpt(using LongFormat),
               customMaxPerMonth =
                 (json \ "customMaxPerMonth").asOpt(using LongFormat),
               customReadOnly = (json \ "customReadOnly").asOpt[Boolean]
@@ -213,8 +214,8 @@ class NotificationControllerSpec()
       )
       val session = loginWithBlocking(userAdmin, tenant)
       val resp =
-        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(using
+          tenant,
           session
         )
       resp.status mustBe 200
@@ -313,8 +314,8 @@ class NotificationControllerSpec()
       (issue.json \ "created").as[Boolean] mustBe true
       val adminSession = loginWithBlocking(userAdmin, tenant)
       val countNotification =
-        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(using
+          tenant,
           adminSession
         )
       countNotification.status mustBe 200
@@ -384,8 +385,8 @@ class NotificationControllerSpec()
 
       val userSession = loginWithBlocking(user, tenant)
       val countNotification =
-        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(using
+          tenant,
           userSession
         )
       countNotification.status mustBe 200
@@ -1031,8 +1032,8 @@ class NotificationControllerSpec()
           s"/api/teams/${teamConsumer.id.value}/apis/${defaultApi.api.humanReadableId}/issues",
         method = "POST",
         body = Some(issues.head.asJson)
-      )(
-        using tenant,
+      )(using
+        tenant,
         session
       )
 
@@ -1175,8 +1176,8 @@ class NotificationControllerSpec()
           s"/api/teams/${defaultApi.api.team.value}/apis/${defaultApi.api.humanReadableId}/issues",
         method = "POST",
         body = Some(issue.asJson)
-      )(
-        using tenant,
+      )(using
+        tenant,
         userSession
       )
 
@@ -1229,8 +1230,8 @@ class NotificationControllerSpec()
           s"/api/teams/${defaultApi.api.team.value}/apis/${defaultApi.api.humanReadableId}/issues/${issue.id.value}",
         method = "PUT",
         body = Some(issue.copy(comments = commentsByAdmin).asJson)
-      )(
-        using tenant,
+      )(using
+        tenant,
         session
       )
 
@@ -1286,8 +1287,8 @@ class NotificationControllerSpec()
           s"/api/teams/${defaultApi.api.team.value}/apis/${defaultApi.api.humanReadableId}/issues/${issue.id.value}",
         method = "PUT",
         body = Some(issue.copy(comments = commentsByApiEditorKO).asJson)
-      )(
-        using tenant,
+      )(using
+        tenant,
         apiEditorSession
       )
       apiEditorCommentIssueKO.status mustBe 403
@@ -1299,8 +1300,8 @@ class NotificationControllerSpec()
           s"/api/teams/${defaultApi.api.team.value}/apis/${defaultApi.api.humanReadableId}/issues/${issue.id.value}",
         method = "PUT",
         body = Some(issue.copy(comments = commentsByApiEditor).asJson)
-      )(
-        using tenant,
+      )(using
+        tenant,
         apiEditorSession
       )
       apiEditorCommentIssue.status mustBe 200
@@ -1334,8 +1335,8 @@ class NotificationControllerSpec()
           s"/api/teams/${defaultApi.api.team.value}/apis/${defaultApi.api.humanReadableId}/issues/${issue.id.value}",
         method = "PUT",
         body = Some(issue.copy(comments = commentsByOther).asJson)
-      )(
-        using tenant,
+      )(using
+        tenant,
         otherSession
       )
       otherCommentIssue.status mustBe 401
@@ -1355,8 +1356,8 @@ class NotificationControllerSpec()
             )
             .asJson
         )
-      )(
-        using tenant,
+      )(using
+        tenant,
         session
       )
       adminCloseIssue.status mustBe 200
@@ -1375,8 +1376,8 @@ class NotificationControllerSpec()
             )
             .asJson
         )
-      )(
-        using tenant,
+      )(using
+        tenant,
         session
       )
       adminOpenIssue.status mustBe 200
@@ -1396,8 +1397,8 @@ class NotificationControllerSpec()
             )
             .asJson
         )
-      )(
-        using tenant,
+      )(using
+        tenant,
         userSession
       )
       nonAdminCloseIssue.status mustBe 401
@@ -1415,8 +1416,8 @@ class NotificationControllerSpec()
             )
             .asJson
         )
-      )(
-        using tenant,
+      )(using
+        tenant,
         userSession
       )
       nonAdminUpdateTagsIssue.status mustBe 401
@@ -1482,8 +1483,8 @@ class NotificationControllerSpec()
       )
       val session = loginWithBlocking(user, tenant)
       val resp =
-        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(
-          using tenant,
+        httpJsonCallBlocking(s"/api/me/notifications/unread-count")(using
+          tenant,
           session
         )
       resp.status mustBe 200
@@ -1696,7 +1697,8 @@ class NotificationControllerSpec()
       resp.status mustBe 200
 
       val sessionUser = loginWithBlocking(user, tenant)
-      val respNotifs = getOwnNotificationsCallBlocking()(using tenant, sessionUser)
+      val respNotifs =
+        getOwnNotificationsCallBlocking()(using tenant, sessionUser)
       val notifications =
         (respNotifs.json \ "data" \ "myNotifications" \ "notifications")
           .as[JsArray]
@@ -1778,7 +1780,8 @@ class NotificationControllerSpec()
 
       val sessionUser = loginWithBlocking(user, tenant)
 
-      val respNotifs = getOwnNotificationsCallBlocking()(using tenant, sessionUser)
+      val respNotifs =
+        getOwnNotificationsCallBlocking()(using tenant, sessionUser)
       val notifications =
         (respNotifs.json \ "data" \ "myNotifications" \ "notifications")
           .as[JsArray]

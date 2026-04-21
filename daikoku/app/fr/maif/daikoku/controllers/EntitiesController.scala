@@ -2,7 +2,11 @@ package fr.maif.daikoku.controllers
 
 import cats.syntax.option.*
 import com.google.common.base.Charsets
-import fr.maif.daikoku.actions.{DaikokuAction, DaikokuActionContext, tenantSecurity}
+import fr.maif.daikoku.actions.{
+  DaikokuAction,
+  DaikokuActionContext,
+  tenantSecurity
+}
 import fr.maif.daikoku.audit.AuditTrailEvent
 import fr.maif.daikoku.controllers.authorizations.sync.PublicUserAccess
 import fr.maif.daikoku.domain.*
@@ -39,21 +43,28 @@ class DaikokuActionOrApiKey(val parser: BodyParser[AnyContent], env: Env)
     isDaikokuAdmin = true,
     lastTenant = None,
     defaultLanguage = None,
-    personalToken = Some(IdGenerator.token(32)),
+    personalToken = Some(IdGenerator.token(32))
   )
 
   private def decodeBase64(encoded: String): String =
     new String(Base64.getUrlDecoder.decode(encoded), Charsets.UTF_8)
 
-  private def extractUsernamePassword(header: String): Option[(String, String)] = {
+  private def extractUsernamePassword(
+      header: String
+  ): Option[(String, String)] = {
     val base64 = header.replace("Basic ", "").replace("basic ", "")
     Option(base64)
       .map(decodeBase64)
       .map(_.split(":").toSeq)
-      .flatMap(a => a.headOption.flatMap(head => a.lastOption.map(last => (head, last))))
+      .flatMap(a =>
+        a.headOption.flatMap(head => a.lastOption.map(last => (head, last)))
+      )
   }
 
-  private def buildContext[A](request: Request[A], tenant: Tenant): DaikokuActionContext[A] = {
+  private def buildContext[A](
+      request: Request[A],
+      tenant: Tenant
+  ): DaikokuActionContext[A] = {
     DaikokuActionContext(
       request = request,
       user = systemUser.copy(tenants = Set(tenant.id)),
@@ -91,10 +102,16 @@ class DaikokuActionOrApiKey(val parser: BodyParser[AnyContent], env: Env)
                 case Success(decoded) if !decoded.getClaim("apikey").isNull =>
                   block(buildContext(request, tenant))
                 case _ =>
-                  Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+                  Errors.craftResponseResultF(
+                    "No api key provided",
+                    Results.Unauthorized
+                  )
               }
             case _ =>
-              Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+              Errors.craftResponseResultF(
+                "No api key provided",
+                Results.Unauthorized
+              )
           }
         case LocalAdminApiConfig(_) =>
           request.headers.get("Authorization") match {
@@ -103,20 +120,32 @@ class DaikokuActionOrApiKey(val parser: BodyParser[AnyContent], env: Env)
                 case Some((clientId, clientSecret)) =>
                   env.dataStore.apiSubscriptionRepo
                     .forTenant(tenant)
-                    .findNotDeleted(Json.obj(
-                      "apiKey.clientId" -> clientId,
-                      "apiKey.clientSecret" -> clientSecret
-                    ))
+                    .findNotDeleted(
+                      Json.obj(
+                        "apiKey.clientId" -> clientId,
+                        "apiKey.clientSecret" -> clientSecret
+                      )
+                    )
                     .map(_.length == 1)
                     .flatMap {
                       case true => block(buildContext(request, tenant))
-                      case _    => Errors.craftResponseResultF("Invalid api key", Results.Unauthorized)
+                      case _ =>
+                        Errors.craftResponseResultF(
+                          "Invalid api key",
+                          Results.Unauthorized
+                        )
                     }
                 case None =>
-                  Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+                  Errors.craftResponseResultF(
+                    "No api key provided",
+                    Results.Unauthorized
+                  )
               }
             case _ =>
-              Errors.craftResponseResultF("No api key provided", Results.Unauthorized)
+              Errors.craftResponseResultF(
+                "No api key provided",
+                Results.Unauthorized
+              )
           }
       }
     }
@@ -135,17 +164,38 @@ class DaikokuActionOrApiKey(val parser: BodyParser[AnyContent], env: Env)
       request.attrs.get(IdentityAttrs.TenantAdminKey)
     ) match {
       case (Some(tenant), _, _, Some(user), isTenantAdmin)
-          if !tenantSecurity.canAccessInCurrentMode(tenant, user.some, isTenantAdmin, request.path) =>
+          if !tenantSecurity.canAccessInCurrentMode(
+            tenant,
+            user.some,
+            isTenantAdmin,
+            request.path
+          ) =>
         Errors.craftResponseResultF(
           s"${tenant.tenantMode.get.toString} mode enabled",
           Results.ServiceUnavailable
         )
-      case (Some(tenant), Some(session), Some(imper), Some(user), Some(isTenantAdmin)) =>
+      case (
+            Some(tenant),
+            Some(session),
+            Some(imper),
+            Some(user),
+            Some(isTenantAdmin)
+          ) =>
         if (user.tenants.contains(tenant.id)) {
           tenantSecurity
             .userCanCreateApi(tenant, user)(using env, ec)
             .flatMap(permission =>
-              block(DaikokuActionContext(request, user, tenant, session, imper, isTenantAdmin, permission))
+              block(
+                DaikokuActionContext(
+                  request,
+                  user,
+                  tenant,
+                  session,
+                  imper,
+                  isTenantAdmin,
+                  permission
+                )
+              )
             )
         } else {
           // No session for this tenant, try API key
@@ -169,7 +219,8 @@ class EntitiesController(
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val ev: Env = env
 
-  private val DaikokuActionOrApiKey = new DaikokuActionOrApiKey(cc.parsers.default, env)
+  private val DaikokuActionOrApiKey =
+    new DaikokuActionOrApiKey(cc.parsers.default, env)
 
   def newTenant() =
     DaikokuActionOrApiKey.async { ctx =>

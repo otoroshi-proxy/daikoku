@@ -188,7 +188,9 @@ class ApiKeyStatsJob(otoroshiClient: OtoroshiClient, env: Env) {
         env.config.apikeysStatsSyncInterval / env.config.apikeysStatsCallInterval
       )
       val nbCall = Math
-        .ceil(Math.max(subscriptions.length / nbInterval, maxCallPerJob.toDouble))
+        .ceil(
+          Math.max(subscriptions.length / nbInterval, maxCallPerJob.toDouble)
+        )
         .toInt
 
       Source(tenants.toList)

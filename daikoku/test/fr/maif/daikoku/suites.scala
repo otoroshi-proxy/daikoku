@@ -713,8 +713,8 @@ object testUtils {
     def screenshotPage(
         path: String
     )(implicit tenant: Tenant, session: UserSession): Future[String] =
-      actionOnPage(path, Seq("--screenshot", "--window-size=1920,1080"))(
-        using tenant,
+      actionOnPage(path, Seq("--screenshot", "--window-size=1920,1080"))(using
+        tenant,
         session
       ).map { res =>
         Try(Files.createDirectory(new File("./target/screenshots").toPath))
@@ -927,7 +927,9 @@ object testUtils {
       ): Future[Seq[JsValue]] = {
         def fetchOnce(): Future[JsValue] = {
           daikokuComponents.env.wsClient
-            .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
+            .url(
+              s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys"
+            )
             .withHttpHeaders(
               "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
               "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
@@ -936,7 +938,7 @@ object testUtils {
             .withFollowRedirects(false)
             .withRequestTimeout(10.seconds)
             .get()
-            .map(r  => r.json)
+            .map(r => r.json)
         }
 
         def loop(attempt: Int): Future[Seq[JsValue]] = {
@@ -972,36 +974,38 @@ object testUtils {
 
       for {
         _ <- Source
-            .futureSource(fetchApiKeysWithRetry().map(Source(_)))
-            .mapAsync(5)(apk => {
-              val clientId = (apk \ "clientId").as[String]
-              if (clientId == "admin-api-apikey-id") {
-                FastFuture.successful(true)
-              } else {
-                logger.info(s"[init otoroshi] :: delete $clientId")
-                daikokuComponents.env.wsClient
-                  .url(
-                    s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys/${(apk \ "clientId").as[String]}"
-                  )
-                  .withHttpHeaders(
-                    Map(
-                      "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
-                      "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
-                      "Host" -> "otoroshi-api.oto.tools"
-                    ).toSeq*
-                  )
-                  .withFollowRedirects(false)
-                  .withRequestTimeout(10.seconds)
-                  .withMethod("DELETE")
-                  .execute()
-                  .map(_ => true)
-              }
-            })
-            .runWith(Sink.ignore)
+          .futureSource(fetchApiKeysWithRetry().map(Source(_)))
+          .mapAsync(5)(apk => {
+            val clientId = (apk \ "clientId").as[String]
+            if (clientId == "admin-api-apikey-id") {
+              FastFuture.successful(true)
+            } else {
+              logger.info(s"[init otoroshi] :: delete $clientId")
+              daikokuComponents.env.wsClient
+                .url(
+                  s"http://otoroshi-api.oto.tools:$otoroshiPort/api/apikeys/${(apk \ "clientId").as[String]}"
+                )
+                .withHttpHeaders(
+                  Map(
+                    "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
+                    "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
+                    "Host" -> "otoroshi-api.oto.tools"
+                  ).toSeq*
+                )
+                .withFollowRedirects(false)
+                .withRequestTimeout(10.seconds)
+                .withMethod("DELETE")
+                .execute()
+                .map(_ => true)
+            }
+          })
+          .runWith(Sink.ignore)
         _ <- Future.sequence(
           apks.map(apk =>
             daikokuComponents.env.wsClient
-              .url(s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys")
+              .url(
+                s"http://otoroshi-api.oto.tools:$otoroshiPort/apis/apim.otoroshi.io/v1/apikeys"
+              )
               .withHttpHeaders(
                 Map(
                   "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,

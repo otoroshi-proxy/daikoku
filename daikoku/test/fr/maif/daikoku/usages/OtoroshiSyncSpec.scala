@@ -544,7 +544,7 @@ class OtoroshiSyncSpec()
       )
 
       val childDevPlanId = UsagePlanId("child.dev")
-      //no need to save childDevPlan, he is missing ;)
+      // no need to save childDevPlan, he is missing ;)
 
       val parentApi = defaultApi.api.copy(
         id = ApiId("parent-id"),
@@ -729,7 +729,8 @@ class OtoroshiSyncSpec()
             |        "value": "foo"
             |    }
             |]
-            |""".stripMargin).some
+            |""".stripMargin)
+          .some
       )(using tenant, session)
       updateMetaInOto.status mustBe 200
 
@@ -1473,7 +1474,8 @@ class OtoroshiSyncSpec()
       )(using tenant, session)
       resp.status mustBe 200
 
-      val apk = getApkFromOtoroshi(consumerParentDevSubscription.apiKey.clientId)
+      val apk =
+        getApkFromOtoroshi(consumerParentDevSubscription.apiKey.clientId)
 
       (apk \ "enabled").as[Boolean] mustBe false
 

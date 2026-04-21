@@ -12,12 +12,7 @@ import fr.maif.daikoku.controllers.authorizations.async.{
   PublicUserAccess,
   TenantAdminOnly
 }
-import fr.maif.daikoku.domain.{
-  DatastoreId,
-  Message,
-  MessageType,
-  UserId
-}
+import fr.maif.daikoku.domain.{DatastoreId, Message, MessageType, UserId}
 import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.messages._
 import fr.maif.daikoku.utils.{IdGenerator, Translator}

@@ -16,8 +16,17 @@ import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.utils.Cypher.{decrypt, encrypt}
 import fr.maif.daikoku.utils.StringImplicits.BetterString
 import fr.maif.daikoku.utils.future.EnhancedObject
-import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiSynchronizerJob, SyncInformation}
-import fr.maif.daikoku.utils.{IdGenerator, JsonOperationsHelper, OtoroshiClient, Translator}
+import fr.maif.daikoku.jobs.{
+  ApiKeyStatsJob,
+  OtoroshiSynchronizerJob,
+  SyncInformation
+}
+import fr.maif.daikoku.utils.{
+  IdGenerator,
+  JsonOperationsHelper,
+  OtoroshiClient,
+  Translator
+}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Flow, Sink, Source}
@@ -33,13 +42,13 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 class ApiService(
-                  env: Env,
-                  otoroshiClient: OtoroshiClient,
-                  messagesApi: MessagesApi,
-                  translator: Translator,
-                  apiKeyStatsJob: ApiKeyStatsJob,
-                  otoroshiSynchronisator: OtoroshiSynchronizerJob,
-                  paymentClient: PaymentClient
+    env: Env,
+    otoroshiClient: OtoroshiClient,
+    messagesApi: MessagesApi,
+    translator: Translator,
+    apiKeyStatsJob: ApiKeyStatsJob,
+    otoroshiSynchronisator: OtoroshiSynchronizerJob,
+    paymentClient: PaymentClient
 ) {
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext
@@ -734,7 +743,9 @@ class ApiService(
         AppError.ApiNotLinked
       )
       apiKey <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using
+          otoSettings
+        )
       )
 
       aggregatedSubs <- EitherT.liftF[Future, AppError, Seq[ApiSubscription]](
@@ -887,7 +898,9 @@ class ApiService(
 
       // get previous apikey from otoroshi
       apk <- EitherT(
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using
+          otoroshiSettings
+        )
       )
 
       // get subscription team
@@ -982,7 +995,9 @@ class ApiService(
 //              )
 //            case None => EitherT.pure[Future, AppError](updatedSubscription)
 //          }
-          _ <- EitherT.right[AppError](otoroshiSynchronisator.run(updatedSubscription.id, tenant))
+          _ <- EitherT.right[AppError](
+            otoroshiSynchronisator.run(updatedSubscription.id, tenant)
+          )
 //          apk <- EitherT(computeOtoroshiApiKey(parentSubscription))
 //          _ <- EitherT(otoroshiClient.updateApiKey(apk))
           _ <-
@@ -1351,8 +1366,8 @@ class ApiService(
         PlanNotFound
       )
 
-      //compute new OtoroshiApiKey for subscription to extract
-      //FIXME: use sync compute instead of
+      // compute new OtoroshiApiKey for subscription to extract
+      // FIXME: use sync compute instead of
       apikey = createOtoroshiApiKey(
         user = user,
         api = api,
@@ -1532,8 +1547,8 @@ class ApiService(
               .syncForSubscription(subscription, tenant, completed = true)
           )
           _ <- OptionT.liftF(
-            deaggregateSubsAndDelete(subscription, childs, subscriberTeam)(
-              using otoroshiSettings
+            deaggregateSubsAndDelete(subscription, childs, subscriberTeam)(using
+              otoroshiSettings
             )
           )
           _ <- subscription.thirdPartySubscriptionInformations match {
@@ -2629,7 +2644,10 @@ class ApiService(
                     )
                   )
               )
-              result <- runSubscriptionProcess(demanId, tenant)(using language, user)
+              result <- runSubscriptionProcess(demanId, tenant)(using
+                language,
+                user
+              )
             } yield result
         }
     }
@@ -2940,7 +2958,9 @@ class ApiService(
           )
       )
       apk <- EitherT[Future, AppError, ActualOtoroshiApiKey](
-        otoroshiClient.getApikey(subscription.apiKey.clientId)(using otoroshiSettings)
+        otoroshiClient.getApikey(subscription.apiKey.clientId)(using
+          otoroshiSettings
+        )
       )
       newApk = apk.copy(
         clientName =

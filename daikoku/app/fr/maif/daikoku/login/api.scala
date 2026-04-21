@@ -195,10 +195,10 @@ object LoginFilter {
 //    def r = new util.matching.Regex(sc.parts.mkString)
 //  }
 
-  /**
-   * Handles routes that are whitelisted regardless of auth provider.
-   * Returns Some(result) if the route is whitelisted, None if auth should proceed normally.
-   */
+  /** Handles routes that are whitelisted regardless of auth provider. Returns
+    * Some(result) if the route is whitelisted, None if auth should proceed
+    * normally.
+    */
   def handleWhitelistedRoute(
       request: RequestHeader,
       tenant: Tenant,
@@ -209,29 +209,30 @@ object LoginFilter {
 
     lazy val pass = nextFilter(request.addAttr(IdentityAttrs.TenantKey, tenant))
     (request.method.toLowerCase(), request.relativeUri) match {
-      case ("get", r"/")                                                   => Some(pass)
-      case ("get", r"/apis")                                               => Some(pass)
-      case ("get", r"/signup")                                             => Some(pass)
-      case ("get", r"/health")                                             => Some(pass)
-      case ("get", r"/robot.txt")                                          => Some(pass)
-      case ("get", r"/api/translations/_all")                              => Some(pass)
-      case ("get", r"/reset")                                              => Some(pass)
-      case (_, path) if path.startsWith("/api/2fa")                        => Some(pass)
-      case ("get", r"/2fa")                                                => Some(pass)
-      case ("get", path) if path.startsWith("/_/")                         => Some(pass)
-      case ("get", path) if path.startsWith("/2fa")                        => Some(pass)
-      case ("get", path) if path.startsWith("/reset")                      => Some(pass)
-      case ("get", path) if path.startsWith("/signup")                     => Some(pass)
-      case ("get", path) if path.startsWith("/robots.txt")                 => Some(pass)
-      case ("get", path) if path.startsWith("/api/versions/_daikoku")      => Some(pass)
-      case (_, r"/account")                                                => Some(pass)
-      case (_, r"/account/.*")                                             => Some(pass)
-      case ("get", r"/tenant-assets/.*")                                   => Some(pass)
-      case ("get", r"/user-assets/.*")                                     => Some(pass)
-      case ("get", r"/asset-thumbnails/.*")                                => Some(pass)
-      case (_, r"/admin-api/.*")                                           => Some(pass)
-      case (_, r"/cms-api/.*")                                           => Some(pass)
-      case (_, r"/integration-api/.*")                                     =>
+      case ("get", r"/")                                   => Some(pass)
+      case ("get", r"/apis")                               => Some(pass)
+      case ("get", r"/signup")                             => Some(pass)
+      case ("get", r"/health")                             => Some(pass)
+      case ("get", r"/robot.txt")                          => Some(pass)
+      case ("get", r"/api/translations/_all")              => Some(pass)
+      case ("get", r"/reset")                              => Some(pass)
+      case (_, path) if path.startsWith("/api/2fa")        => Some(pass)
+      case ("get", r"/2fa")                                => Some(pass)
+      case ("get", path) if path.startsWith("/_/")         => Some(pass)
+      case ("get", path) if path.startsWith("/2fa")        => Some(pass)
+      case ("get", path) if path.startsWith("/reset")      => Some(pass)
+      case ("get", path) if path.startsWith("/signup")     => Some(pass)
+      case ("get", path) if path.startsWith("/robots.txt") => Some(pass)
+      case ("get", path) if path.startsWith("/api/versions/_daikoku") =>
+        Some(pass)
+      case (_, r"/account")                 => Some(pass)
+      case (_, r"/account/.*")              => Some(pass)
+      case ("get", r"/tenant-assets/.*")    => Some(pass)
+      case ("get", r"/user-assets/.*")      => Some(pass)
+      case ("get", r"/asset-thumbnails/.*") => Some(pass)
+      case (_, r"/admin-api/.*")            => Some(pass)
+      case (_, r"/cms-api/.*")              => Some(pass)
+      case (_, r"/integration-api/.*") =>
         Some(
           request
             .getQueryString("token")
@@ -248,11 +249,16 @@ object LoginFilter {
                   case None =>
                     AppLogger.info("No user found")
                     org.apache.pekko.http.scaladsl.util.FastFuture.successful(
-                      Results.Unauthorized(Json.obj("error" -> "not authorized"))
+                      Results
+                        .Unauthorized(Json.obj("error" -> "not authorized"))
                     )
                   case Some(_user) =>
                     val user = _user.copy(tenants = _user.tenants + tenant.id)
-                    nextFilter(request.addAttr(IdentityAttrs.TenantKey, tenant).addAttr(IdentityAttrs.UserKey, user))
+                    nextFilter(
+                      request
+                        .addAttr(IdentityAttrs.TenantKey, tenant)
+                        .addAttr(IdentityAttrs.UserKey, user)
+                    )
                 }
           }
         )
@@ -356,7 +362,8 @@ class LoginFilter(env: Env)(implicit
               .get("sessionId")
               .orElse(request.getQueryString("sessionId")) match {
               case None =>
-                LoginFilter.handleWhitelistedRoute(request, tenant, nextFilter, env)
+                LoginFilter
+                  .handleWhitelistedRoute(request, tenant, nextFilter, env)
                   .getOrElse {
                     AppLogger.info("no session found")
                     nextFilter(request.addAttr(IdentityAttrs.TenantKey, tenant))
@@ -425,7 +432,9 @@ class LoginFilter(env: Env)(implicit
                                       fr.maif.daikoku.controllers.routes.LoginController
                                         .loginPage(provider.name)
                                     )
-                                    .removingFromSession("sessionId")(using request)
+                                    .removingFromSession("sessionId")(using
+                                      request
+                                    )
                                     .withSession(
                                       "redirect" -> cleanupRedirect(
                                         request.relativeUri

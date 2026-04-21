@@ -62,9 +62,17 @@ object tenantSecurity {
     val isDaikokuAdmin = user.exists(_.isDaikokuAdmin)
     val isTenantAdmin = isMaybeTenantAdmin.contains(true)
     val whiteListRoutes =
-      Seq("/_/customization", "/api/translations/_all", "/api/me/context",
-        "/auth/Local/provider", "/auth/LDAP/provider", "/auth/OAuth2/provider", "/auth/Otoroshi/provider",
-        "/maintenance", "/construction")
+      Seq(
+        "/_/customization",
+        "/api/translations/_all",
+        "/api/me/context",
+        "/auth/Local/provider",
+        "/auth/LDAP/provider",
+        "/auth/OAuth2/provider",
+        "/auth/Otoroshi/provider",
+        "/maintenance",
+        "/construction"
+      )
     if (isDaikokuAdmin || isTenantAdmin) {
       true
     } else {
@@ -445,7 +453,7 @@ class DaikokuUnauthenticatedAction(
             s"/maintenance"
           )
         )
-      
+
       case (Some(tenant), Some(session), _, Some(user), Some(isTenantAdmin))
           if !tenantSecurity.canAccessInCurrentMode(
             tenant,

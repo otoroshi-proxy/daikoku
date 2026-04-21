@@ -201,7 +201,9 @@ class HomeControllerSpec()
   }
 }
 
-/** Tests that stop containers to verify "Down" status — fresh containers per test */
+/** Tests that stop containers to verify "Down" status — fresh containers per
+  * test
+  */
 class HomeControllerFailoverSpec()
     extends PlaySpec
     with DaikokuSpecHelper

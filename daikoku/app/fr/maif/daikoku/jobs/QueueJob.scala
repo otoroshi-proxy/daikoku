@@ -387,8 +387,8 @@ class QueueJob(
     val settingsAndInfos = o.payload.map(payload =>
       (
         (payload \ "paymentSettings").asOpt(using json.PaymentSettingsFormat),
-        (payload \ "thirdPartySubscriptionInformations").asOpt(
-          using json.ThirdPartySubscriptionInformationsFormat
+        (payload \ "thirdPartySubscriptionInformations").asOpt(using
+          json.ThirdPartySubscriptionInformationsFormat
         )
       )
     )
@@ -421,8 +421,8 @@ class QueueJob(
     val settingsAndInfos = o.payload.map(payload =>
       (
         (payload \ "paymentSettings").asOpt(using json.PaymentSettingsFormat),
-        (payload \ "thirdPartySubscriptionInformations").asOpt(
-          using json.ThirdPartySubscriptionInformationsFormat
+        (payload \ "thirdPartySubscriptionInformations").asOpt(using
+          json.ThirdPartySubscriptionInformationsFormat
         )
       )
     )

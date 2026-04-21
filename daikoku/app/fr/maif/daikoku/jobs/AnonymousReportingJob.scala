@@ -224,25 +224,25 @@ class AnonymousReportingJob(env: Env) {
               "containerized" -> containerized
             )
             _ <- wSRequest
-                .withRequestTimeout(ev.config.anonymousReportingTimeout.millis)
-                .post(post)
-                .map { resp =>
-                  if (
-                    resp.status != 200 && resp.status != 201 && resp.status != 204
-                  ) {
-                    logger.error(
-                      s"error while sending anonymous reports: ${resp.status} - ${resp.body}"
-                    )
-                  } else {
-                    logger.info(
-                      "Thank you for having anonymous reporting enabled, Data sent ! For more info see (https://maif.github.io/daikoku/docs/getstarted/setup/reporting)"
-                    )
-                  }
+              .withRequestTimeout(ev.config.anonymousReportingTimeout.millis)
+              .post(post)
+              .map { resp =>
+                if (
+                  resp.status != 200 && resp.status != 201 && resp.status != 204
+                ) {
+                  logger.error(
+                    s"error while sending anonymous reports: ${resp.status} - ${resp.body}"
+                  )
+                } else {
+                  logger.info(
+                    "Thank you for having anonymous reporting enabled, Data sent ! For more info see (https://maif.github.io/daikoku/docs/getstarted/setup/reporting)"
+                  )
                 }
-                .recover { case e: Throwable =>
-                  logger.error("error while sending anonymous reports", e)
-                  ()
-                }
+              }
+              .recover { case e: Throwable =>
+                logger.error("error while sending anonymous reports", e)
+                ()
+              }
           } yield Done
         } else {
           logger.info(

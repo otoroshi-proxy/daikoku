@@ -828,7 +828,8 @@ class PaymentClient(
         AppError.EntityNotFound("payment settings")
       )
       portalUrl <- settings match {
-        case p: StripeSettings => getStripeInvoices(team, tenant, callback)(using p)
+        case p: StripeSettings =>
+          getStripeInvoices(team, tenant, callback)(using p)
       }
     } yield portalUrl
 

@@ -58,7 +58,9 @@ class AssetsService {
         )
       case Some(cfg) =>
         body
-          .runWith(Sink.reduce[ByteString](_ ++ _))(using env.defaultMaterializer)
+          .runWith(Sink.reduce[ByteString](_ ++ _))(using
+            env.defaultMaterializer
+          )
           .map(str => str.utf8String)
           .map(Json.parse)
           .flatMap(items =>
