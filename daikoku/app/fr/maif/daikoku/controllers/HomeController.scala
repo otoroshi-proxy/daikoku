@@ -236,7 +236,9 @@ class HomeController(
       Ok(
         Json.obj(
           "connectedUser" -> ctx.user.map(_.toUiPayload()).getOrElse(JsNull),
-          "impersonator" -> ctx.session.map(_.impersonatorJson()).getOrElse(JsNull),
+          "impersonator" -> ctx.session
+            .map(_.impersonatorJson())
+            .getOrElse(JsNull),
           "session" -> ctx.session.map(_.asSimpleJson).getOrElse(JsNull),
           "tenant" -> ctx.tenant.toUiPayload(env),
           "isTenantAdmin" -> ctx.isTenantAdmin,

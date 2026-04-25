@@ -55,7 +55,9 @@ class NotificationController(
         case Some(user) =>
           for {
             myTeams <- env.dataStore.teamRepo.myTeams(ctx.tenant, user)
-            notificationRepo <- env.dataStore.notificationRepo.forTenantF(ctx.tenant.id)
+            notificationRepo <- env.dataStore.notificationRepo.forTenantF(
+              ctx.tenant.id
+            )
             youHaveUnreadNotifications <- notificationRepo.findNotDeleted(
               Json.obj(
                 "status.status" -> "Pending",
