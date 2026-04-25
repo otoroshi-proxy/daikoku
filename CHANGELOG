@@ -912,3 +912,9 @@ We'd like to thank all the contributors who worked on this release!
 - decouple sync endpoint from sync job env variable [#972](https://github.com/MAIF/daikoku/issues/972)
 - Improve Maintenance Mode Behavior [#971](https://github.com/MAIF/daikoku/issues/971)
 
+## [v18.8.1] - 2026-04-25
+
+## :beetle: Bug Fixes
+
+- Private mode is broken [#1044](https://github.com/MAIF/daikoku/issues/1044)
+
