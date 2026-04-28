@@ -918,3 +918,9 @@ We'd like to thank all the contributors who worked on this release!
 
 - Private mode is broken [#1044](https://github.com/MAIF/daikoku/issues/1044)
 
+## [v18.8.2] - 2026-04-28
+
+## :beetle: Bug Fixes
+
+- Empty password is not allowed anymore [#1047](https://github.com/MAIF/daikoku/issues/1047)
+
