@@ -518,6 +518,11 @@ class LoginController(
                     AuditTrailEvent(
                       s"unauthenticated user with $username has tried to login [LDAP provider]"
                     ).logUnauthenticatedUserEvent(ctx.tenant)
+
+                    if (password.length <= 0) {
+                      return BadRequest(Json.obj("error" -> "something happened")).future
+                    }
+
                     val ldapConfig =
                       LdapConfig.fromJsons(ctx.tenant.authProviderSettings)
 
