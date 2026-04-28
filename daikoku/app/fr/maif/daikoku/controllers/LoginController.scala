@@ -520,7 +520,9 @@ class LoginController(
                     ).logUnauthenticatedUserEvent(ctx.tenant)
 
                     if (password.length <= 0) {
-                      return BadRequest(Json.obj("error" -> "something happened")).future
+                      return BadRequest(
+                        Json.obj("error" -> "something happened")
+                      ).future
                     }
 
                     val ldapConfig =
