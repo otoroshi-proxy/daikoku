@@ -234,6 +234,15 @@ class QueueJob(
         )
         _ <- OptionT.liftF(deleteApiNotifications(api))
         _ <- OptionT.liftF(
+          env.dataStore.apiSubscriptionRepo
+            .forTenant(o.tenant)
+            .findNotDeleted(
+              Json.obj(
+                "api" -> api.id.asJson
+              )
+            )
+        )
+        _ <- OptionT.liftF(
           env.dataStore.operationRepo.forTenant(o.tenant).deleteById(o.id)
         )
       } yield ()).value

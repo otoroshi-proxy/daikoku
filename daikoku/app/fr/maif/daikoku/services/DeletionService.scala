@@ -8,6 +8,7 @@ import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.jobs.ApiKeyStatsJob
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.services.ApiService
+import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
 import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
@@ -349,6 +350,7 @@ class DeletionService(
       _ <-
         if (otherTeams.length > 1) EitherT.rightT[Future, AppError](())
         else deleteUser(user, tenant)
+      _ <- removeUserFromAllTeams(tenant, user)
       _ <- EitherT.liftF(
         env.dataStore.userSessionRepo.delete(
           Json.obj(
@@ -389,6 +391,7 @@ class DeletionService(
         )
       )
       _ <- deleteUser(user, tenant)
+      _ <- removeUserFromAllTeams(tenant, user)
       _ <- EitherT.liftF(
         env.dataStore.userSessionRepo.delete(
           Json.obj(
@@ -397,6 +400,33 @@ class DeletionService(
         )
       )
     } yield ()
+  }
+
+  def removeUserFromAllTeams(tenant: Tenant, user: User)(implicit
+      env: Env,
+      ec: ExecutionContext
+  ): EitherT[Future, AppError, Option[JsValue]] = {
+    EitherT.liftF(
+      env.dataStore
+        .asInstanceOf[PostgresDataStore]
+        .queryOneRaw(
+          s"""
+             |UPDATE teams
+             |SET content = jsonb_set(
+             |    content, '{users}',
+             |    (SELECT COALESCE(jsonb_agg(u), '[]'::jsonb)
+             |     FROM jsonb_array_elements(content->'users') u
+             |     WHERE u->>'userId' != $$1)
+             |)
+             |WHERE _deleted = false
+             |  AND content->'users' @> '[{"userId": $$1}]';
+             |""".stripMargin,
+          "result",
+          Seq(
+            user.id
+          )
+        )
+    )
   }
 
   /** Flag a team as deleted and delete his subscriptions, apis and those apis
