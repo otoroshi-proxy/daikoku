@@ -402,6 +402,7 @@ class DeletionService(
     } yield ()
   }
 
+  //todo: here
   def removeUserFromAllTeams(tenant: Tenant, user: User)(implicit
       env: Env,
       ec: ExecutionContext
