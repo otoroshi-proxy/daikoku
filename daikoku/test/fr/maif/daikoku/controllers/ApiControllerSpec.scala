@@ -6,15 +6,11 @@ import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.controllers.AppError.SubscriptionAggregationDisabled
 import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.NotificationAction.{
-  ApiAccess,
-  ApiSubscriptionDemand,
-  TransferApiOwnership
-}
+import fr.maif.daikoku.domain.NotificationAction.{ApiAccess, ApiSubscriptionDemand, TransferApiOwnership}
 import fr.maif.daikoku.domain.NotificationType.AcceptOrReject
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.domain.UsagePlanVisibility.{Private, Public}
-import fr.maif.daikoku.domain.json.{ApiFormat, SeqApiSubscriptionFormat}
+import fr.maif.daikoku.domain.json.{ApiFormat, ApiPostIdFormat, SeqApiSubscriptionFormat}
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import fr.maif.daikoku.utils.IdGenerator
 import fr.maif.daikoku.utils.LoggerImplicits.BetterLogger
@@ -25,9 +21,13 @@ import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
 import play.api.http.Status
 import play.api.libs.json.*
+import org.awaitility.Awaitility._
+import org.awaitility.scala.AwaitilitySupport
+import org.awaitility.core.ConditionTimeoutException
 
 import scala.concurrent.Await
 import scala.concurrent.duration.*
+import scala.jdk.DurationConverters.*
 import scala.util.Random
 
 class ApiControllerSpec()
@@ -35,7 +35,8 @@ class ApiControllerSpec()
     with DaikokuSpecHelper
     with IntegrationPatience
     with BeforeAndAfter
-    with ForAllTestContainer {
+    with ForAllTestContainer
+    with AwaitilitySupport {
 
   val pwd = System.getProperty("user.dir")
 
@@ -1186,12 +1187,136 @@ class ApiControllerSpec()
     }
 
     "delete an api of his team" in {
+      val userPersonalTeam = Team(
+        id = TeamId("user-team"),
+        tenant = tenant.id,
+        `type` = TeamType.Personal,
+        name = "user team personal",
+        description = "",
+        contact = user.email,
+        users = Set(UserWithPermission(user.id, TeamPermission.Administrator))
+      )
+
+      val personalSubscription = ApiSubscription(
+        id = ApiSubscriptionId("1"),
+        tenant = tenant.id,
+        apiKey = parentApiKey,
+        plan = defaultApi.plans.head.id,
+        createdAt = DateTime.now(),
+        team = userPersonalTeam.id,
+        api = defaultApi.api.id,
+        by = user.id,
+        customName = Some("custom name"),
+        rotation = None,
+        integrationToken = "test"
+      )
+
+      val subscribedPlan = defaultApi.plans.reverse.head.id
+      val subscriptionDemand = SubscriptionDemand(
+        id = DemandId("test"),
+        tenant = tenant.id,
+        api = defaultApi.api.id,
+        plan = subscribedPlan,
+        steps = Seq(
+          SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(
+              id = IdGenerator.token(10),
+              team = teamOwner.id
+            )
+          )
+        ),
+        state = SubscriptionDemandState.InProgress,
+        team = teamConsumerId,
+        from = user.id,
+        motivation = None,
+      )
+
+      val subDemandNotif = Notification(
+        id = NotificationId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        team = None,
+        sender = user.asNotificationSender,
+        action = NotificationAction.ApiSubscriptionDemand(
+          api = defaultApi.api.id,
+          plan = defaultApi.plans.reverse.head.id,
+          team = teamConsumerId,
+          demand = DemandId("test"),
+          step = SubscriptionDemandStepId("admin"),
+          motivation = None
+        )
+      )
+
+      val page = ApiDocumentationPage(
+        id = ApiDocumentationPageId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        title = "test",
+        lastModificationAt = DateTime.now(),
+        content = "#title"
+      )
+
+      val post = ApiPost(
+        id = ApiPostId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        title = "title",
+        lastModificationAt = DateTime.now(),
+        content = "test"
+      )
+
+      val issue = ApiIssue(
+        id = ApiIssueId(IdGenerator.token(10)),
+        seqId = 10,
+        tenant = tenant.id,
+        title = "title",
+        tags = Set.empty,
+        open = true,
+        createdAt = DateTime.now(),
+        closedAt = None,
+        by = user.id,
+        comments = Seq.empty,
+        lastModificationAt = DateTime.now(),
+        apiVersion = defaultApi.api.currentVersion.value.some
+      )
+
       setupEnvBlocking(
-        tenants = Seq(tenant),
-        users = Seq(userAdmin),
-        teams = Seq(teamOwner),
-        usagePlans = defaultApi.plans,
-        apis = Seq(defaultApi.api)
+        tenants = Seq(tenant.copy(otoroshiSettings = Set(
+          OtoroshiSettings(
+            id = containerizedOtoroshi,
+            url =
+              s"http://otoroshi.oto.tools:${container.mappedPort(8080)}",
+            host = "otoroshi-api.oto.tools",
+            clientSecret = otoroshiAdminApiKey.clientSecret,
+            clientId = otoroshiAdminApiKey.clientId
+          )
+        ))),
+        users = Seq(userAdmin, user),
+        teams = Seq(teamOwner, teamConsumer, userPersonalTeam),
+        usagePlans = defaultApi.plans.map(_.copy(otoroshiTarget = Some(
+          OtoroshiTarget(
+            containerizedOtoroshi,
+            Some(
+              AuthorizedEntities(
+                routes = Set(OtoroshiRouteId(parentRouteId))
+              )
+            )
+          )
+        ))),
+        apis = Seq(defaultApi.api.copy(
+          posts = Seq(post.id),
+          issues = Seq(issue.id),
+          documentation = ApiDocumentation(
+            id = ApiDocumentationId(IdGenerator.token(10)),
+            tenant = tenant.id,
+            pages = Seq(ApiDocumentationDetailPage(page.id, page.title, Seq.empty)),
+            lastModificationAt = DateTime.now
+          ))),
+        pages = Seq(page),
+        posts = Seq(post),
+        issues = Seq(issue),
+        subscriptions = Seq(personalSubscription),
+        subscriptionDemands = Seq(subscriptionDemand),
+        notifications = Seq(subDemandNotif),
       )
       val session = loginWithBlocking(userAdmin, tenant)
       val resp = httpJsonCallBlocking(
@@ -1202,6 +1327,81 @@ class ApiControllerSpec()
       )(using tenant, session)
       resp.status mustBe 200
       (resp.json \ "done").as[Boolean] mustBe true
+
+      def operationsPending() = {
+        Await.result(daikokuComponents.env.dataStore.operationRepo
+          .forTenant(tenant)
+          .find(
+            Json.obj("status" ->
+              Json.obj("$in" ->
+                JsArray(Seq(
+                  JsString(OperationStatus.Idle.name),
+                  JsString(OperationStatus.InProgress.name)))))),
+          5.second)
+      }
+
+      //await until operation is run by queuejob
+      org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().nonEmpty }
+      org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().isEmpty }
+
+      //todo: verif if subscriptions, docs, plans, demands & stepValidatores are cleans
+
+      //test if user subscriptions deleted
+      val _maybeSubscription = Await.result(daikokuComponents.env.dataStore.apiSubscriptionRepo
+        .forTenant(tenant)
+        .findById(personalSubscription.id), 5.second)
+      _maybeSubscription.isDefined mustBe true
+      _maybeSubscription.forall(_.deleted) mustBe true
+
+      //test if plans are deleted
+      val _maybePlans = Await.result(daikokuComponents.env.dataStore.usagePlanRepo
+        .forTenant(tenant)
+        .findNotDeleted(Json.obj("api" -> defaultApi.api.id.asJson)), 5.second)
+      _maybePlans.isEmpty mustBe true
+
+      //test if docs are deleted
+      val _maybeDocs = Await.result(daikokuComponents.env.dataStore.apiDocumentationPageRepo
+        .forTenant(tenant)
+        .findByIdNotDeleted(page.id), 5.second)
+      _maybeDocs.isEmpty mustBe true
+
+      //test if posts are deleted
+      val _maybePosts = Await.result(daikokuComponents.env.dataStore.apiPostRepo
+        .forTenant(tenant)
+        .findByIdNotDeleted(post.id), 5.second)
+      _maybePosts.isEmpty mustBe true
+
+      //test if issues are deleted
+      val _maybeIssue = Await.result(daikokuComponents.env.dataStore.apiIssueRepo
+        .forTenant(tenant)
+        .findByIdNotDeleted(issue.id), 5.second)
+      _maybeIssue.isEmpty mustBe true
+
+      //test if api notification are cleaned
+      val notifDemand = Await.result(daikokuComponents.env.dataStore.notificationRepo
+        .forAllTenant()
+        .findByIdNotDeleted(subDemandNotif.id), 5.second)
+      notifDemand mustBe None
+
+      Await.result(daikokuComponents.env.dataStore.subscriptionDemandRepo
+        .forAllTenant()
+        .findById(subscriptionDemand.id), 5.second) mustBe None
+
+      //verif oto apikey
+      val respVerifOto = httpJsonCallBlocking(
+        path =
+          s"/apis/apim.otoroshi.io/v1/apikeys/${personalSubscription.apiKey.clientId}",
+        baseUrl = "http://otoroshi-api.oto.tools",
+        headers = Map(
+          "Otoroshi-Client-Id" -> otoroshiAdminApiKey.clientId,
+          "Otoroshi-Client-Secret" -> otoroshiAdminApiKey.clientSecret,
+          "Host" -> "otoroshi-api.oto.tools"
+        ),
+        port = container.mappedPort(8080)
+      )(using tenant, session)
+
+      logger.json(respVerifOto.json, pretty = true)
+      respVerifOto.status mustBe 404
     }
 
     "not delete an api of a team which he's not a member" in {

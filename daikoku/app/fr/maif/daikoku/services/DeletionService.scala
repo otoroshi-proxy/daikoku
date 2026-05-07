@@ -5,7 +5,7 @@ import cats.implicits.catsSyntaxOptionId
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.env.Env
-import fr.maif.daikoku.jobs.ApiKeyStatsJob
+import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiSynchronizerJob}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.services.ApiService
 import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
@@ -22,7 +22,8 @@ class DeletionService(
     env: Env,
     apiService: ApiService,
     apiKeyStatsJob: ApiKeyStatsJob,
-    otoroshiClient: OtoroshiClient
+    otoroshiClient: OtoroshiClient,
+    otoroshiSynchronizerJob: OtoroshiSynchronizerJob
 ) {
 
   implicit val ec: ExecutionContext = env.defaultExecutionContext
@@ -181,51 +182,63 @@ class DeletionService(
       )
     } yield ()).value
 
-  /** delete logically all subscriptions add for each subscriptions an operation
-    * in queue to process a complete deletion of each Api (disable apikey in
-    * otoroshi, compute consumptions, close third-party subscription, delete
-    * notifications)
+  /** Delete subscriptions for a given API:
+    * 1. Disable subs in DB (signal for Otoroshi sync)
+    * 2. Delegate key deletion to OtoroshiSynchronizerJob (handles aggregation)
+    * 3. Finalize: save notifs + payment ops
+    * 4. Mark subs as deleted in DB
     */
   private def deleteSubscriptions(
       subscriptions: Seq[ApiSubscription],
+      api: Api,
       tenant: Tenant,
       user: User
   ): EitherT[Future, AppError, Boolean] = {
     implicit val m: Materializer = env.defaultMaterializer
     AppLogger.debug(
-      s"[deletion service] :: add **subscriptions**[${subscriptions.map(_.id).mkString(",")}] to deletion queue"
+      s"[deletion service] :: deleting subscriptions[${subscriptions.map(_.id).mkString(",")}] for api ${api.id.value}"
     )
 
-    EitherT(
-      Source(subscriptions)
-        // Phase 1 — DB : find api, plan, build notif (séquence to not block DB access)
-        .mapAsync(1)(subscription =>
-          prepareSubscriptionContext(subscription, tenant, user)
-        )
-        .collect { case Right(ctx) => ctx }
-        // Phase 2 — Otoroshi : syncStats + deleteApiKey (parallel, independant network calls)
-        .mapAsync(5)(ctx => processOtoroshiForSubscription(ctx, tenant))
-        .collect { case Right(ctx) => ctx }
-        // Phase 3 — DB : save notification + payment operation (sequence)
-        .mapAsync(1)(ctx => finalizeSubscriptionDeletion(ctx, tenant))
-        .runWith(
-          Sink.fold[Either[AppError, Unit], Either[AppError, Unit]](
-            Right[AppError, Unit](())
-          )((_, either) => either)
-        )
-    ).flatMap(_ =>
-      EitherT.liftF(
+    for {
+      // Phase 1 — disable subs in DB so the synchronizer sees them as disabled
+      _ <- EitherT.liftF(
+        env.dataStore.apiSubscriptionRepo
+          .forTenant(tenant)
+          .updateManyByQuery(
+            Json.obj("_id" -> Json.obj("$in" -> JsArray(subscriptions.map(_.id.asJson).distinct))),
+            Json.obj("$set" -> Json.obj("enabled" -> false))
+          )
+      )
+      // Phase 2 — delegate Otoroshi key deletion to the synchronizer (handles aggregation)
+      _ <- EitherT.liftF(
+        otoroshiSynchronizerJob.runForDeletion(api.id, tenant)
+      )
+      // Phase 3 — save notifs + payment ops
+      _ <- EitherT(
+        Source(subscriptions)
+          .mapAsync(1)(subscription => prepareSubscriptionContext(subscription, tenant, user))
+          .mapConcat {
+            case Right(ctx) => List(ctx)
+            case Left(err) =>
+              AppLogger.warn(s"[deletion service] prepareSubscriptionContext failed: ${err.getErrorMessage()}")
+              List.empty
+          }
+          .mapAsync(1)(ctx => finalizeSubscriptionDeletion(ctx, tenant))
+          .runWith(
+            Sink.fold[Either[AppError, Unit], Either[AppError, Unit]](
+              Right[AppError, Unit](())
+            )((_, either) => either)
+          )
+      )
+      // Phase 4 — mark as deleted in DB
+      result <- EitherT.right[AppError](
         env.dataStore.apiSubscriptionRepo
           .forTenant(tenant)
           .deleteLogically(
-            Json.obj(
-              "_id" -> Json.obj(
-                "$in" -> JsArray(subscriptions.map(_.id.asJson).distinct)
-              )
-            )
+            Json.obj("_id" -> Json.obj("$in" -> JsArray(subscriptions.map(_.id.asJson).distinct)))
           )
       )
-    )
+    } yield result
   }
 
   /** delete logically all apis add for each apis an operation in queue to
@@ -546,7 +559,18 @@ class DeletionService(
             )
           )
       )
-      _ <- deleteSubscriptions(allSubscriptions, tenant, user)
+      _ <- EitherT.liftF(
+        Source(apis)
+          .mapAsync(1)(api =>
+            deleteSubscriptions(
+              allSubscriptions.filter(_.api == api.id),
+              api,
+              tenant,
+              user
+            ).value
+          )
+          .runWith(Sink.ignore)(using env.defaultMaterializer)
+      )
       _ <- deleteApis(apis, tenant, user)
       _ <- deleteTeam(team, tenant)
     } yield ()
@@ -574,7 +598,7 @@ class DeletionService(
           .forTenant(tenant)
           .findNotDeleted(Json.obj("api" -> api.id.asJson))
       )
-      _ <- deleteSubscriptions(subscriptions, tenant, user)
+      _ <- deleteSubscriptions(subscriptions, api, tenant, user)
       _ <- deleteApis(Seq(api), tenant, user)
     } yield ()
   }

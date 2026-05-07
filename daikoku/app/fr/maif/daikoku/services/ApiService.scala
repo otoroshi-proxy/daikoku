@@ -1513,7 +1513,7 @@ class ApiService(
                 _ <- otoroshiSynchronisator.run(newParent.id, tenant)
                 // delete extracted OtoroshiApiKey into Otoroshi
                 // delete extracted subscription
-                - <-
+                _ <-
                   env.dataStore.apiSubscriptionRepo
                     .forTenant(tenant.id)
                     .deleteByIdLogically(subscription.id)

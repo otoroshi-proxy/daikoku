@@ -30,12 +30,12 @@ class QueueJob(
   private val ref = new AtomicReference[Cancellable]()
 
   def start(): Unit = {
-    if (!env.config.deletionByCron && ref.get() == null) {
+    if (ref.get() == null) {
       logger.info("Start deletion job")
       logger.info(s"deletion by cron ==> every ${env.config.deletionInterval}")
       ref.set(
         env.defaultActorSystem.scheduler
-          .scheduleAtFixedRate(10.seconds, env.config.deletionInterval) { () =>
+          .scheduleAtFixedRate(1.seconds, env.config.deletionInterval) { () =>
             deleteFirstOperation()
           }
       )
@@ -54,7 +54,7 @@ class QueueJob(
     logger.debug("*** DeLEte api notifications AS OPERATION***")
     logger.debug(Json.prettyPrint(api.asJson))
     logger.debug("**********************************************")
-    
+
     env.dataStore.notificationRepo
       .forTenant(api.tenant)
       .deleteLogically(
@@ -176,15 +176,15 @@ class QueueJob(
 
     {
       (for {
-        api <- OptionT(
-          env.dataStore.apiRepo
-            .forTenant(o.tenant)
-            .findById(o.itemId)
-        )
         _ <- OptionT.liftF(
           env.dataStore.operationRepo
             .forTenant(o.tenant)
             .save(o.copy(status = OperationStatus.InProgress))
+        )
+        api <- OptionT(
+          env.dataStore.apiRepo
+            .forTenant(o.tenant)
+            .findById(o.itemId)
         )
         _ <- OptionT.liftF(
           env.dataStore.apiPostRepo
@@ -217,7 +217,38 @@ class QueueJob(
               )
             )
         )
+        _ <- OptionT.liftF(env.dataStore.usagePlanRepo
+          .forTenant(o.tenant)
+          .deleteLogically(
+            Json.obj(
+              "_id" -> Json.obj(
+                "$in" -> JsArray(
+                  api.possibleUsagePlans.map(_.asJson)
+                )
+              )
+            )
+          )
+        )
         _ <- OptionT.liftF(deleteApiNotifications(api))
+        _ <- OptionT.liftF(env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .execute(
+            s"""
+               |WITH deleted_demands AS (
+               |  DELETE FROM subscription_demands
+               |  WHERE content->>'_tenant' = $$1
+               |    AND content->>'api' = $$2
+               |    AND content->>'state' IN ('${SubscriptionDemandState.Waiting.name}', '${SubscriptionDemandState.InProgress.name}')
+               |  RETURNING _id AS demand_id
+               |)
+               |DELETE FROM step_validators
+               |WHERE content->>'subscriptionDemand' IN (SELECT demand_id FROM deleted_demands);
+               |""".stripMargin,
+            Seq(
+              api.tenant.value,
+              api.id.value
+            )
+          ))
         _ <- OptionT.liftF(
           env.dataStore.operationRepo.forTenant(o.tenant).deleteById(o.id)
         )
@@ -272,7 +303,7 @@ class QueueJob(
         apiKeyStatsJob
           .syncForSubscription(subscription, tenant, completed = true)
       )
-      - <- paymentClient.deleteThirdPartySubscription(
+      _ <- paymentClient.deleteThirdPartySubscription(
         subscription,
         plan.paymentSettings,
         subscription.thirdPartySubscriptionInformations
