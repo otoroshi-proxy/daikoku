@@ -13,6 +13,7 @@ import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
+import org.joda.time.DateTime
 import play.api.libs.json.{JsArray, JsNull, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -44,8 +45,8 @@ class DeletionService(
 
     AppLogger.debug(s"add **user**[${user.name}] to deletion queue")
     for {
-      _ <- EitherT.liftF(env.dataStore.userRepo.deleteByIdLogically(user.id))
-      _ <- EitherT.liftF(
+      _ <- EitherT.right[AppError](env.dataStore.userRepo.deleteByIdLogically(user.id))
+      _ <- EitherT.right[AppError](
         env.dataStore.operationRepo.forTenant(tenant).save(operation)
       )
     } yield ()
@@ -70,10 +71,10 @@ class DeletionService(
       s"[deletion service] :: add **team**[${team.name}] to deletion queue"
     )
     for {
-      _ <- EitherT.liftF(
+      _ <- EitherT.right[AppError](
         env.dataStore.teamRepo.forTenant(tenant).deleteByIdLogically(team.id)
       )
-      _ <- EitherT.liftF(
+      _ <- EitherT.right[AppError](
         env.dataStore.operationRepo.forTenant(tenant).save(operation)
       )
     } yield ()
@@ -120,7 +121,7 @@ class DeletionService(
       ctx: SubscriptionContext,
       tenant: Tenant
   ): Future[Either[AppError, SubscriptionContext]] = {
-    def deleteOtoroshiKey: EitherT[Future, AppError, Unit] =
+    def deleteOtoroshiKey(): EitherT[Future, AppError, Unit] =
       for {
         target <- EitherT.fromOption[Future](
           ctx.plan.otoroshiTarget,
@@ -140,7 +141,7 @@ class DeletionService(
         apiKeyStatsJob
           .syncForSubscription(ctx.subscription, tenant, completed = true)
       )
-      _ <- deleteOtoroshiKey
+      _ <- deleteOtoroshiKey()
     } yield ctx).value
   }
 
@@ -325,7 +326,7 @@ class DeletionService(
         env.dataStore.userRepo.findByIdNotDeleted(userId),
         AppError.UserNotFound()
       )
-      team <- EitherT.fromOptionF(
+      personalTeam <- EitherT.fromOptionF(
         env.dataStore.teamRepo
           .forTenant(tenant)
           .findOneNotDeleted(
@@ -336,7 +337,7 @@ class DeletionService(
           ),
         AppError.TeamNotFound
       )
-      otherTeams <- EitherT.liftF(
+      otherTenantPersonalTeam <- EitherT.liftF(
         env.dataStore.teamRepo
           .forAllTenant()
           .findNotDeleted(
@@ -346,12 +347,14 @@ class DeletionService(
             )
           )
       )
-      _ <- deleteTeamByQueue(team.id, team.tenant, user)
+      _ <- deleteTeamByQueue(personalTeam.id, tenant.id, user)
       _ <-
-        if (otherTeams.length > 1) EitherT.rightT[Future, AppError](())
+        if (otherTenantPersonalTeam.length > 1) EitherT.rightT[Future, AppError](())
         else deleteUser(user, tenant)
-      _ <- removeUserFromAllTeams(tenant, user)
-      _ <- EitherT.liftF(
+      _ <- deleteUserFromAllTeams(tenant.some, user)
+      _ <- deleteUserNotifications(tenant.some, user)
+      _ <- closeChat(tenant.some, user)
+      _ <- EitherT.right[AppError](
         env.dataStore.userSessionRepo.delete(
           Json.obj(
             "userId" -> userId
@@ -375,7 +378,7 @@ class DeletionService(
         env.dataStore.userRepo.findByIdNotDeleted(userId),
         AppError.UserNotFound()
       )
-      teams <- EitherT.liftF(
+      teams <- EitherT.right[AppError](
         env.dataStore.teamRepo
           .forAllTenant()
           .findNotDeleted(
@@ -385,15 +388,16 @@ class DeletionService(
             )
           )
       )
-      _ <- EitherT.liftF(
+      _ <- EitherT.right[AppError](
         Future.sequence(
           teams.map(team => deleteTeamByQueue(team.id, team.tenant, user).value)
         )
       )
       _ <- deleteUser(user, tenant)
-      _ <- removeUserFromAllTeams(tenant, user)
-      _ <- EitherT.liftF(
-        env.dataStore.userSessionRepo.delete(
+      _ <- deleteUserFromAllTeams(None, user)
+      _ <- deleteUserNotifications(None, user)
+      _ <- closeChat(None, user)
+      _ <- EitherT.right[AppError](env.dataStore.userSessionRepo.delete(
           Json.obj(
             "userId" -> userId
           )
@@ -402,33 +406,108 @@ class DeletionService(
     } yield ()
   }
 
-  //todo: here
-  def removeUserFromAllTeams(tenant: Tenant, user: User)(implicit
+  private def deleteUserNotifications(tenant: Option[Tenant], user: User)(implicit
+                                                                 env: Env,
+                                                                          ec: ExecutionContext
+  ): EitherT[Future, AppError, Long] = {
+    val tenantFilter = tenant.map(_ => "content->>'_tenant' = $1 AND ").getOrElse("")
+    val tenantParams: Seq[AnyRef] = tenant.map(t => Seq(t.id.value)).getOrElse(Seq.empty)
+    val userParam = "$" + (tenantParams.size + 1)
+
+    for {
+      notifs <- EitherT.right[AppError](env.dataStore.notificationRepo
+        .forAllTenant()
+        .execute(
+          s"""
+           |DELETE FROM notifications
+           |WHERE (
+           |  $tenantFilter
+           |  (
+           |    content->'sender'->>'id' = $userParam
+           |    OR content->'action'->>'user' = $userParam
+           |  )
+           |);
+           |""".stripMargin,
+          tenantParams :+ user.id.value
+        )
+      )
+      _ <- EitherT.right[AppError](env.dataStore.subscriptionDemandRepo
+        .forAllTenant()
+        .execute(
+          s"""
+             |WITH deleted_demands AS (
+             |  DELETE FROM subscription_demands
+             |  WHERE $tenantFilter
+             |    content->>'from' = $userParam
+             |    AND content->>'state' IN ('${SubscriptionDemandState.Waiting.name}', '${SubscriptionDemandState.InProgress.name}')
+             |  RETURNING _id AS demand_id
+             |)
+             |DELETE FROM step_validators
+             |WHERE content->>'subscriptionDemand' IN (SELECT demand_id FROM deleted_demands);
+             |""".stripMargin,
+          tenantParams :+ user.id.value
+        )
+      )
+    } yield notifs
+  }
+
+  private def deleteUserFromAllTeams(tenant: Option[Tenant], user: User)(implicit
       env: Env,
       ec: ExecutionContext
-  ): EitherT[Future, AppError, Option[JsValue]] = {
+  ): EitherT[Future, AppError, Long] = {
+    val tenantFilter = tenant.map(_ => "content->>'_tenant' = $1 AND ").getOrElse("")
+    val tenantParams: Seq[AnyRef] = tenant.map(t => Seq(t.id.value)).getOrElse(Seq.empty)
+    val userParam = "$" + (tenantParams.size + 1)
+
     EitherT.liftF(
       env.dataStore
-        .asInstanceOf[PostgresDataStore]
-        .queryOneRaw(
+        .teamRepo
+        .forAllTenant()
+        .execute(
           s"""
              |UPDATE teams
              |SET content = jsonb_set(
              |    content, '{users}',
              |    (SELECT COALESCE(jsonb_agg(u), '[]'::jsonb)
              |     FROM jsonb_array_elements(content->'users') u
-             |     WHERE u->>'userId' != $$1)
+             |     WHERE u->>'userId' != $userParam)
              |)
-             |WHERE _deleted = false
-             |  AND content->'users' @> '[{"userId": $$1}]';
+             |WHERE $tenantFilter
+             |  _deleted = false
+             |  AND content->'users' @> jsonb_build_array(jsonb_build_object('userId', $userParam));
              |""".stripMargin,
-          "result",
-          Seq(
-            user.id
-          )
+          tenantParams :+ user.id.value
         )
     )
   }
+
+
+
+  private def closeChat(tenant: Option[Tenant], user: User)(implicit
+    env: Env,
+    ec: ExecutionContext
+): EitherT[Future, AppError, Long] = {
+  val (tenantFilter, params) = tenant match {
+    case Some(t) => ("AND content->>'_tenant' = $3", Seq(user.id.value, java.lang.Long.valueOf(DateTime.now().getMillis), t.id.value))
+    case None    => ("", Seq(user.id.value, java.lang.Long.valueOf(DateTime.now().getMillis)))
+  }
+
+  EitherT.right[AppError](
+    env.dataStore.messageRepo
+      .forAllTenant()
+      .execute(
+        s"""
+           |UPDATE messages
+           |SET content = jsonb_set(content, '{closed}', $$2)
+           |WHERE content->>'chat' = $$1
+           |  AND content ->> 'closed' IS NULL
+           |  $tenantFilter;
+           |""".stripMargin,
+        params
+      )
+  )
+}
+
 
   /** Flag a team as deleted and delete his subscriptions, apis and those apis
     * subscriptions add team, subs and apis to deletion queue to process

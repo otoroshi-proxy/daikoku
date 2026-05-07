@@ -142,7 +142,7 @@ test('[ASOAPI-10163] - souscrire à une api avec refus', async ({ page, context 
   //todo: accepter la notification
 });
 
-test('[ASOAPI-10161] - Demander une extension d\apikey - process automatique', async ({ page, context }) => {
+test('[ASOAPI-10161] - Demander une extension d\'apikey - process automatique', async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
   await page.goto(ACCUEIL);
@@ -190,7 +190,7 @@ test('[ASOAPI-10161] - Demander une extension d\apikey - process automatique', a
   await expect(otoroshiKey.clientSecret).toBe(clientSecret)
 });
 
-test('[ASOAPI-10161] - Demander une extension d\apikey - process manuel', async ({ page, context }) => {
+test('[ASOAPI-10161] - Demander une extension d\'apikey - process manuel', async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
   await page.goto(ACCUEIL);
@@ -305,7 +305,7 @@ test('[ASOAPI-10161] - Demander une extension d\apikey - process manuel', async 
 //   await expect(otoroshiKey.clientSecret).toBe(clientSecret)
 // });
 
-test('[ASOAPI-10164] - Demander une extension d\apikey - process manuel - refus', async ({ page, context }) => {
+test('[ASOAPI-10164] - Demander une extension d\'apikey - process manuel - refus', async ({ page, context }) => {
   test.setTimeout(90_000);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 

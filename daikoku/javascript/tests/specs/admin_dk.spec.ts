@@ -66,6 +66,9 @@ test('[ASOAPI-10506] - Supprimer définitivement un utilisateur ', async ({ page
   await page.getByRole('button', { name: 'Confirmation' }).click();
   await page.waitForResponse(response => response.url().includes('/api/admin/users/') && response.status() === 200)
   await expect(getAvatar(JIM)).toBeHidden();
+
+
+  //todo: clean up the teams
 });
 
 test('[ASOAPI-10506] - Supprimer définitivement un utilisateur (cas particulier d\'utilisateur avec APIkey active)', async ({ page }) => {

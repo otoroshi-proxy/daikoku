@@ -3,15 +3,20 @@ package fr.maif.daikoku.controllers
 import cats.implicits.catsSyntaxOptionId
 import com.dimafeng.testcontainers.GenericContainer.FileSystemBind
 import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
-import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.domain.{UserWithPermission, *}
+import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.login.{AuthProvider, LdapConfig}
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
+import fr.maif.daikoku.utils.IdGenerator
 import fr.maif.daikoku.utils.LoggerImplicits.BetterLogger
+import org.joda.time.DateTime
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
-import play.api.libs.json.{JsArray, Json}
+import play.api.libs.json.{JsArray, JsObject, Json}
 
+import scala.concurrent.duration.*
+import scala.concurrent.Await
 import scala.util.Random
 
 class UserControllerSpec()
@@ -111,19 +116,92 @@ class UserControllerSpec()
     }
 
     "delete user" in {
+
+      val userPersonalTeam = Team(
+        id = TeamId("user-team"),
+        tenant = tenant.id,
+        `type` = TeamType.Personal,
+        name = "user team personal",
+        description = "",
+        contact = user.email,
+        users = Set(UserWithPermission(user.id, TeamPermission.Administrator))
+      )
+
+      val personalSubscription = ApiSubscription(
+        id = ApiSubscriptionId("1"),
+        tenant = tenant.id,
+        apiKey = OtoroshiApiKey("name", "id", "secret"),
+        plan = defaultApi.plans.head.id,
+        createdAt = DateTime.now(),
+        team = userPersonalTeam.id,
+        api = defaultApi.api.id,
+        by = user.id,
+        customName = Some("custom name"),
+        rotation = None,
+        integrationToken = "test"
+      )
+
+      val teamInvitationNotif = Notification(
+        id = NotificationId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        team = None,
+        sender = userAdmin.asNotificationSender,
+        action = NotificationAction.TeamInvitation(
+          team = teamOwnerId,
+          user = user.id
+        )
+      )
+
+      val subscribedPlan = defaultApi.plans.reverse.head.id
+      val subscriptionDemand = SubscriptionDemand(
+        id = DemandId("test"),
+        tenant = tenant.id,
+        api = defaultApi.api.id,
+        plan = subscribedPlan,
+        steps = Seq(
+          SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(
+              id = IdGenerator.token(10),
+              team = teamOwner.id
+            )
+          )
+        ),
+        state = SubscriptionDemandState.InProgress,
+        team = teamConsumerId,
+        from = user.id,
+        motivation = None,
+      )
+
+      val subDemandNotif = Notification(
+        id = NotificationId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        team = None,
+        sender = user.asNotificationSender,
+        action = NotificationAction.ApiSubscriptionDemand(
+          api = defaultApi.api.id,
+          plan = defaultApi.plans.reverse.head.id,
+          team = teamConsumerId,
+          demand = DemandId("test"),
+          step = SubscriptionDemandStepId("admin"),
+          motivation = None
+        )
+      )
+
       setupEnvBlocking(
         tenants = Seq(tenant),
-        users = Seq(daikokuAdmin, user),
+        users = Seq(daikokuAdmin, userAdmin, user, userApiEditor),
+        apis = Seq(defaultApi.api),
+        usagePlans = defaultApi.plans,
+        subscriptions = Seq(personalSubscription),
+        subscriptionDemands = Seq(subscriptionDemand),
+        notifications = Seq(subDemandNotif, teamInvitationNotif),
         teams = Seq(
-          Team(
-            id = TeamId("user-team"),
-            tenant = tenant.id,
-            `type` = TeamType.Personal,
-            name = "user team personal",
-            description = "",
-            contact = user.email,
-            users =
-              Set(UserWithPermission(user.id, TeamPermission.Administrator))
+          userPersonalTeam,
+          teamConsumer,
+          teamOwner.copy(
+            users = Set(UserWithPermission(userTeamAdminId, Administrator))
           )
         )
       )
@@ -141,9 +219,44 @@ class UserControllerSpec()
       )(using tenant, session)
       resp.status mustBe 404
 
+      //test if user personal team deleted
       val respTestTeam =
-        httpJsonCallBlocking(s"/api/teams/user-team")(using tenant, session)
+        httpJsonCallBlocking(s"/api/teams/${userPersonalTeam.id.value}")(using tenant, session)
       respTestTeam.status mustBe 404
+
+      //test if user teams cleaned
+      val respTestConsumerTeam =
+        httpJsonCallBlocking(s"/api/teams/${teamConsumerId.value}")(using tenant, session)
+      respTestConsumerTeam.status mustBe 200
+      val _consumerTeam = respTestConsumerTeam.json.as(using json.TeamFormat)
+      _consumerTeam.users.exists(_.userId == user.id) mustBe false
+
+      //test if user subscriptions deleted
+      val _maybeSubscription = Await.result(daikokuComponents.env.dataStore.apiSubscriptionRepo
+        .forAllTenant()
+        .findById(personalSubscription.id), 5.second)
+
+      _maybeSubscription.isDefined mustBe true
+      _maybeSubscription.forall(_.deleted) mustBe true
+
+      //test if notification by user, for user are cleaned
+      //1 - teamInvitation
+      val notifInvitation = Await.result(daikokuComponents.env.dataStore.notificationRepo
+        .forAllTenant()
+        .findById(teamInvitationNotif.id), 5.second)
+      notifInvitation mustBe None
+
+      //2 - subDemand
+      val notifDemand = Await.result(daikokuComponents.env.dataStore.notificationRepo
+        .forAllTenant()
+        .findById(subDemandNotif.id), 5.second)
+      notifDemand mustBe None
+
+      Await.result(daikokuComponents.env.dataStore.subscriptionDemandRepo
+        .forAllTenant()
+        .findById(subscriptionDemand.id), 5.second) mustBe None
+
+
     }
 
     "create user" in {
@@ -318,11 +431,95 @@ class UserControllerSpec()
     }
 
     "delete self" in {
+      val userPersonalTeam = Team(
+        id = TeamId(s"${randomUser.humanReadableId}-team"),
+        tenant = tenant.id,
+        `type` = TeamType.Personal,
+        name = s"$randomUser team personal",
+        description = "",
+        contact = randomUser.email,
+        users = Set(UserWithPermission(randomUser.id, TeamPermission.Administrator))
+      )
+
+      val personalSubscription = ApiSubscription(
+        id = ApiSubscriptionId("1"),
+        tenant = tenant.id,
+        apiKey = OtoroshiApiKey("name", "id", "secret"),
+        plan = defaultApi.plans.head.id,
+        createdAt = DateTime.now(),
+        team = userPersonalTeam.id,
+        api = defaultApi.api.id,
+        by = randomUser.id,
+        customName = Some("custom name"),
+        rotation = None,
+        integrationToken = "test"
+      )
+
+      val teamInvitationNotif = Notification(
+        id = NotificationId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        team = None,
+        sender = userAdmin.asNotificationSender,
+        action = NotificationAction.TeamInvitation(
+          team = teamOwnerId,
+          user = randomUser.id
+        )
+      )
+
+      val subscribedPlan = defaultApi.plans.reverse.head.id
+      val subscriptionDemand = SubscriptionDemand(
+        id = DemandId("test"),
+        tenant = tenant.id,
+        api = defaultApi.api.id,
+        plan = subscribedPlan,
+        steps = Seq(
+          SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(
+              id = IdGenerator.token(10),
+              team = teamOwner.id
+            )
+          )
+        ),
+        state = SubscriptionDemandState.InProgress,
+        team = teamConsumerId,
+        from = randomUser.id,
+        motivation = None,
+      )
+
+      val subDemandNotif = Notification(
+        id = NotificationId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        team = None,
+        sender = randomUser.asNotificationSender,
+        action = NotificationAction.ApiSubscriptionDemand(
+          api = defaultApi.api.id,
+          plan = defaultApi.plans.reverse.head.id,
+          team = teamConsumerId,
+          demand = DemandId("test"),
+          step = SubscriptionDemandStepId("admin"),
+          motivation = None
+        )
+      )
+
       setupEnvBlocking(
         tenants = Seq(tenant),
-        users = Seq(daikokuAdmin, randomUser),
-        teams = Seq()
+        users = Seq(daikokuAdmin, userAdmin, user, userApiEditor),
+        apis = Seq(defaultApi.api),
+        usagePlans = defaultApi.plans,
+        subscriptions = Seq(personalSubscription),
+        subscriptionDemands = Seq(subscriptionDemand),
+        notifications = Seq(subDemandNotif, teamInvitationNotif),
+        teams = Seq(
+          userPersonalTeam,
+          teamConsumer,
+          teamOwner.copy(
+            users = Set(UserWithPermission(daikokuAdmin.id, Administrator))
+          )
+        )
       )
+
       val session = loginWithBlocking(randomUser, tenant)
       val respDelete =
         httpJsonCallBlocking(
@@ -343,6 +540,44 @@ class UserControllerSpec()
         s"/api/admin/users/${randomUser.id.value}"
       )(using tenant, sessionAdmin)
       resp.status mustBe 404
+
+
+      //test if user personal team deleted
+      val respTestTeam =
+        httpJsonCallBlocking(s"/api/teams/${userPersonalTeam.id.value}")(using tenant, sessionAdmin)
+      respTestTeam.status mustBe 404
+
+      //test if user teams cleaned
+      val respTestConsumerTeam =
+        httpJsonCallBlocking(s"/api/teams/${teamConsumerId.value}")(using tenant, sessionAdmin)
+      respTestConsumerTeam.status mustBe 200
+      val _consumerTeam = respTestConsumerTeam.json.as(using json.TeamFormat)
+      _consumerTeam.users.exists(_.userId == randomUser.id) mustBe false
+
+      //test if user subscriptions deleted
+      val _maybeSubscription = Await.result(daikokuComponents.env.dataStore.apiSubscriptionRepo
+        .forAllTenant()
+        .findById(personalSubscription.id), 5.second)
+
+      _maybeSubscription.isDefined mustBe true
+      _maybeSubscription.forall(_.deleted) mustBe true
+
+      //test if notification by user, for user are cleaned
+      //1 - teamInvitation
+      val notifInvitation = Await.result(daikokuComponents.env.dataStore.notificationRepo
+        .forAllTenant()
+        .findById(teamInvitationNotif.id), 5.second)
+      notifInvitation mustBe None
+
+      //2 - subDemand
+      val notifDemand = Await.result(daikokuComponents.env.dataStore.notificationRepo
+        .forAllTenant()
+        .findById(subDemandNotif.id), 5.second)
+      notifDemand mustBe None
+
+      Await.result(daikokuComponents.env.dataStore.subscriptionDemandRepo
+        .forAllTenant()
+        .findById(subscriptionDemand.id), 5.second) mustBe None
     }
 
     "not create user" in {

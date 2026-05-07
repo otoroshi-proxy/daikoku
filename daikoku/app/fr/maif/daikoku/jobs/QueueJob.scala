@@ -54,26 +54,11 @@ class QueueJob(
     logger.debug("*** DeLEte api notifications AS OPERATION***")
     logger.debug(Json.prettyPrint(api.asJson))
     logger.debug("**********************************************")
-
+    
     env.dataStore.notificationRepo
       .forTenant(api.tenant)
       .deleteLogically(
         Json.obj(
-          "action.type" ->
-            Json.obj(
-              "$in" -> JsArray(
-                Seq(
-                  "ApiAccess",
-                  "ApiSubscription",
-                  "ApiSubscriptionAccept",
-                  "ApiSubscriptionReject",
-                  "NewPostPublished",
-                  "NewIssueOpen",
-                  "NewCommentOnIssue",
-                  "TransferApiOwnership"
-                ).map(JsString.apply)
-              )
-            ),
           "$or" -> Json.arr(
             Json.obj("action.api" -> api.id.asJson),
             Json.obj("action.apiName" -> JsString(api.name))

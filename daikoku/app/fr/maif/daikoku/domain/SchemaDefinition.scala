@@ -4466,17 +4466,17 @@ object SchemaDefinition {
           getTenantFields("api", ApiType, ctx => ctx.ctx._1.apiRepo) ++
           getTenantFields("team", TeamObjectType, ctx => ctx.ctx._1.teamRepo) ++
           // format: off
-      getTenantFields("translation", TranslationType, ctx => ctx.ctx._1.translationRepo) ++
-      getTenantFields("message", MessageType, ctx => ctx.ctx._1.messageRepo) ++
-      // format: off
-      getTenantFields("apiSubscription", ApiSubscriptionType, ctx => ctx.ctx._1.apiSubscriptionRepo) ++
-      getTenantFields("apiDocumentationPage", ApiDocumentationPageType, ctx => ctx.ctx._1.apiDocumentationPageRepo) ++
-      getTenantFields("notification", NotificationType, ctx => ctx.ctx._1.notificationRepo) ++
-      getTenantFields("consumption", ApiKeyConsumptionType, ctx => ctx.ctx._1.consumptionRepo) ++
-      getTenantFields("post", ApiPostType, ctx => ctx.ctx._1.apiPostRepo) ++
-      getTenantFields("issue", ApiIssueType, ctx => ctx.ctx._1.apiIssueRepo) ++
-      getTenantFields("cmsPage", CmsPageType, ctx => ctx.ctx._1.cmsRepo) ++
-      getTenantFields("auditEvent", AuditEventType, ctx => ctx.ctx._1.auditTrailRepo)*
+          getTenantFields("translation", TranslationType, ctx => ctx.ctx._1.translationRepo) ++
+          getTenantFields("message", MessageType, ctx => ctx.ctx._1.messageRepo) ++
+          // format: off
+          getTenantFields("apiSubscription", ApiSubscriptionType, ctx => ctx.ctx._1.apiSubscriptionRepo) ++
+          getTenantFields("apiDocumentationPage", ApiDocumentationPageType, ctx => ctx.ctx._1.apiDocumentationPageRepo) ++
+          getTenantFields("notification", NotificationType, ctx => ctx.ctx._1.notificationRepo) ++
+          getTenantFields("consumption", ApiKeyConsumptionType, ctx => ctx.ctx._1.consumptionRepo) ++
+          getTenantFields("post", ApiPostType, ctx => ctx.ctx._1.apiPostRepo) ++
+          getTenantFields("issue", ApiIssueType, ctx => ctx.ctx._1.apiIssueRepo) ++
+          getTenantFields("cmsPage", CmsPageType, ctx => ctx.ctx._1.cmsRepo) ++
+          getTenantFields("auditEvent", AuditEventType, ctx => ctx.ctx._1.auditTrailRepo) *
       )
 
     (
