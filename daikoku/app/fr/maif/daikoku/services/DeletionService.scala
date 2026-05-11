@@ -14,7 +14,7 @@ import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.joda.time.DateTime
-import play.api.libs.json.{JsArray, JsNull, JsValue, Json}
+import play.api.libs.json.{JsArray, JsNull, JsString, JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
 
@@ -183,23 +183,65 @@ class DeletionService(
     } yield ()).value
 
   /** Delete subscriptions for a given API:
-    * 1. Disable subs in DB (signal for Otoroshi sync)
-    * 2. Delegate key deletion to OtoroshiSynchronizerJob (handles aggregation)
-    * 3. Finalize: save notifs + payment ops
-    * 4. Mark subs as deleted in DB
+    * 1. Promote orphan children if their parent is being deleted (Phase 0)
+    * 2. Disable subs in DB (signal for Otoroshi sync)
+    * 3. Delegate key deletion to OtoroshiSynchronizerJob (handles aggregation)
+    * 4. Finalize: save notifs + payment ops + cleanup action.subscription notifs
+    * 5. Mark subs as deleted in DB
+    *
+    * @param electedChildId when deleting a parent with children, override the
+    *                       automatic election (oldest by createdAt) with a
+    *                       specific child id chosen by the caller
     */
-  private def deleteSubscriptions(
+  def deleteSubscriptions(
       subscriptions: Seq[ApiSubscription],
       api: Api,
       tenant: Tenant,
-      user: User
+      user: User,
+      electedChildId: Option[ApiSubscriptionId] = None
   ): EitherT[Future, AppError, Boolean] = {
     implicit val m: Materializer = env.defaultMaterializer
     AppLogger.debug(
       s"[deletion service] :: deleting subscriptions[${subscriptions.map(_.id).mkString(",")}] for api ${api.id.value}"
     )
 
+    val deletedIds = subscriptions.map(_.id).toSet
+
     for {
+      // Phase 0 — promote children whose parent is being deleted
+      orphanChildren <- EitherT.right[AppError](
+        env.dataStore.apiSubscriptionRepo
+          .forTenant(tenant)
+          .findNotDeleted(Json.obj(
+            "parent" -> Json.obj("$in" -> JsArray(deletedIds.map(_.asJson).toSeq))
+          ))
+      )
+      // orphansByOldParent: old parent id → elected new parent + remaining children
+      orphansByOldParent = orphanChildren.groupBy(_.parent.get)
+      _ <- EitherT.right[AppError](
+        Future.sequence(
+          orphansByOldParent.values.toSeq.map { group =>
+            val elected = electedChildId
+            .flatMap(id => group.find(_.id == id))
+            .getOrElse(group.minBy(_.createdAt.getMillis))
+            val others  = group.filterNot(_.id == elected.id)
+            for {
+              _ <- env.dataStore.apiSubscriptionRepo
+                .forTenant(tenant)
+                .updateManyByQuery(
+                  Json.obj("_id" -> elected.id.asJson),
+                  Json.obj("$unset" -> Json.obj("parent" -> ""))
+                )
+              _ <- env.dataStore.apiSubscriptionRepo
+                .forTenant(tenant)
+                .updateManyByQuery(
+                  Json.obj("_id" -> Json.obj("$in" -> JsArray(others.map(_.id.asJson)))),
+                  Json.obj("$set" -> Json.obj("parent" -> elected.id.asJson))
+                )
+            } yield ()
+          }
+        )
+      )
       // Phase 1 — disable subs in DB so the synchronizer sees them as disabled
       _ <- EitherT.liftF(
         env.dataStore.apiSubscriptionRepo
@@ -209,9 +251,21 @@ class DeletionService(
             Json.obj("$set" -> Json.obj("enabled" -> false))
           )
       )
-      // Phase 2 — delegate Otoroshi key deletion to the synchronizer (handles aggregation)
+      // Phase 2 — Otoroshi sync, split by whether a promoted parent took over the apikey:
+      //   - subs with surviving children: just run a regular sync on the elected new parent
+      //     (recomputes the key without the deleted parent's routes — no deletion)
+      //   - subs without surviving children: run deletion sync targeted per subscription
+      subsWithPromotedChildren = orphansByOldParent.keySet
+      electeds = orphansByOldParent.values.map(_.minBy(_.createdAt.getMillis)).toSeq
       _ <- EitherT.liftF(
-        otoroshiSynchronizerJob.runForDeletion(api.id, tenant)
+        Future.sequence(electeds.map(e => otoroshiSynchronizerJob.run(e.id, tenant)))
+      )
+      _ <- EitherT.liftF(
+        Future.sequence(
+          subscriptions
+            .filterNot(s => subsWithPromotedChildren.contains(s.id))
+            .map(s => otoroshiSynchronizerJob.runForDeletion(s.id, tenant))
+        )
       )
       // Phase 3 — save notifs + payment ops
       _ <- EitherT(
@@ -229,6 +283,13 @@ class DeletionService(
               Right[AppError, Unit](())
             )((_, either) => either)
           )
+      )
+      // Phase 3b — delete notifications related to the subscriptions being removed
+      _ <- EitherT.right[AppError](
+        env.dataStore.notificationRepo.forTenant(tenant)
+          .delete(Json.obj("action.subscription" -> Json.obj(
+            "$in" -> JsArray(subscriptions.map(s => JsString(s.id.value)))
+          )))
       )
       // Phase 4 — mark as deleted in DB
       result <- EitherT.right[AppError](
@@ -571,8 +632,98 @@ class DeletionService(
           )
           .runWith(Sink.ignore)(using env.defaultMaterializer)
       )
+      // also delete consumer subscriptions (team subscribed to an external API)
+      ownedApiIds = apis.map(_.id).toSet
+      consumerSubsByApi = allSubscriptions
+        .filterNot(s => ownedApiIds.contains(s.api))
+        .groupBy(_.api)
+      consumerApis <- EitherT.liftF(
+        env.dataStore.apiRepo
+          .forTenant(tenant)
+          .findNotDeleted(Json.obj("_id" -> Json.obj("$in" -> JsArray(consumerSubsByApi.keys.map(_.asJson).toSeq))))
+      )
+      _ <- EitherT.liftF(
+        Source(consumerApis)
+          .mapAsync(1)(api =>
+            deleteSubscriptions(
+              consumerSubsByApi.getOrElse(api.id, Seq.empty),
+              api,
+              tenant,
+              user
+            ).value
+          )
+          .runWith(Sink.ignore)(using env.defaultMaterializer)
+      )
       _ <- deleteApis(apis, tenant, user)
       _ <- deleteTeam(team, tenant)
+    } yield ()
+  }
+
+  /** Flag a usage plan as deleted and delete its subscriptions.
+    * Adds an operation in the deletion queue to process cleanup of demands and notifications.
+    */
+  def deleteUsagePlanByQueue(
+      planId: UsagePlanId,
+      apiId: ApiId,
+      tenantId: TenantId,
+      user: User
+  ): EitherT[Future, AppError, Unit] = {
+    for {
+      tenant <- EitherT.fromOptionF(
+        env.dataStore.tenantRepo.findByIdNotDeleted(tenantId),
+        AppError.TenantNotFound
+      )
+      api <- EitherT.fromOptionF(
+        env.dataStore.apiRepo.forTenant(tenant).findByIdNotDeleted(apiId),
+        AppError.ApiNotFound
+      )
+      plan <- EitherT.fromOptionF[Future, AppError, UsagePlan](
+        env.dataStore.usagePlanRepo.forTenant(tenant).findByIdNotDeleted(planId),
+        AppError.PlanNotFound
+      )
+      subscriptions <- EitherT.right[AppError](
+        env.dataStore.apiSubscriptionRepo
+          .forTenant(tenant)
+          .findNotDeleted(Json.obj("api" -> api.id.asJson, "plan" -> plan.id.asJson))
+      )
+      _ <- deleteSubscriptions(subscriptions, api, tenant, user)
+      _ <- EitherT.right[AppError](
+        env.dataStore.apiRepo
+          .forTenant(tenant)
+          .save(api.copy(possibleUsagePlans = api.possibleUsagePlans.filter(_ != plan.id)))
+      )
+      _ <- EitherT.right[AppError](
+        env.dataStore.usagePlanRepo.forTenant(tenant).deleteByIdLogically(plan.id)
+      )
+      _ <- plan.paymentSettings match {
+        case Some(paymentSettings) =>
+          EitherT.right[AppError](
+            env.dataStore.operationRepo
+              .forTenant(tenant)
+              .save(
+                Operation(
+                  DatastoreId(IdGenerator.token(24)),
+                  tenant = tenant.id,
+                  itemId = plan.id.value,
+                  itemType = ItemType.ThirdPartyProduct,
+                  action = OperationAction.Delete,
+                  payload = Json.obj("paymentSettings" -> paymentSettings.asJson).some
+                )
+              )
+          ).map(_ => ())
+        case None => EitherT.pure[Future, AppError](())
+      }
+      _ <- EitherT.right[AppError](
+        env.dataStore.operationRepo.forTenant(tenant).save(
+          Operation(
+            DatastoreId(IdGenerator.token(32)),
+            tenant = tenant.id,
+            itemId = plan.id.value,
+            itemType = ItemType.UsagePlan,
+            action = OperationAction.Delete
+          )
+        )
+      )
     } yield ()
   }
 

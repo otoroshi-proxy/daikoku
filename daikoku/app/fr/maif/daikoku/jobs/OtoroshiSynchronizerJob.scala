@@ -577,6 +577,7 @@ class OtoroshiSynchronizerJob(
       team: Team,
       tenant: Tenant
   ): Option[ActualOtoroshiApiKey] = {
+    //FIXME: c'est le shit si on veut supprimer une api avec la aprentSubscription
     if (parent.subscription.enabled)
       children
         .foldLeft(parent.asOtoroshiApikey(team, tenant)) { case (acc, item) =>

@@ -6,24 +6,25 @@ import com.dimafeng.testcontainers.{ForAllTestContainer, GenericContainer}
 import fr.maif.daikoku.controllers.AppError
 import fr.maif.daikoku.controllers.AppError.SubscriptionAggregationDisabled
 import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.NotificationAction.{ApiAccess, ApiSubscriptionDemand, TransferApiOwnership}
+import fr.maif.daikoku.domain.NotificationAction.{
+  ApiAccess,
+  ApiSubscriptionDemand
+}
 import fr.maif.daikoku.domain.NotificationType.AcceptOrReject
 import fr.maif.daikoku.domain.TeamPermission.Administrator
 import fr.maif.daikoku.domain.UsagePlanVisibility.{Private, Public}
-import fr.maif.daikoku.domain.json.{ApiFormat, ApiPostIdFormat, SeqApiSubscriptionFormat}
+import fr.maif.daikoku.domain.json.{ApiFormat, SeqApiSubscriptionFormat}
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import fr.maif.daikoku.utils.IdGenerator
 import fr.maif.daikoku.utils.LoggerImplicits.BetterLogger
+import org.awaitility.scala.AwaitilitySupport
 import org.joda.time.DateTime
+import org.scalatest.BeforeAndAfter
 import org.scalatest.concurrent.IntegrationPatience
-import org.scalatest.{BeforeAndAfter, BeforeAndAfterEach}
 import org.scalatestplus.play.PlaySpec
 import org.testcontainers.containers.BindMode
 import play.api.http.Status
 import play.api.libs.json.*
-import org.awaitility.Awaitility._
-import org.awaitility.scala.AwaitilitySupport
-import org.awaitility.core.ConditionTimeoutException
 
 import scala.concurrent.Await
 import scala.concurrent.duration.*
@@ -3576,6 +3577,115 @@ class ApiControllerSpec()
       )(using tenant, session)
       (respUpdateOto.json \ "validUntil")
         .asOpt[Long] mustBe validUntil.getMillis.some
+    }
+
+    "cancel a subscription demand" in {
+      val subscribedPlan = defaultApi.plans.reverse.head.id
+      val subscriptionDemand = SubscriptionDemand(
+        id = DemandId("test"),
+        tenant = tenant.id,
+        api = defaultApi.api.id,
+        plan = subscribedPlan,
+        steps = Seq(
+          SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(
+              id = IdGenerator.token(10),
+              team = teamOwner.id
+            )
+          )
+        ),
+        state = SubscriptionDemandState.InProgress,
+        team = teamConsumerId,
+        from = user.id,
+        motivation = None
+      )
+
+      val subDemandNotif = Notification(
+        id = NotificationId(IdGenerator.token(10)),
+        tenant = tenant.id,
+        team = None,
+        sender = user.asNotificationSender,
+        action = NotificationAction.ApiSubscriptionDemand(
+          api = defaultApi.api.id,
+          plan = defaultApi.plans.reverse.head.id,
+          team = teamConsumerId,
+          demand = DemandId("test"),
+          step = SubscriptionDemandStepId("admin"),
+          motivation = None
+        )
+      )
+
+      setupEnvBlocking(
+        tenants = Seq(
+          tenant.copy(otoroshiSettings =
+            Set(
+              OtoroshiSettings(
+                id = containerizedOtoroshi,
+                url =
+                  s"http://otoroshi.oto.tools:${container.mappedPort(8080)}",
+                host = "otoroshi-api.oto.tools",
+                clientSecret = otoroshiAdminApiKey.clientSecret,
+                clientId = otoroshiAdminApiKey.clientId
+              )
+            )
+          )
+        ),
+        users = Seq(userAdmin, user),
+        teams = Seq(teamOwner, teamConsumer),
+        usagePlans = defaultApi.plans.map(
+          _.copy(otoroshiTarget =
+            Some(
+              OtoroshiTarget(
+                containerizedOtoroshi,
+                Some(
+                  AuthorizedEntities(
+                    routes = Set(OtoroshiRouteId(parentRouteId))
+                  )
+                )
+              )
+            )
+          )
+        ),
+        apis = Seq(
+          defaultApi.api.copy(
+            documentation = ApiDocumentation(
+              id = ApiDocumentationId(IdGenerator.token(10)),
+              tenant = tenant.id,
+              pages = Seq(),
+              lastModificationAt = DateTime.now
+            )
+          )
+        ),
+        subscriptionDemands = Seq(subscriptionDemand),
+        notifications = Seq(subDemandNotif)
+      )
+      val session = loginWithBlocking(userAdmin, tenant)
+
+      val cancelDemand = httpJsonCallBlocking(
+        path =
+          s"/api/subscription/team/${teamConsumerId.value}/demands/${subscriptionDemand.id.value}/_cancel",
+        method = "DELETE",
+      )(using tenant, session)
+
+      cancelDemand.status mustBe 200
+      (cancelDemand.json \ "done").as[Boolean] mustBe true
+
+      val notifDemand = Await.result(
+        daikokuComponents.env.dataStore.notificationRepo
+          .forAllTenant()
+          .findByIdNotDeleted(subDemandNotif.id),
+        5.second
+      )
+      notifDemand mustBe None
+
+      Await.result(
+        daikokuComponents.env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .findById(subscriptionDemand.id),
+        5.second
+      ) mustBe None
     }
   }
 

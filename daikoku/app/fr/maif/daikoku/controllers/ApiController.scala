@@ -1421,7 +1421,7 @@ class ApiController(
       }
     }
 
-  def cancelProcess(teamId: String, demandId: String) =
+  def cancelProcess(teamId: String, demandId: String): Action[AnyContent] =
     DaikokuAction.async { ctx =>
       TeamAdminOnly(
         AuditTrailEvent(
@@ -1437,15 +1437,20 @@ class ApiController(
               .findByIdNotDeleted(demandId),
             AppError.EntityNotFound("Subscription demand")
           )
-          _ <- EitherT.liftF[Future, AppError, Boolean](
+          _ <- EitherT.right[AppError](
             env.dataStore.subscriptionDemandRepo
               .forTenant(ctx.tenant)
               .deleteById(demand.id)
           )
-          _ <- EitherT.liftF[Future, AppError, Boolean](
+          _ <- EitherT.right[AppError](
             env.dataStore.stepValidatorRepo
               .forTenant(ctx.tenant)
               .delete(Json.obj("subscriptionDemand" -> demand.id.asJson))
+          )
+          _ <- EitherT.right[AppError](
+            env.dataStore.notificationRepo
+              .forTenant(ctx.tenant)
+              .delete(Json.obj("action.demand" -> demand.id.asJson))
           )
         } yield Ok(Json.obj("done" -> true)))
           .leftMap(_.render())
@@ -2308,49 +2313,6 @@ class ApiController(
       }
     }
 
-  private def syncAndDeleteSubscription(subscription: ApiSubscription, api: Api, plan: UsagePlan, tenant: Tenant, team: Team, user: User) = {
-    for {
-      _ <- apiKeyStatsJob.syncForSubscription(subscription, tenant)
-      _ <- env.dataStore.notificationRepo.forTenant(tenant)
-        .delete(Json.obj("action.subscription" -> subscription.id.value))
-      notif = Notification(
-        id = NotificationId(IdGenerator.token(32)),
-        tenant = tenant.id,
-        team = Some(subscription.team),
-        sender = user.asNotificationSender,
-        notificationType = NotificationType.AcceptOnly,
-        action = NotificationAction.ApiKeyDeletionInformationV2(
-          api.id,
-          subscription.apiKey.clientId,
-          subscription.id
-        )
-      )
-      _ <- env.dataStore.notificationRepo.forTenant(tenant).save(notif)
-      delete <- apiService
-          .deleteApiKey(tenant, subscription, plan)
-          .flatMap(delete => {
-            if (plan.visibility == Private) {
-              env.dataStore.usagePlanRepo
-                .forTenant(tenant)
-                .save(plan.removeAuthorizedTeam(team.id))
-                .map(_ => delete)
-            } else {
-              FastFuture.successful(delete)
-            }
-          })
-    } yield delete
-  }
-
-  private def deleteSubscriptionAsChild(subscription: ApiSubscription, plan: UsagePlan, tenant: Tenant) = {
-    for {
-      json <- EitherT(apiService.archiveApiKey(tenant, subscription, plan, enabled = false))
-      _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiSubscriptionRepo.forTenant(tenant)
-        .deleteByIdLogically(subscription.id))
-      _ <- EitherT.right[AppError](env.dataStore.notificationRepo.forTenant(tenant)
-        .delete(Json.obj("action.subscription" -> subscription.id.value)))
-    } yield json
-  }
-
   def deleteApiSubscription(teamId: String, subscriptionId: String, action: Option[String], childId: Option[String]): Action[AnyContent] =
     DaikokuAction.async { ctx =>
       TeamApiEditorOnly(
@@ -2366,50 +2328,46 @@ class ApiController(
           (api: Api, plan: UsagePlan, subscription: ApiSubscription) => {
             ctx.setCtxValue("subscription", subscription)
 
+            val cleanupPrivatePlan: EitherT[Future, AppError, Unit] =
+              if (plan.visibility == Private)
+                EitherT.right(env.dataStore.usagePlanRepo.forTenant(ctx.tenant)
+                  .save(plan.removeAuthorizedTeam(team.id)).map(_ => ()))
+              else EitherT.pure(())
+
+            val done = Json.obj("archive" -> "done", "subscriptionId" -> subscriptionId)
+
             EitherT.liftF(env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
               .find(Json.obj("parent" -> subscription.id.asJson)))
               .flatMap {
-                case Nil if subscription.parent.isDefined => deleteSubscriptionAsChild(subscription, plan, ctx.tenant)
-                case Nil => EitherT(syncAndDeleteSubscription(subscription, api, plan, ctx.tenant, team, ctx.user))
+                case Nil =>
+                  // standalone or child: delegate entirely to DeletionService
+                  for {
+                    _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant, ctx.user)
+                    _ <- if (subscription.parent.isEmpty) cleanupPrivatePlan else EitherT.pure[Future, AppError](())
+                  } yield done
+
                 case childs: Seq[ApiSubscription] => action match {
                   case Some("delete") =>
+                    // delete all children + parent in one shot
                     for {
-                      _ <- apiService.condenseEitherT(childs.map(c => deleteSubscriptionAsChild(c, plan, ctx.tenant)))
-                      json <- EitherT(syncAndDeleteSubscription(subscription, api, plan, ctx.tenant, team, ctx.user))
-                    } yield json
+                      _ <- deletionService.deleteSubscriptions(childs ++ Seq(subscription), api, ctx.tenant, ctx.user)
+                      _ <- cleanupPrivatePlan
+                    } yield done
+
                   case Some("extraction") =>
+                    // extract each child to a standalone key, then delete parent
                     for {
-                      _ <- apiService.condenseEitherT(childs
-                        .map(s => EitherT(_makeUnique(ctx.tenant, plan, s, ctx.user)))
-                      )
-                      json <- EitherT(syncAndDeleteSubscription(subscription, api, plan, ctx.tenant, team, ctx.user))
-                    } yield json
+                      _ <- apiService.condenseEitherT(childs.map(s => EitherT(_makeUnique(ctx.tenant, plan, s, ctx.user))))
+                      _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant, ctx.user)
+                      _ <- cleanupPrivatePlan
+                    } yield done
+
                   case _ =>
-                    val futureParent = childId.flatMap(id => childs.find(c => c.id.value == id)).getOrElse(childs.head)
+                    // promote a specific child (or oldest) then delete parent
+                    val electedId = childId.flatMap(id => childs.find(_.id.value == id)).map(_.id)
                     for {
-                      _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
-                        .save(futureParent.copy(parent = None))) //promot first or given sub id
-                      _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
-                        .deleteByIdLogically(subscriptionId))
-                      _ <- EitherT.right[AppError](env.dataStore.notificationRepo.forTenant(ctx.tenant)
-                        .delete(Json.obj("action.subscription" -> subscription.id.value)))
-                      _ <- EitherT.liftF[Future, AppError, Seq[Boolean]](Future.sequence(childs.filter(c => c.id != futureParent.id)
-                        .map(child => env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
-                          .save(child.copy(parent = futureParent.id.some))))) //update first child to remove parent
-                      _ <- EitherT.liftF[Future, AppError, Unit](otoroshiSynchronisator.run(futureParent.id, ctx.tenant))
-                      _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.notificationRepo.forTenant(ctx.tenant)
-                        .save(Notification(
-                        id = NotificationId(IdGenerator.token(32)),
-                        tenant = ctx.tenant.id,
-                        team = team.id.some,
-                        sender = ctx.user.asNotificationSender,
-                        notificationType = NotificationType.AcceptOnly,
-                        action = NotificationAction.ApiKeyDeletionInformationV2(api = api.id, clientId = subscription.apiKey.clientId, subscription = subscription.id)
-                      )))
-                    } yield Json.obj(
-                      "archive" -> "done",
-                      "subscriptionId" -> subscriptionId
-                    )
+                      _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant, ctx.user, electedChildId = electedId)
+                    } yield done
                 }
               }.value
           })
@@ -2977,75 +2935,6 @@ class ApiController(
               Json.obj("_id" -> apiId, "team" -> team.id.asJson)
             ), AppError.ApiNotFound)
           _ <- EitherT.cond[Future][AppError, Unit](api.visibility != ApiVisibility.AdminOnly, (), AppError.ForbiddenAction)
-//          _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiRepo.forTenant(ctx.tenant)
-//            .save(api.copy(state = ApiState.Blocked))
-//          )
-//          _ <- EitherT.liftF[Future, AppError, Long](env.dataStore.apiSubscriptionRepo.forTenant(ctx.tenant)
-//            .updateManyByQuery(Json.obj(
-//              "api" -> api.id.asJson
-//            ), Json.obj(
-//              "$set" -> Json.obj(
-//                "enabled" -> false
-//              )
-//            )))
-
-//          plans <- EitherT[Future, AppError, Set[UsagePlan]](Source(api.possibleUsagePlans.toList)
-//            .mapAsync(1)(planId => {
-//              for {
-//                subs <-
-//                  env.dataStore.apiSubscriptionRepo
-//                    .forTenant(ctx.tenant)
-//                    .findNotDeleted(
-//                      Json
-//                        .obj("api" -> api.id.asJson, "plan" -> planId.asJson)
-//                    )
-//                plan <-
-//                  env.dataStore.usagePlanRepo
-//                    .forTenant(ctx.tenant)
-//                    .findById(planId)
-//              } yield (plan.get, subs)
-//            })
-//            .via(
-//              apiService.deleteApiSubscriptionsAsFlow(
-//                tenant = ctx.tenant,
-//                apiOrGroupId = api.id,
-//                user = ctx.user
-//              )
-//            )
-//            .runWith(Sink.fold(Set.empty[UsagePlan])((set, plan) => set + plan))
-//            .map(Right(_))
-//            .recover { case ex =>
-//              Left(AppError.OtoroshiError(Json.obj("error" -> ex.getMessage)))})
-
-//          _ <- EitherT.liftF[Future, AppError, Long](env.dataStore.operationRepo
-//            .forTenant(ctx.tenant)
-//            .insertMany(
-//              plans.filter(_.paymentSettings.isDefined).map(plan =>
-//                  Operation(
-//                    DatastoreId(IdGenerator.token(24)),
-//                    tenant = ctx.tenant.id,
-//                    itemId = plan.id.value,
-//                    itemType = ItemType.ThirdPartyProduct,
-//                    action = OperationAction.Delete,
-//                    payload = Json
-//                      .obj(
-//                        "paymentSettings" -> plan.paymentSettings
-//                          .map(_.asJson)
-//                          .getOrElse(JsNull)
-//                          .as[JsValue]
-//                      )
-//                      .some
-//                  )
-//                )
-//                .toSeq
-//            ))
-//          _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.usagePlanRepo
-//            .forTenant(ctx.tenant)
-//            .deleteLogically(Json.obj("_id" -> Json.obj("$in" -> JsArray(api.possibleUsagePlans.map(_.asJson)))))
-//          )
-//          _ <- EitherT.liftF[Future, AppError, Boolean](env.dataStore.apiRepo
-//            .forTenant(ctx.tenant.id)
-//            .deleteByIdLogically(apiId))
           _ <- deletionService.deleteApiByQueue(id = api.id, tenant = ctx.tenant.id, user = ctx.user)
           _ <- processNextCurrentVersion(api, nextCurrentVersion)
         } yield Ok(Json.obj("done" -> true)))
@@ -5114,9 +5003,13 @@ class ApiController(
             env.dataStore.usagePlanRepo.forTenant(ctx.tenant).findById(planId),
             AppError.PlanNotFound
           )
-          updatedApi <-
-            apiService.deleteUsagePlan(plan, api, ctx.tenant, ctx.user)
-        } yield Ok(updatedApi.asJson)
+          _ <- deletionService.deleteUsagePlanByQueue(
+            planId = plan.id,
+            apiId = api.id,
+            tenantId = ctx.tenant.id,
+            user = ctx.user
+          )
+        } yield Ok(Json.obj("done" -> true))
 
         value.leftMap(_.render()).merge
       }

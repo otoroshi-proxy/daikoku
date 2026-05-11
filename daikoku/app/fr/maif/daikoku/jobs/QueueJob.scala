@@ -67,6 +67,65 @@ class QueueJob(
       )
   }
 
+  private def deleteUsagePlan(o: Operation): Future[Unit] = {
+    (for {
+      _ <- OptionT.liftF(
+        env.dataStore.operationRepo
+          .forTenant(o.tenant)
+          .save(o.copy(status = OperationStatus.InProgress))
+      )
+      plan <- OptionT(
+        env.dataStore.usagePlanRepo
+          .forTenant(o.tenant)
+          .findById(o.itemId)
+      )
+      _ <- OptionT.liftF(
+        plan.documentation match {
+          case Some(doc) =>
+            env.dataStore.apiDocumentationPageRepo
+              .forTenant(o.tenant)
+              .deleteLogically(
+                Json.obj("_id" -> Json.obj("$in" -> JsArray(doc.docIds().map(JsString.apply))))
+              )
+          case None => FastFuture.successful(false)
+        }
+      )
+      _ <- OptionT.liftF(
+        env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .execute(
+            s"""
+               |WITH deleted_demands AS (
+               |  DELETE FROM subscription_demands
+               |  WHERE content->>'_tenant' = $$1
+               |    AND content->>'plan' = $$2
+               |    AND content->>'state' IN ('${SubscriptionDemandState.Waiting.name}', '${SubscriptionDemandState.InProgress.name}')
+               |  RETURNING _id AS demand_id
+               |)
+               |DELETE FROM step_validators
+               |WHERE content->>'subscriptionDemand' IN (SELECT demand_id FROM deleted_demands);
+               |""".stripMargin,
+            Seq(o.tenant.value, o.itemId)
+          )
+      )
+      _ <- OptionT.liftF(
+        env.dataStore.notificationRepo
+          .forTenant(o.tenant)
+          .deleteLogically(Json.obj("action.plan" -> JsString(o.itemId)))
+      )
+      _ <- OptionT.liftF(
+        env.dataStore.operationRepo.forTenant(o.tenant).deleteById(o.id)
+      )
+    } yield ()).value
+      .map(_ => logger.debug(s"[deletion job] :: usage plan ${o.itemId} successfully deleted"))
+      .recover(e => {
+        logger.error(s"[deletion job] :: [id ${o.id.value}] :: error during deletion of plan ${o.itemId}: $e")
+        env.dataStore.operationRepo
+          .forTenant(o.tenant)
+          .save(o.copy(status = OperationStatus.Error))
+      })
+  }
+
   private def deleteSubscriptionNotifications(
       subscription: ApiSubscription
   ): Future[Boolean] = {
@@ -569,6 +628,8 @@ class QueueJob(
             deleteSubscription(firstOperation)
           case (ItemType.Api, OperationAction.Delete) =>
             deleteApi(firstOperation)
+          case (ItemType.UsagePlan, OperationAction.Delete) =>
+            deleteUsagePlan(firstOperation)
           case (ItemType.Team, OperationAction.Delete) =>
             deleteTeam(firstOperation)
           case (ItemType.User, OperationAction.Delete) =>
