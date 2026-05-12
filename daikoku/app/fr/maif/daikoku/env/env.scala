@@ -35,7 +35,7 @@ import play.api.{Configuration, Environment}
 import java.nio.file.Paths
 import scala.concurrent.duration.*
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Using}
 
 sealed trait DaikokuMode {
   def name: String
@@ -684,6 +684,27 @@ class DaikokuEnv(
                   ""
                 )
 
+                val defaultThemeBody = environment
+                  .resourceAsStream("public/themes/default.css")
+                  .map(stream =>
+                    Using.resource(stream)(s =>
+                      scala.io.Source.fromInputStream(s).mkString
+                    )
+                  )
+                  .getOrElse {
+                    AppLogger.warn(
+                      "public/themes/default.css not found, using empty default color theme"
+                    )
+                    ""
+                  }
+
+                val colorThemePage = Tenant.getCustomizationCmsPage(
+                  tenantId = tenant.id,
+                  pageId = "color-theme",
+                  contentType = "text/css",
+                  body = defaultThemeBody
+                )
+
                 for {
                   _ <- Future.sequence(
                     evolutions.list.map(e =>
@@ -719,21 +740,10 @@ class DaikokuEnv(
                       .forTenant(tenant.id)
                       .save(cmsPlan)
                   _ <- dataStore.userRepo.save(user)
-                  publicFolderPath = environment.getFile("public").getPath
-                  cssFilePath = s"$publicFolderPath/themes/default.css"
-                  cssFileContent =
-                    scala.io.Source.fromFile(cssFilePath).mkString
                   _ <-
                     dataStore.cmsRepo
                       .forTenant(tenant.id)
-                      .save(
-                        Tenant.getCustomizationCmsPage(
-                          tenantId = tenant.id,
-                          pageId = "color-theme",
-                          contentType = "text/css",
-                          body = cssFileContent
-                        )
-                      )
+                      .save(colorThemePage)
                   _ <-
                     dataStore.cmsRepo
                       .forTenant(tenant.id)
