@@ -19,12 +19,12 @@ services:
     networks:
       - basicsetup
     environment:
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_USER=postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
     volumes:
       - ./config/postgres/create_database.sql:/docker-entrypoint-initdb.d/create_database.sql
     ports:
-      - 5442:5432
+      - 5432:5432
 
   otoroshi:
     image: maif/otoroshi:latest
