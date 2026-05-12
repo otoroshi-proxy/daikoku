@@ -56,20 +56,9 @@ type NotificationActionGQL =
     demand: ISubscriptionDemandGQL;
   }
   | {
-    __typename: 'NewCommentOnIssue';
-    teamId: string;
-    linkTo: string;
-    apiName: string;
-  }
-  | {
     __typename: 'NewCommentOnIssueV2';
     api: IApiGQL;
     issue: Issue
-  }
-  | {
-    __typename: 'NewPostPublished';
-    apiName: string;
-    team: ITeamFullGql;
   }
   | {
     __typename: 'NewPostPublishedV2';
@@ -77,22 +66,11 @@ type NotificationActionGQL =
     post: IApiPost
   }
   | {
-    __typename: 'ApiKeyRefresh';
-    subscriptionName: string;
-    apiName: string;
-    planName: string;
-  }
-  | {
     __typename: 'ApiKeyRefreshV2';
     api: IApiGQL;
     subscription: IApiSubscriptionGql;
     plan: IUsagePlan
     message?: string
-  }
-  | {
-    __typename: 'ApiKeyDeletionInformation';
-    apiName: string;
-    clientId: string;
   }
   | {
     __typename: 'ApiKeyDeletionInformationV2';
@@ -127,12 +105,6 @@ type NotificationActionGQL =
     api: IApiGQL;
   }
   | {
-    __typename: 'ApiKeyRotationInProgress';
-    clientId: string;
-    apiName: string;
-    planName: string;
-  }
-  | {
     __typename: 'ApiKeyRotationInProgressV2';
     api: IApiGQL;
     subscription: IApiSubscriptionGql
@@ -149,11 +121,6 @@ type NotificationActionGQL =
     api: IApiGQL;
     subscription: IApiSubscriptionGql
     plan: IUsagePlan;
-  }
-  | {
-    __typename: 'NewIssueOpen';
-    linkTo: string;
-    apiName: string;
   }
   | {
     __typename: 'NewIssueOpenV2';
@@ -315,20 +282,13 @@ export const NotificationList = () => {
     { type: "ApiSubscriptionAccept" },
     { type: "OtoroshiSyncSubscriptionError" },
     { type: "OtoroshiSyncApiError" },
-    { type: "ApiKeyDeletionInformation" },
     { type: "ApiKeyDeletionInformationV2" },
-    { type: "ApiKeyRotationInProgress" },
     { type: "ApiKeyRotationInProgressV2" },
-    { type: "ApiKeyRotationEnded" },
     { type: "ApiKeyRotationEndedV2" },
     { type: "TeamInvitation" },
-    { type: "ApiKeyRefresh" },
     { type: "ApiKeyRefreshV2" },
-    { type: "NewPostPublished" },
     { type: "NewPostPublishedV2" },
-    { type: "NewIssueOpen" },
     { type: "NewIssueOpenV2" },
-    { type: "NewCommentOnIssue" },
     { type: "NewCommentOnIssueV2" },
     { type: "TransferApiOwnership" },
     { type: "ApiSubscriptionTransferSuccess" },
@@ -403,33 +363,6 @@ export const NotificationList = () => {
             <div className="d-flex justify-content-end">
               <a
                 href={`/${notification.action.api.team._humanReadableId}/${notification.action.api._humanReadableId}/${notification.action.api.currentVersion}/news`}
-                onClick={() => notification.status.status === 'Pending' ? accept(notification._id) : {}}
-                className="nav_item cursor-pointer bg-info"
-                target='_blank'
-                title={translate('notifications.page.subscription.demand.reject.detail.button.label')}
-                aria-label={translate('notifications.page.subscription.demand.reject.detail.button.label')}
-              >
-                <i className="fas fa-arrow-right" />
-              </a>
-            </div>
-            {notification.status.status === 'Pending' && <button
-              type="button"
-              className="nav_item cursor-pointer no-bg"
-              title={translate('notifications.page.table.read.action.label')}
-              aria-label={translate('notifications.page.table.read.action.label')}
-              onClick={() => accept(notification._id)}
-            >
-              <i className="fas fa-times" />
-            </button>}
-          </div>
-        );
-      case 'NewIssueOpen':
-      case 'NewCommentOnIssue':
-        return (
-          <div className='action-container'>
-            <div className="d-flex justify-content-end">
-              <a
-                href={notification.action.linkTo}
                 onClick={() => notification.status.status === 'Pending' ? accept(notification._id) : {}}
                 className="nav_item cursor-pointer bg-info"
                 target='_blank'
@@ -570,24 +503,6 @@ export const NotificationList = () => {
                 {translate('Checkout')}
               </FeedbackButton>
             </div>
-          </div>
-        )
-      case 'ApiKeyRefresh':
-      case 'ApiKeyRotationInProgress':
-      case 'ApiKeyRotationEnded':
-        return (
-          <div className='action-container'>
-            <div className="d-flex justify-content-end">
-            </div>
-            {notification.status.status === 'Pending' && <button
-              type="button"
-              className="nav_item cursor-pointer no-bg"
-              title={translate('notifications.page.table.read.action.label')}
-              aria-label={translate('notifications.page.table.read.action.label')}
-              onClick={() => accept(notification._id)}
-            >
-              <i className="fas fa-times" />
-            </button>}
           </div>
         )
       case 'ApiKeyRefreshV2':
@@ -768,8 +683,6 @@ export const NotificationList = () => {
           key: 'notif.api.demand.accept',
           replacements: [notification.action.plan.customName]
         })
-      case 'ApiKeyDeletionInformation':
-        return translate({ key: 'notif.apikey.deletion' })
       case 'ApiKeyDeletionInformationV2': {
         const apiKeyDeletionInformationDescription = translate({ key: 'notif.apikey.deletion' })
         const clientId = notification.action.clientId
@@ -796,8 +709,6 @@ export const NotificationList = () => {
       case 'OtoroshiSyncSubscriptionError':
       case 'OtoroshiSyncApiError':
         return notification.action.message
-      case 'ApiKeyRotationInProgress':
-        return translate('notif.apikey.rotation.inprogress');
       case 'ApiKeyRotationInProgressV2': {
         const apiKeyRotationInProgressDescription = translate('notif.apikey.rotation.inprogress')
         const __api = notification.action.api
@@ -826,8 +737,6 @@ export const NotificationList = () => {
           </>
         )
       }
-      case 'ApiKeyRotationEnded':
-        return translate('notif.apikey.rotation.ended')
       case 'ApiKeyRotationEndedV2': {
         const apiKeyRotationEndedV2Description = translate('notif.apikey.rotation.ended')
         const __api = notification.action.api
@@ -854,8 +763,6 @@ export const NotificationList = () => {
           </a>
         </>
       }
-      case 'ApiKeyRefresh':
-        return translate('notif.apikey.refresh')
       case 'ApiKeyRefreshV2': {
         const apiKeyRefreshV2Description = translate('notif.apikey.refresh')
         const __api = notification.action.api
@@ -887,28 +794,17 @@ export const NotificationList = () => {
           key: 'notif.team.invitation',
           replacements: [notification.action.team.name]
         })
-      case 'NewPostPublished':
-        return translate({
-          key: 'notif.new.published.post',
-          replacements: [notification.action.apiName]
-        })
       case 'NewPostPublishedV2':
         return translate({
           key: 'notif.new.published.post',
           replacements: [
             notification.action.api.name]
         })
-      case 'NewIssueOpen':
-        return translate({
-          key: 'notif.issues',
-          replacements: [notification.action.apiName]
-        })
       case 'NewIssueOpenV2':
         return translate({
           key: 'notif.issues',
           replacements: [notification.action.api.name]
         })
-      case 'NewCommentOnIssue':
       case 'NewCommentOnIssueV2':
         return translate('notif.issues.comment')
       case 'ApiSubscriptionTransferSuccess':
@@ -973,15 +869,6 @@ export const NotificationList = () => {
       case "CheckoutForSubscription":
         const _api = notification.action.api
         return ({ _id: _api._id, name: _api.name, currentVersion: _api.currentVersion })
-      case "ApiKeyDeletionInformation":
-      case "ApiKeyRotationInProgress":
-      case "ApiKeyRotationEnded":
-      case "NewPostPublished":
-      case "NewIssueOpen":
-      case "NewCommentOnIssue":
-      case "ApiKeyRefresh":
-        const _apiName = notification.action.apiName
-        return apis.find(a => a.name === _apiName)
       case "TeamInvitation":
       case "OtoroshiSyncSubscriptionError":
       case "ApiSubscriptionTransferSuccess":

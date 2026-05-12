@@ -4,18 +4,9 @@ import cats.data.{EitherT, OptionT}
 import cats.implicits.catsSyntaxOptionId
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
 import fr.maif.daikoku.domain.UsagePlanVisibility.Admin
-import fr.maif.daikoku.domain._
-import fr.maif.daikoku.domain.json.{
-  ApiDocumentationPageFormat,
-  ApiFormat,
-  ApiSubscriptionFormat,
-  SeqApiDocumentationDetailPageFormat,
-  TeamFormat,
-  TeamIdFormat,
-  TenantFormat,
-  TenantIdFormat,
-  UserFormat
-}
+import fr.maif.daikoku.domain.*
+import fr.maif.daikoku.domain.json.{ApiDocumentationPageFormat, ApiFormat, ApiSubscriptionFormat, SeqApiDocumentationDetailPageFormat, TeamFormat, TeamIdFormat, TenantFormat, TenantIdFormat, UserFormat}
+import fr.maif.daikoku.env.evolution_1860.{logger, version}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient}
 import org.apache.pekko.Done
@@ -24,7 +15,7 @@ import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.joda.time.DateTime
 import play.api.Logger
-import play.api.libs.json._
+import play.api.libs.json.*
 import fr.maif.daikoku.services.CmsPage
 import fr.maif.daikoku.storage.DataStore
 
@@ -1745,6 +1736,207 @@ object evolution_1860 extends EvolutionScript {
     }
 }
 
+object evolution_1890 extends EvolutionScript {
+  override def version: String = "18.9.0"
+
+  override def script: (
+    Option[DatastoreId],
+      DataStore,
+      Materializer,
+      ExecutionContext,
+      OtoroshiClient
+    ) => Future[Done] = {
+
+    (
+      _: Option[DatastoreId],
+      dataStore: DataStore,
+      mat: Materializer,
+      ec: ExecutionContext,
+      _: OtoroshiClient
+    ) => {
+      logger.info(
+        s"Begin evolution $version - Convert footer to CMS format"
+      )
+
+      given ExecutionContext = ec
+
+      //clean teams with unknown or deleted users
+      val cleanTeamUsers = dataStore.teamRepo
+        .forAllTenant()
+        .execute(
+          query =
+            s"""
+               |UPDATE teams t
+               |SET content = jsonb_set(
+               |        t.content,
+               |        '{users}',
+               |        COALESCE(
+               |                (
+               |                    SELECT jsonb_agg(u_ref)
+               |                    FROM jsonb_array_elements(t.content->'users') AS u_ref
+               |                    WHERE EXISTS (
+               |                        SELECT 1
+               |                        FROM users u
+               |                        WHERE u.content->>'_id' = u_ref->>'userId'
+               |                          AND u._deleted = false
+               |                    )
+               |                ),
+               |                '[]'::jsonb
+               |        )
+               |              )
+               |WHERE t._deleted = false
+               |  AND EXISTS (
+               |    SELECT 1
+               |    FROM jsonb_array_elements(t.content->'users') AS u_ref
+               |    WHERE NOT EXISTS (
+               |        SELECT 1
+               |        FROM users u
+               |        WHERE u.content->>'_id' = u_ref->>'userId'
+               |          AND u._deleted = false
+               |    )
+               |);
+               |""".stripMargin
+        )
+
+    //clean usage plans not used by any API
+      val cleanUnusedPlans = dataStore.usagePlanRepo
+        .forAllTenant()
+        .execute(
+          query =
+            """
+              |UPDATE usage_plans p
+              |SET _deleted = true, content = jsonb_set(content, '{_deleted}', 'true')
+              |WHERE p._deleted = false
+              |  AND NOT EXISTS (
+              |    SELECT 1
+              |    FROM apis a,
+              |         LATERAL jsonb_array_elements_text(a.content->'possibleUsagePlans') AS plan_ref
+              |    WHERE plan_ref = p.content->>'_id'
+              |      AND a._deleted = false
+              |);
+              |""".stripMargin
+        )
+    //clean notifications related to deleted API
+    val cleanApiNotifications = dataStore.notificationRepo
+      .forAllTenant()
+      .execute(
+        query =
+          """
+            |DELETE FROM notifications n
+            |WHERE n.content->'action'->>'api' IS NOT NULL
+            |  AND n.content->'action'->>'type' <>  'OtoroshiSyncApiError'
+            |  AND NOT EXISTS (
+            |    SELECT 1
+            |    FROM apis a
+            |    WHERE (p.content->>'_id' = n.content->'action'->>'api')
+            |      AND p._deleted = false
+            |);
+            |""".stripMargin
+      )
+
+    //clean notifications related to deleted usage plan
+      val cleanPlanNotifications = dataStore.notificationRepo
+        .forAllTenant()
+        .execute(
+          query =
+            """
+              |DELETE FROM notifications n
+              |WHERE n.content->'action'->>'plan' IS NOT NULL
+              |  AND n.content->'action'->>'type' <>  'OtoroshiSyncApiError'
+              |  AND NOT EXISTS (
+              |    SELECT 1
+              |    FROM usage_plans p
+              |    WHERE (p.content->>'_id' = n.content->'action'->>'plan')
+              |      AND p._deleted = false
+              |);
+              |""".stripMargin
+        )
+    //clean subscription related to deleted API or usage plan
+      val cleanOrphanedSubscription = dataStore.apiSubscriptionRepo
+        .forAllTenant()
+        .execute(
+          query =
+            """
+              |UPDATE api_subscriptions s
+              |SET _deleted = true, content = jsonb_set(content, '{_deleted}', 'true')
+              |WHERE s._deleted = false
+              |  AND (
+              |    NOT EXISTS (
+              |        SELECT 1 FROM apis a
+              |        WHERE a.content->>'_id' = s.content->>'api'
+              |          AND a._deleted = false
+              |    )
+              |        OR NOT EXISTS (
+              |        SELECT 1 FROM usage_plans p
+              |        WHERE p.content->>'_id' = s.content->>'plan'
+              |          AND p._deleted = false
+              |    )
+              |    );
+              |""".stripMargin
+        )
+    //clean notification related to deleted subscription demand
+      val cleanSubscriptionDemandNotification = dataStore.notificationRepo
+        .forAllTenant()
+        .execute(
+          query =
+            """
+              |DELETE FROM notifications n
+              |WHERE n.content->'action'->>'demand' IS NOT NULL
+              |  AND NOT EXISTS (
+              |    SELECT 1
+              |    FROM subscription_demands sd
+              |    WHERE sd.content->>'_id' = n.content->'action'->>'demand'
+              |);
+              |""".stripMargin
+        )
+
+      val cleanStepValidators = dataStore.stepValidatorRepo
+        .forAllTenant()
+        .execute(
+          query =
+            """
+              |DELETE FROM step_validators sv
+              |WHERE NOT EXISTS (
+              |    SELECT 1
+              |    FROM subscription_demands sd
+              |    WHERE sd.content->>'_id' = sv.content->>'subscriptionDemand'
+              |);
+              |""".stripMargin
+        )
+
+    //clean legacy notifications
+      val cleanLegacyNotifs = dataStore.notificationRepo
+        .forAllTenant()
+        .execute(
+          query =
+            """
+              |DELETE FROM notifications n
+              |WHERE n.content->'action'->>'type' IN (
+              |    'NewPostPublished',
+              |    'NewIssueOpen',
+              |    'NewCommentOnIssue',
+              |    'ApiKeyDeletionInformation',
+              |    'ApiKeyRotationInProgress',
+              |    'ApiKeyRotationEnded',
+              |    'ApiKeyRefresh'
+              |);
+              |""".stripMargin
+        )
+
+      for {
+        _ <- cleanTeamUsers
+        _ <- cleanUnusedPlans
+        _ <- cleanApiNotifications
+        _ <- cleanPlanNotifications
+        _ <- cleanOrphanedSubscription
+        _ <- cleanSubscriptionDemandNotification
+        _ <- cleanStepValidators
+        _ <- cleanLegacyNotifs
+      } yield Done
+    }
+  }
+}
+
 object evolutions {
   val list: List[EvolutionScript] =
     List(
@@ -1768,7 +1960,8 @@ object evolutions {
       evolution_1840_a,
       evolution_1840_b,
       evolution_1840_c,
-      evolution_1860
+      evolution_1860,
+      evolution_1890
     )
   def run(
       dataStore: DataStore,
