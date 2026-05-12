@@ -178,10 +178,13 @@ jobs:
           echo "daikoku is ready!"
 
       - name: Install Playwright
+        timeout-minutes: 10
         run: |
           cd ./daikoku/javascript/tests
           npm ci
           npx playwright install --with-deps chromium
+        env:
+          DEBIAN_FRONTEND: noninteractive
 
       - name: Seed perf data
         if: matrix.suite.name == 'perf'
