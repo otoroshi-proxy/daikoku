@@ -13,7 +13,7 @@ import TabItem from '@theme/TabItem';
 This guide aims at helping people willing to contribute to the Daikoku codebase.
 This guide will help you set up a **full Daikoku development environment** — including PostgreSQL (via Docker), the **frontend (Vite)**, and the **backend (Scala + Play)** — with live reload enabled.
 
-> Replace or export `$DAIKOKU_PROJECT_ROOT` with your local daikoku project path, for example `~/projects/daikoku` in case you did something 
+> Replace or export `$DAIKOKU_PROJECT_ROOT` with your local daikoku project path, for example `~/projects/daikoku` in case you did something
 like `git clone git@github.com:MAIF/daikoku.git ~/projects/daikoku`
 
 ---
@@ -24,57 +24,26 @@ Make sure you have the following installed:
 
 - **JDK 21+**
 - **Scala** & **sbt** (latest recommended version)
-- **Node.js 22.x** & **npm** (Vite requires a modern Node version)
+- **Node LTS** & **npm** (Vite requires a modern Node version)
 - **Docker** (to run PostgreSQL, and later Elasticsearch, Otoroshi and Minio)
 - a clone of the **Daikoku code repository** (`git clone git@github.com:MAIF/daikoku.git`)
 
-:::tip
-If you use **nvm**, you can install Node 22 easily:
-```bash
-nvm install 22
-nvm use 22
-node -v   # should show v22.x
-npm -v
-````
-
-:::
-
-:::tip
-If you use [**coursier**](https://get-coursier.io/), you can install Scala and sbt easily:
-```bash
-cs install scala sbt
-scala -version
-sbt -version
-````
-
-:::
-
 ---
 
-## 2) Start PostgreSQL in Docker
+## 2) Start dependencies in Docker
 
-Run a local PostgreSQL instance dedicated to Daikoku:
+Run a local PostgreSQL and an instance of otoroshi dedicated to Daikoku:
 
-<Tabs>
-  <TabItem value="docker-run" label="docker run (simple)">
 
 ```bash
-docker run --name daikoku-pg \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  -e POSTGRES_DB=default \
-  -p 5432:5432 \
-  -d postgres:17
+docker-compose -f $DAIKOKU_PROJECT_ROOT/daikoku/javascript/tests/docker-compose-very-local.yml up
 ```
-
-  </TabItem>
-</Tabs>
 
 :::note Default connection info
 
 * **Host**: `localhost`
 * **Port**: `5432`
-* **Database**: `default`
+* **Database**: `daikoku`
 * **User / Password**: `postgres` / `postgres`
   :::
 
@@ -87,29 +56,16 @@ In **Terminal A**, go to the `javascript` folder and start the Vite development 
 ```bash
 cd $DAIKOKU_PROJECT_ROOT/daikoku/javascript
 npm install
-npm start
+npm run dev
 ```
 
 By default, the UI will run on **[http://localhost:5173](http://localhost:5173)**.
 
 ---
 
-## 4) Prepare static files for backend (development mode)
+## 4) Start the Backend in Hot Reload Mode
 
-In **Terminal B**, copy the frontend `index.html` into the backend’s `public` folder so that the backend can serve the dev UI correctly:
-
-```bash
-cp $DAIKOKU_PROJECT_ROOT/daikoku/javascript/index.html \
-   $DAIKOKU_PROJECT_ROOT/daikoku/public/index.html
-```
-
-> This step ensures the backend and frontend stay in sync while developing.
-
----
-
-## 5) Start the Backend in Hot Reload Mode
-
-In **Terminal B**, start the backend with `sbt` and enable continuous compilation:
+In **Terminal B**, start the backend with `sbt`:
 
 ```bash
 cd $DAIKOKU_PROJECT_ROOT/daikoku
@@ -119,19 +75,30 @@ sbt
 Inside the `sbt` console:
 
 ```sbt
-~run
+~run -Dconfig.resource=local.conf
 ```
 
 This will automatically reload the backend each time you change Scala or configuration files.
 
 ---
 
-## 6) Open the Application
+
+## 5) Open the Application
 
 * **Frontend (Vite)**: [http://localhost:5173](http://localhost:5173)
 * **Backend (Play)**: runs on its default port (typically 9000, depending on config)
 
-👉 Open your browser at **[http://localhost:5173](http://localhost:5173)** to start working.
+👉 Open your browser at **[http://localhost:5173](http://localhost:5173)** to start working. An error may be displayed at first while Daikoku backend setups the database. Just wait a few seconds an refresh to see Daikoku UI.
+
+
+## 6) Log in
+
+To log in with above setup, you'll have to use one of the following users:
+
+- admin@foo.bar / password
+- dwight.schrute@dundermifflin.com / password
+- jim.halpert@dundermifflin.com / password
+- michael.scott@dundermifflin.com / password
 
 ---
 
@@ -139,20 +106,20 @@ This will automatically reload the backend each time you change Scala or configu
 
 ### Port 5173 already in use
 
-Change the Vite port (`--port 5174`) or stop the conflicting process.
+Change the Vite port (`--port 5174`)  and the exposedPort (`-Ddaikoku.exposedOn=5174`) in sbt console or stop the conflicting process.
 
 ### PostgreSQL connection issues
 
 Make sure the container is running:
 
 ```bash
-docker ps | grep daikoku-pg
+docker ps | grep postgres_daikoku
 ```
 
 Test database access:
 
 ```bash
-docker exec -it daikoku-pg psql -U daikoku -d daikoku -c '\dt'
+docker exec -it postgres_daikoku psql -U postgres -d postgres -c '\dt'
 ```
 
 ### sbt not reloading properly
@@ -174,14 +141,6 @@ npm install
 
 ---
 
-## Recommended Development Workflow
-
-1. **Backend** running in **Terminal B** with `sbt ~run` for live reload.
-2. **Frontend** running in **Terminal A** with `npm start` for HMR (hot module reload).
-3. Open **[http://localhost:5173](http://localhost:5173)** and iterate!
-
----
-
 ## Contribution Tips
 
 Before opening a pull request:
@@ -196,4 +155,4 @@ Before opening a pull request:
 ---
 
 Happy hacking 💥
-Welcome to the Daikoku developer community!
+Welcome to the Daikoku developer community! Join us in Discord [![Join the chat on Discord](https://img.shields.io/discord/1089571852940218538?color=f9b000&label=Community&logo=Discord&logoColor=f9b000)](https://discord.gg/dmbwZrfpcQ)
