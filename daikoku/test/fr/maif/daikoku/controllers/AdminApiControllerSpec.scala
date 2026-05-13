@@ -9,19 +9,24 @@ import org.joda.time.DateTime
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatest.{BeforeAndAfter, BeforeAndAfterEach}
 import org.scalatestplus.play.PlaySpec
-import play.api.libs.json.{JsObject, Json}
+import play.api.libs.json.{JsArray, JsObject, JsString, Json}
 import play.api.libs.ws.WSResponse
 import fr.maif.daikoku.services.CmsPage
+import org.awaitility.scala.AwaitilitySupport
+import fr.maif.daikoku.domain.TeamPermission.Administrator
 
 import java.util.Base64
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.Await
+import scala.concurrent.duration.{DurationInt, *}
+import scala.jdk.DurationConverters.*
 
 class AdminApiControllerSpec
     extends PlaySpec
     with DaikokuSpecHelper
     with IntegrationPatience
     with BeforeAndAfterEach
-    with BeforeAndAfter {
+    with BeforeAndAfter
+    with AwaitilitySupport {
 
   def getMsg(resp: WSResponse): String = (resp.json \ "msg").as[String]
 
@@ -482,7 +487,7 @@ class AdminApiControllerSpec
       "DELETE :: Ok" in {
         setupEnvBlocking(
           tenants = Seq(tenant),
-          users = Seq(user),
+          users = Seq(user, tenantAdmin),
           teams = Seq(defaultAdminTeam),
           subscriptions = Seq(adminApiSubscription)
         )
@@ -499,7 +504,8 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription)
         )(using tenant)
 
-        verif.status mustBe 404
+        verif.status mustBe 200
+        (verif.json \ "_deleted").as[Boolean] mustBe true
       }
     }
 
@@ -770,7 +776,7 @@ class AdminApiControllerSpec
       "DELETE :: Ok" in {
         setupEnvBlocking(
           tenants = Seq(tenant),
-          users = Seq(user),
+          users = Seq(user, tenantAdmin),
           teams = Seq(defaultAdminTeam, teamOwner),
           subscriptions = Seq(adminApiSubscription)
         )
@@ -1069,6 +1075,8 @@ class AdminApiControllerSpec
       "DELETE :: Ok" in {
         setupEnvBlocking(
           tenants = Seq(tenant),
+          users = Seq(tenantAdmin),
+          teams = Seq(defaultAdminTeam),
           subscriptions = Seq(adminApiSubscription),
           apis = Seq(defaultApi.api),
           usagePlans = defaultApi.plans
@@ -5689,37 +5697,15 @@ class AdminApiControllerSpec
           .as[JsObject] - "testing" - "swagger"
       }
       "DELETE :: Ok" in {
-        val plan = UsagePlan(
-          id = UsagePlanId(IdGenerator.token(10)),
-          tenant = tenant.id,
-          costPerRequest = BigDecimal(10.0).some,
-          costPerMonth = BigDecimal(0.02).some,
-          billingDuration = BillingDuration(1, BillingTimeUnit.Month).some,
-          trialPeriod = None,
-          currency = Currency("EUR").some,
-          customName = "PayPerUse",
-          customDescription = None,
-          otoroshiTarget = Some(
-            OtoroshiTarget(
-              OtoroshiSettingsId("default"),
-              Some(
-                AuthorizedEntities(
-                  groups = Set(OtoroshiServiceGroupId("12345"))
-                )
-              )
-            )
-          ),
-          allowMultipleKeys = Some(false),
-          subscriptionProcess = Seq.empty,
-          integrationProcess = IntegrationProcess.ApiKey,
-          autoRotation = Some(false)
-        )
+        val plan = defaultApi.plans.head
 
         setupEnvBlocking(
           tenants = Seq(tenant),
+          users = Seq(tenantAdmin),
+          teams = Seq(defaultAdminTeam),
           subscriptions = Seq(adminApiSubscription),
           apis = Seq(defaultApi.api),
-          usagePlans = Seq(plan)
+          usagePlans = defaultApi.plans
         )
         val resp = httpJsonCallWithoutSessionBlocking(
           path = s"/admin-api/usage-plans/${plan.id.value}",
@@ -6157,6 +6143,864 @@ class AdminApiControllerSpec
         )(using tenant)
 
         verif.status mustBe 404
+      }
+
+      "DELETE :: cleans up step validators and notifications" in {
+        val demandId = DemandId(IdGenerator.token(10))
+        val stepId = SubscriptionDemandStepId(IdGenerator.token(10))
+        val demand = SubscriptionDemand(
+          id = demandId,
+          tenant = tenant.id,
+          api = defaultApi.api.id,
+          plan = defaultApi.plans.head.id,
+          steps = Seq(
+            SubscriptionDemandStep(
+              id = stepId,
+              state = SubscriptionDemandState.Waiting,
+              step = ValidationStep.TeamAdmin(id = IdGenerator.token(10), team = teamOwner.id)
+            )
+          ),
+          state = SubscriptionDemandState.Waiting,
+          team = teamConsumerId,
+          from = user.id,
+          date = DateTime.now()
+        )
+        val stepValidator = StepValidator(
+          id = DatastoreId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          token = IdGenerator.token(32),
+          step = stepId,
+          subscriptionDemand = demandId
+        )
+        val demandNotif = Notification(
+          id = NotificationId("notif-demand"),
+          tenant = tenant.id,
+          team = None,
+          sender = userAdmin.asNotificationSender,
+          action = NotificationAction.ApiSubscriptionDemand(
+            api = defaultApi.api.id,
+            plan = defaultApi.plans.head.id,
+            team = teamConsumerId,
+            demand = demandId,
+            step = stepId,
+            motivation = None
+          )
+        )
+
+        setupEnvBlocking(
+          tenants = Seq(tenant),
+          users = Seq(userAdmin),
+          subscriptions = Seq(adminApiSubscription),
+          apis = Seq(defaultApi.api),
+          usagePlans = defaultApi.plans,
+          subscriptionDemands = Seq(demand),
+          notifications = Seq(demandNotif)
+        )
+        Await.result(
+          daikokuComponents.env.dataStore.stepValidatorRepo.forTenant(tenant).save(stepValidator),
+          5.seconds
+        )
+
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/subscription-demands/${demandId.value}",
+          method = "DELETE",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        resp.status mustBe 200
+
+        // demand is deleted
+        Await.result(
+          daikokuComponents.env.dataStore.subscriptionDemandRepo.forTenant(tenant).findById(demandId),
+          5.seconds
+        ) mustBe None
+
+        // step validator is deleted
+        Await.result(
+          daikokuComponents.env.dataStore.stepValidatorRepo.forTenant(tenant).findById(stepValidator.id),
+          5.seconds
+        ) mustBe None
+
+        // action.demand notification is deleted
+        Await.result(
+          daikokuComponents.env.dataStore.notificationRepo.forTenant(tenant).findById(demandNotif.id),
+          5.seconds
+        ) mustBe None
+      }
+    }
+
+    "complete deletion of used item (admin API)" must {
+
+      def operationsPending() =
+        Await.result(
+          daikokuComponents.env.dataStore.operationRepo
+            .forTenant(tenant)
+            .find(Json.obj(
+              "status" -> Json.obj(
+                "$in" -> JsArray(Seq(
+                  JsString(OperationStatus.Idle.name),
+                  JsString(OperationStatus.InProgress.name)
+                ))
+              )
+            )),
+          5.seconds
+        )
+
+      "be completed by team deletion" in {
+        val userPersonalTeam = Team(
+          id = TeamId("user-team"),
+          tenant = tenant.id,
+          `type` = TeamType.Personal,
+          name = "user team personal",
+          description = "",
+          contact = user.email,
+          users = Set(UserWithPermission(user.id, TeamPermission.Administrator))
+        )
+
+        val personalSubscription = ApiSubscription(
+          id = ApiSubscriptionId("1"),
+          tenant = tenant.id,
+          apiKey = OtoroshiApiKey("name", "id", "secret"),
+          plan = defaultApi.plans.head.id,
+          createdAt = DateTime.now(),
+          team = userPersonalTeam.id,
+          api = defaultApi.api.id,
+          by = user.id,
+          customName = Some("custom name"),
+          rotation = None,
+          integrationToken = "test"
+        )
+
+        val subscribedPlan = defaultApi.plans.reverse.head.id
+        val subscriptionDemand = SubscriptionDemand(
+          id = DemandId("test"),
+          tenant = tenant.id,
+          api = defaultApi.api.id,
+          plan = subscribedPlan,
+          steps = Seq(SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(id = IdGenerator.token(10), team = teamOwner.id)
+          )),
+          state = SubscriptionDemandState.InProgress,
+          team = teamConsumerId,
+          from = user.id,
+          motivation = None
+        )
+
+        val subDemandNotif = Notification(
+          id = NotificationId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          team = None,
+          sender = user.asNotificationSender,
+          action = NotificationAction.ApiSubscriptionDemand(
+            api = defaultApi.api.id,
+            plan = defaultApi.plans.reverse.head.id,
+            team = teamConsumerId,
+            demand = DemandId("test"),
+            step = SubscriptionDemandStepId("admin"),
+            motivation = None
+          )
+        )
+
+        val page = ApiDocumentationPage(
+          id = ApiDocumentationPageId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          title = "test",
+          lastModificationAt = DateTime.now(),
+          content = "#title"
+        )
+
+        val post = ApiPost(
+          id = ApiPostId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          title = "title",
+          lastModificationAt = DateTime.now(),
+          content = "test"
+        )
+
+        val issue = ApiIssue(
+          id = ApiIssueId(IdGenerator.token(10)),
+          seqId = 10,
+          tenant = tenant.id,
+          title = "title",
+          tags = Set.empty,
+          open = true,
+          createdAt = DateTime.now(),
+          closedAt = None,
+          by = user.id,
+          comments = Seq.empty,
+          lastModificationAt = DateTime.now(),
+          apiVersion = defaultApi.api.currentVersion.value.some
+        )
+
+        setupEnvBlocking(
+          tenants = Seq(tenant),
+          users = Seq(tenantAdmin, userAdmin, user),
+          teams = Seq(defaultAdminTeam, teamOwner, teamConsumer, userPersonalTeam),
+          usagePlans = defaultApi.plans,
+          apis = Seq(defaultApi.api.copy(
+            posts = Seq(post.id),
+            issues = Seq(issue.id),
+            documentation = ApiDocumentation(
+              id = ApiDocumentationId(IdGenerator.token(10)),
+              tenant = tenant.id,
+              pages = Seq(ApiDocumentationDetailPage(page.id, page.title, Seq.empty)),
+              lastModificationAt = DateTime.now
+            )
+          )),
+          pages = Seq(page),
+          posts = Seq(post),
+          issues = Seq(issue),
+          subscriptions = Seq(adminApiSubscription, personalSubscription),
+          subscriptionDemands = Seq(subscriptionDemand),
+          notifications = Seq(subDemandNotif)
+        )
+
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/teams/${teamOwnerId.value}",
+          method = "DELETE",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        resp.status mustBe 200
+        (resp.json \ "done").as[Boolean] mustBe true
+
+        org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().nonEmpty }
+        org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().isEmpty }
+
+        val _maybeSubscription = Await.result(
+          daikokuComponents.env.dataStore.apiSubscriptionRepo.forTenant(tenant).findById(personalSubscription.id),
+          5.seconds
+        )
+        _maybeSubscription.isDefined mustBe true
+        _maybeSubscription.forall(_.deleted) mustBe true
+
+        val _maybePlans = Await.result(
+          daikokuComponents.env.dataStore.usagePlanRepo.forTenant(tenant).findNotDeleted(
+            Json.obj("_id" -> Json.obj("$in" -> JsArray(defaultApi.plans.map(_.id.asJson))))
+          ),
+          5.seconds
+        )
+        _maybePlans.isEmpty mustBe true
+
+        val _maybeDocs = Await.result(
+          daikokuComponents.env.dataStore.apiDocumentationPageRepo.forTenant(tenant).findByIdNotDeleted(page.id),
+          5.seconds
+        )
+        _maybeDocs.isEmpty mustBe true
+
+        val _maybePosts = Await.result(
+          daikokuComponents.env.dataStore.apiPostRepo.forTenant(tenant).findByIdNotDeleted(post.id),
+          5.seconds
+        )
+        _maybePosts.isEmpty mustBe true
+
+        val _maybeIssue = Await.result(
+          daikokuComponents.env.dataStore.apiIssueRepo.forTenant(tenant).findByIdNotDeleted(issue.id),
+          5.seconds
+        )
+        _maybeIssue.isEmpty mustBe true
+
+        Await.result(
+          daikokuComponents.env.dataStore.notificationRepo.forAllTenant().findByIdNotDeleted(subDemandNotif.id),
+          5.seconds
+        ) mustBe None
+
+        Await.result(
+          daikokuComponents.env.dataStore.subscriptionDemandRepo.forAllTenant().findById(subscriptionDemand.id),
+          5.seconds
+        ) mustBe None
+      }
+
+      "be completed by delete user" in {
+        val userPersonalTeam = Team(
+          id = TeamId("user-team"),
+          tenant = tenant.id,
+          `type` = TeamType.Personal,
+          name = "user team personal",
+          description = "",
+          contact = user.email,
+          users = Set(UserWithPermission(user.id, TeamPermission.Administrator))
+        )
+
+        val personalSubscription = ApiSubscription(
+          id = ApiSubscriptionId("1"),
+          tenant = tenant.id,
+          apiKey = OtoroshiApiKey("name", "id", "secret"),
+          plan = defaultApi.plans.head.id,
+          createdAt = DateTime.now(),
+          team = userPersonalTeam.id,
+          api = defaultApi.api.id,
+          by = user.id,
+          customName = Some("custom name"),
+          rotation = None,
+          integrationToken = "test"
+        )
+
+        val teamInvitationNotif = Notification(
+          id = NotificationId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          team = None,
+          sender = userAdmin.asNotificationSender,
+          action = NotificationAction.TeamInvitation(team = teamOwnerId, user = user.id)
+        )
+
+        val subscribedPlan = defaultApi.plans.reverse.head.id
+        val subscriptionDemand = SubscriptionDemand(
+          id = DemandId("test"),
+          tenant = tenant.id,
+          api = defaultApi.api.id,
+          plan = subscribedPlan,
+          steps = Seq(SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(id = IdGenerator.token(10), team = teamOwner.id)
+          )),
+          state = SubscriptionDemandState.InProgress,
+          team = teamConsumerId,
+          from = user.id,
+          motivation = None
+        )
+
+        val subDemandNotif = Notification(
+          id = NotificationId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          team = None,
+          sender = user.asNotificationSender,
+          action = NotificationAction.ApiSubscriptionDemand(
+            api = defaultApi.api.id,
+            plan = defaultApi.plans.reverse.head.id,
+            team = teamConsumerId,
+            demand = DemandId("test"),
+            step = SubscriptionDemandStepId("admin"),
+            motivation = None
+          )
+        )
+
+        setupEnvBlocking(
+          tenants = Seq(tenant),
+          users = Seq(tenantAdmin, daikokuAdmin, userAdmin, user, userApiEditor),
+          apis = Seq(defaultApi.api),
+          usagePlans = defaultApi.plans,
+          subscriptions = Seq(adminApiSubscription, personalSubscription),
+          subscriptionDemands = Seq(subscriptionDemand),
+          notifications = Seq(subDemandNotif, teamInvitationNotif),
+          teams = Seq(
+            defaultAdminTeam,
+            userPersonalTeam,
+            teamConsumer,
+            teamOwner.copy(users = Set(UserWithPermission(userTeamAdminId, Administrator)))
+          )
+        )
+
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/users/${userTeamUserId.value}",
+          method = "DELETE",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        resp.status mustBe 200
+        (resp.json \ "done").as[Boolean] mustBe true
+
+        val verifUser = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/users/${userTeamUserId.value}",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        verifUser.status mustBe 404
+
+        val _maybeSubscription = Await.result(
+          daikokuComponents.env.dataStore.apiSubscriptionRepo.forAllTenant().findById(personalSubscription.id),
+          5.seconds
+        )
+        _maybeSubscription.isDefined mustBe true
+        _maybeSubscription.forall(_.deleted) mustBe true
+
+        val notifInvitation = Await.result(
+          daikokuComponents.env.dataStore.notificationRepo.forAllTenant().findById(teamInvitationNotif.id),
+          5.seconds
+        )
+        notifInvitation mustBe None
+
+        val notifDemand = Await.result(
+          daikokuComponents.env.dataStore.notificationRepo.forAllTenant().findById(subDemandNotif.id),
+          5.seconds
+        )
+        notifDemand mustBe None
+
+        Await.result(
+          daikokuComponents.env.dataStore.subscriptionDemandRepo.forAllTenant().findById(subscriptionDemand.id),
+          5.seconds
+        ) mustBe None
+      }
+
+      "be completed by delete an api" in {
+        val userPersonalTeam = Team(
+          id = TeamId("user-team"),
+          tenant = tenant.id,
+          `type` = TeamType.Personal,
+          name = "user team personal",
+          description = "",
+          contact = user.email,
+          users = Set(UserWithPermission(user.id, TeamPermission.Administrator))
+        )
+
+        val personalSubscription = ApiSubscription(
+          id = ApiSubscriptionId("1"),
+          tenant = tenant.id,
+          apiKey = OtoroshiApiKey("name", "id", "secret"),
+          plan = defaultApi.plans.head.id,
+          createdAt = DateTime.now(),
+          team = userPersonalTeam.id,
+          api = defaultApi.api.id,
+          by = user.id,
+          customName = Some("custom name"),
+          rotation = None,
+          integrationToken = "test"
+        )
+
+        val subscriptionDemand = SubscriptionDemand(
+          id = DemandId("test"),
+          tenant = tenant.id,
+          api = defaultApi.api.id,
+          plan = defaultApi.plans.reverse.head.id,
+          steps = Seq(SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(id = IdGenerator.token(10), team = teamOwner.id)
+          )),
+          state = SubscriptionDemandState.InProgress,
+          team = teamConsumerId,
+          from = user.id,
+          motivation = None
+        )
+
+        val subDemandNotif = Notification(
+          id = NotificationId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          team = None,
+          sender = user.asNotificationSender,
+          action = NotificationAction.ApiSubscriptionDemand(
+            api = defaultApi.api.id,
+            plan = defaultApi.plans.reverse.head.id,
+            team = teamConsumerId,
+            demand = DemandId("test"),
+            step = SubscriptionDemandStepId("admin"),
+            motivation = None
+          )
+        )
+
+        val page = ApiDocumentationPage(
+          id = ApiDocumentationPageId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          title = "test",
+          lastModificationAt = DateTime.now(),
+          content = "#title"
+        )
+
+        val post = ApiPost(
+          id = ApiPostId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          title = "title",
+          lastModificationAt = DateTime.now(),
+          content = "test"
+        )
+
+        val issue = ApiIssue(
+          id = ApiIssueId(IdGenerator.token(10)),
+          seqId = 10,
+          tenant = tenant.id,
+          title = "title",
+          tags = Set.empty,
+          open = true,
+          createdAt = DateTime.now(),
+          closedAt = None,
+          by = user.id,
+          comments = Seq.empty,
+          lastModificationAt = DateTime.now(),
+          apiVersion = defaultApi.api.currentVersion.value.some
+        )
+
+        setupEnvBlocking(
+          tenants = Seq(tenant),
+          users = Seq(tenantAdmin, userAdmin, user),
+          teams = Seq(defaultAdminTeam, teamOwner, teamConsumer, userPersonalTeam),
+          usagePlans = defaultApi.plans,
+          apis = Seq(defaultApi.api.copy(
+            posts = Seq(post.id),
+            issues = Seq(issue.id),
+            documentation = ApiDocumentation(
+              id = ApiDocumentationId(IdGenerator.token(10)),
+              tenant = tenant.id,
+              pages = Seq(ApiDocumentationDetailPage(page.id, page.title, Seq.empty)),
+              lastModificationAt = DateTime.now
+            )
+          )),
+          pages = Seq(page),
+          posts = Seq(post),
+          issues = Seq(issue),
+          subscriptions = Seq(adminApiSubscription, personalSubscription),
+          subscriptionDemands = Seq(subscriptionDemand),
+          notifications = Seq(subDemandNotif)
+        )
+
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/apis/${defaultApi.api.id.value}",
+          method = "DELETE",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        resp.status mustBe 200
+        (resp.json \ "done").as[Boolean] mustBe true
+
+        org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().nonEmpty }
+        org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().isEmpty }
+
+        val _maybeSubscription = Await.result(
+          daikokuComponents.env.dataStore.apiSubscriptionRepo.forTenant(tenant).findById(personalSubscription.id),
+          5.seconds
+        )
+        _maybeSubscription.isDefined mustBe true
+        _maybeSubscription.forall(_.deleted) mustBe true
+
+        val _maybePlans = Await.result(
+          daikokuComponents.env.dataStore.usagePlanRepo.forTenant(tenant).findNotDeleted(
+            Json.obj("_id" -> Json.obj("$in" -> JsArray(defaultApi.plans.map(_.id.asJson))))
+          ),
+          5.seconds
+        )
+        _maybePlans.isEmpty mustBe true
+
+        Await.result(
+          daikokuComponents.env.dataStore.apiDocumentationPageRepo.forTenant(tenant).findByIdNotDeleted(page.id),
+          5.seconds
+        ).isEmpty mustBe true
+
+        Await.result(
+          daikokuComponents.env.dataStore.apiPostRepo.forTenant(tenant).findByIdNotDeleted(post.id),
+          5.seconds
+        ).isEmpty mustBe true
+
+        Await.result(
+          daikokuComponents.env.dataStore.apiIssueRepo.forTenant(tenant).findByIdNotDeleted(issue.id),
+          5.seconds
+        ).isEmpty mustBe true
+
+        Await.result(
+          daikokuComponents.env.dataStore.notificationRepo.forAllTenant().findByIdNotDeleted(subDemandNotif.id),
+          5.seconds
+        ) mustBe None
+
+        Await.result(
+          daikokuComponents.env.dataStore.subscriptionDemandRepo.forAllTenant().findById(subscriptionDemand.id),
+          5.seconds
+        ) mustBe None
+      }
+
+      "be completed by delete a plan" in {
+        val userPersonalTeam = Team(
+          id = TeamId("user-team"),
+          tenant = tenant.id,
+          `type` = TeamType.Personal,
+          name = "user team personal",
+          description = "",
+          contact = user.email,
+          users = Set(UserWithPermission(user.id, TeamPermission.Administrator))
+        )
+
+        val subscribedPlan = defaultApi.plans.head
+        val personalSubscription = ApiSubscription(
+          id = ApiSubscriptionId("1"),
+          tenant = tenant.id,
+          apiKey = OtoroshiApiKey("name", "id", "secret"),
+          plan = subscribedPlan.id,
+          createdAt = DateTime.now(),
+          team = userPersonalTeam.id,
+          api = defaultApi.api.id,
+          by = user.id,
+          customName = Some("custom name"),
+          rotation = None,
+          integrationToken = "test"
+        )
+
+        val subscriptionDemand = SubscriptionDemand(
+          id = DemandId("test"),
+          tenant = tenant.id,
+          api = defaultApi.api.id,
+          plan = subscribedPlan.id,
+          steps = Seq(SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(id = IdGenerator.token(10), team = teamOwner.id)
+          )),
+          state = SubscriptionDemandState.InProgress,
+          team = teamConsumerId,
+          from = user.id,
+          motivation = None
+        )
+
+        val subDemandNotif = Notification(
+          id = NotificationId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          team = None,
+          sender = user.asNotificationSender,
+          action = NotificationAction.ApiSubscriptionDemand(
+            api = defaultApi.api.id,
+            plan = subscribedPlan.id,
+            team = teamConsumerId,
+            demand = DemandId("test"),
+            step = SubscriptionDemandStepId("admin"),
+            motivation = None
+          )
+        )
+
+        val page = ApiDocumentationPage(
+          id = ApiDocumentationPageId(IdGenerator.token(10)),
+          tenant = tenant.id,
+          title = "test",
+          lastModificationAt = DateTime.now(),
+          content = "#title"
+        )
+
+        setupEnvBlocking(
+          tenants = Seq(tenant),
+          users = Seq(tenantAdmin, userAdmin, user),
+          teams = Seq(defaultAdminTeam, teamOwner, teamConsumer, userPersonalTeam),
+          usagePlans = defaultApi.plans.map(_.copy(
+            documentation = ApiDocumentation(
+              id = ApiDocumentationId(IdGenerator.token(10)),
+              tenant = tenant.id,
+              pages = Seq(ApiDocumentationDetailPage(page.id, page.title, Seq.empty)),
+              lastModificationAt = DateTime.now
+            ).some
+          )),
+          apis = Seq(defaultApi.api),
+          pages = Seq(page),
+          subscriptions = Seq(adminApiSubscription, personalSubscription),
+          subscriptionDemands = Seq(subscriptionDemand),
+          notifications = Seq(subDemandNotif)
+        )
+
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/usage-plans/${subscribedPlan.id.value}",
+          method = "DELETE",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        resp.status mustBe 200
+        (resp.json \ "done").as[Boolean] mustBe true
+
+        org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().nonEmpty }
+        org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().isEmpty }
+
+        val _maybeSubscription = Await.result(
+          daikokuComponents.env.dataStore.apiSubscriptionRepo.forTenant(tenant).findById(personalSubscription.id),
+          5.seconds
+        )
+        _maybeSubscription.isDefined mustBe true
+        _maybeSubscription.forall(_.deleted) mustBe true
+
+        val _maybePlans = Await.result(
+          daikokuComponents.env.dataStore.usagePlanRepo.forTenant(tenant).findNotDeleted(
+            Json.obj("_id" -> Json.obj("$in" -> JsArray(defaultApi.plans.map(_.id.asJson))))
+          ),
+          5.seconds
+        )
+        _maybePlans.nonEmpty mustBe true
+        _maybePlans.size mustBe (defaultApi.plans.size - 1)
+
+        Await.result(
+          daikokuComponents.env.dataStore.apiDocumentationPageRepo.forTenant(tenant).findByIdNotDeleted(page.id),
+          5.seconds
+        ).isEmpty mustBe true
+
+        Await.result(
+          daikokuComponents.env.dataStore.notificationRepo.forAllTenant().findByIdNotDeleted(subDemandNotif.id),
+          5.seconds
+        ) mustBe None
+
+        Await.result(
+          daikokuComponents.env.dataStore.subscriptionDemandRepo.forAllTenant().findById(subscriptionDemand.id),
+          5.seconds
+        ) mustBe None
+      }
+
+      "delete a standalone subscription" in {
+        val plan = UsagePlan(
+          id = UsagePlanId("standalone-plan"),
+          tenant = tenant.id,
+          customName = "standalone plan",
+          allowMultipleKeys = Some(false),
+          subscriptionProcess = Seq.empty,
+          integrationProcess = IntegrationProcess.ApiKey,
+          autoRotation = Some(false)
+        )
+        val api = defaultApi.api.copy(
+          id = ApiId("standalone-api"),
+          team = teamOwnerId,
+          possibleUsagePlans = Seq(plan.id),
+          defaultUsagePlan = plan.id.some
+        )
+        val sub = ApiSubscription(
+          id = ApiSubscriptionId("standalone-sub"),
+          tenant = tenant.id,
+          apiKey = OtoroshiApiKey("name", "id", "secret"),
+          plan = plan.id,
+          createdAt = DateTime.now(),
+          team = teamConsumerId,
+          api = api.id,
+          by = user.id,
+          customName = None,
+          rotation = None,
+          integrationToken = "standalone-token"
+        )
+
+        setupEnvBlocking(
+          tenants = Seq(tenant),
+          users = Seq(tenantAdmin, userAdmin, user),
+          teams = Seq(defaultAdminTeam, teamOwner, teamConsumer),
+          usagePlans = Seq(plan),
+          apis = Seq(api),
+          subscriptions = Seq(adminApiSubscription, sub)
+        )
+
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/subscriptions/${sub.id.value}?logically=true",
+          method = "DELETE",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        resp.status mustBe 200
+        (resp.json \ "done").as[Boolean] mustBe true
+
+        val maybeSub = Await.result(
+          daikokuComponents.env.dataStore.apiSubscriptionRepo.forTenant(tenant).findById(sub.id),
+          5.seconds
+        )
+        maybeSub.isDefined mustBe true
+        maybeSub.forall(_.deleted) mustBe true
+      }
+
+      "clean up action.demand notifications when a subscription demand is cancelled" in {
+        val plan = defaultApi.plans.head
+        val api = defaultApi.api.copy(
+          possibleUsagePlans = Seq(plan.id),
+          defaultUsagePlan = plan.id.some
+        )
+        val sub = ApiSubscription(
+          id = ApiSubscriptionId("notif-sub"),
+          tenant = tenant.id,
+          apiKey = OtoroshiApiKey("name", "id", "secret"),
+          plan = plan.id,
+          createdAt = DateTime.now(),
+          team = teamConsumerId,
+          api = api.id,
+          by = user.id,
+          customName = None,
+          rotation = None,
+          integrationToken = "notif-token"
+        )
+        val demandId = DemandId("notif-demand")
+        val stepId = SubscriptionDemandStepId("notif-step")
+        val demand = SubscriptionDemand(
+          id = demandId,
+          tenant = tenant.id,
+          api = api.id,
+          plan = plan.id,
+          steps = Seq(SubscriptionDemandStep(
+            id = SubscriptionDemandStepId("admin"),
+            state = SubscriptionDemandState.Waiting,
+            step = ValidationStep.TeamAdmin(id = IdGenerator.token(10), team = teamOwner.id)
+          )),
+          state = SubscriptionDemandState.InProgress,
+          team = teamConsumerId,
+          from = user.id,
+          motivation = None
+        )
+
+        def notif(id: String, action: NotificationAction) = Notification(
+          id = NotificationId(id),
+          tenant = tenant.id,
+          team = None,
+          sender = userAdmin.asNotificationSender,
+          action = action
+        )
+
+        val allNotifs = Seq(
+          notif("n-api-access", NotificationAction.ApiAccess(api.id, teamConsumerId)),
+          notif("n-team-invitation", NotificationAction.TeamInvitation(teamOwnerId, user.id)),
+          notif("n-sub-accept", NotificationAction.ApiSubscriptionAccept(api.id, plan.id, teamConsumerId)),
+          notif("n-sub-reject", NotificationAction.ApiSubscriptionReject(None, api.id, plan.id, teamConsumerId)),
+          notif("n-sub-demand", NotificationAction.ApiSubscriptionDemand(api.id, plan.id, teamConsumerId, demandId, stepId, None, None)),
+          notif("n-account-creation", NotificationAction.AccountCreationAttempt(demandId, stepId, "motivation")),
+          notif("n-sub-transfer-success", NotificationAction.ApiSubscriptionTransferSuccess(sub.id)),
+          notif("n-oto-sync-sub-error", NotificationAction.OtoroshiSyncSubscriptionError(sub, "sync error")),
+          notif("n-oto-sync-api-error", NotificationAction.OtoroshiSyncApiError(api, "sync error")),
+          notif("n-key-deletion", NotificationAction.ApiKeyDeletionInformation(api.id.value, sub.apiKey.clientId)),
+          notif("n-key-rotation-in-progress", NotificationAction.ApiKeyRotationInProgress(sub.apiKey.clientId, api.id.value, plan.id.value)),
+          notif("n-key-rotation-ended", NotificationAction.ApiKeyRotationEnded(sub.apiKey.clientId, api.id.value, plan.id.value)),
+          notif("n-key-refresh", NotificationAction.ApiKeyRefresh(sub.id.value, api.id.value, plan.id.value)),
+          notif("n-new-post", NotificationAction.NewPostPublished(teamOwnerId.value, api.name)),
+          notif("n-new-issue", NotificationAction.NewIssueOpen(teamOwnerId.value, api.name, s"/apis/${api.id.value}")),
+          notif("n-new-comment", NotificationAction.NewCommentOnIssue(teamOwnerId.value, api.name, s"/apis/${api.id.value}")),
+          notif("n-key-deletion-v2", NotificationAction.ApiKeyDeletionInformationV2(api.id, sub.apiKey.clientId, sub.id)),
+          notif("n-key-rotation-in-progress-v2", NotificationAction.ApiKeyRotationInProgressV2(sub.id, api.id, plan.id)),
+          notif("n-key-rotation-ended-v2", NotificationAction.ApiKeyRotationEndedV2(sub.id, api.id, plan.id)),
+          notif("n-key-refresh-v2", NotificationAction.ApiKeyRefreshV2(sub.id, api.id, plan.id)),
+          notif("n-new-post-v2", NotificationAction.NewPostPublishedV2(api.id, ApiPostId("some-post"))),
+          notif("n-new-issue-v2", NotificationAction.NewIssueOpenV2(api.id, ApiIssueId("some-issue"))),
+          notif("n-new-comment-v2", NotificationAction.NewCommentOnIssueV2(api.id, ApiIssueId("some-issue"), user.id)),
+          notif("n-transfer-ownership", NotificationAction.TransferApiOwnership(teamOwnerId, api.id)),
+          notif("n-checkout", NotificationAction.CheckoutForSubscription(demandId, api.id, plan.id, stepId))
+        )
+
+        setupEnvBlocking(
+          tenants = Seq(tenant),
+          users = Seq(tenantAdmin, userAdmin, user),
+          teams = Seq(defaultAdminTeam, teamOwner, teamConsumer),
+          usagePlans = Seq(plan),
+          apis = Seq(api),
+          subscriptions = Seq(adminApiSubscription, sub),
+          subscriptionDemands = Seq(demand),
+          notifications = allNotifs
+        )
+
+        val resp = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/subscription-demands/${demandId.value}",
+          method = "DELETE",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        resp.status mustBe 200
+        (resp.json \ "done").as[Boolean] mustBe true
+
+        val remaining = Await
+          .result(
+            daikokuComponents.env.dataStore.notificationRepo.forTenant(tenant).findNotDeleted(Json.obj()),
+            5.seconds
+          )
+          .map(_.id.value)
+          .toSet
+
+        remaining must not contain "n-sub-demand"
+        remaining must not contain "n-account-creation"
+        remaining must not contain "n-checkout"
+
+        remaining must contain("n-api-access")
+        remaining must contain("n-team-invitation")
+        remaining must contain("n-sub-accept")
+        remaining must contain("n-sub-reject")
+        remaining must contain("n-sub-transfer-success")
+        remaining must contain("n-oto-sync-sub-error")
+        remaining must contain("n-oto-sync-api-error")
+        remaining must contain("n-key-deletion")
+        remaining must contain("n-key-rotation-in-progress")
+        remaining must contain("n-key-rotation-ended")
+        remaining must contain("n-key-refresh")
+        remaining must contain("n-new-post")
+        remaining must contain("n-new-issue")
+        remaining must contain("n-new-comment")
+        remaining must contain("n-key-deletion-v2")
+        remaining must contain("n-key-rotation-in-progress-v2")
+        remaining must contain("n-key-rotation-ended-v2")
+        remaining must contain("n-key-refresh-v2")
+        remaining must contain("n-new-post-v2")
+        remaining must contain("n-new-issue-v2")
+        remaining must contain("n-new-comment-v2")
+        remaining must contain("n-transfer-ownership")
       }
     }
   }

@@ -1755,7 +1755,7 @@ object evolution_1890 extends EvolutionScript {
       _: OtoroshiClient
     ) => {
       logger.info(
-        s"Begin evolution $version - Convert footer to CMS format"
+        s"Begin evolution $version - clean orphaned entities in database"
       )
 
       given ExecutionContext = ec
@@ -1817,22 +1817,22 @@ object evolution_1890 extends EvolutionScript {
               |""".stripMargin
         )
     //clean notifications related to deleted API
-    val cleanApiNotifications = dataStore.notificationRepo
-      .forAllTenant()
-      .execute(
-        query =
-          """
-            |DELETE FROM notifications n
-            |WHERE n.content->'action'->>'api' IS NOT NULL
-            |  AND n.content->'action'->>'type' <>  'OtoroshiSyncApiError'
-            |  AND NOT EXISTS (
-            |    SELECT 1
-            |    FROM apis a
-            |    WHERE (p.content->>'_id' = n.content->'action'->>'api')
-            |      AND p._deleted = false
-            |);
-            |""".stripMargin
-      )
+      val cleanApiNotifications = dataStore.notificationRepo
+        .forAllTenant()
+        .execute(
+          query =
+            """
+              |DELETE FROM notifications n
+              |WHERE n.content->'action'->>'api' IS NOT NULL
+              |  AND n.content->'action'->>'type' <>  'OtoroshiSyncApiError'
+              |  AND NOT EXISTS (
+              |    SELECT 1
+              |    FROM apis a
+              |    WHERE (p.content->>'_id' = n.content->'action'->>'api')
+              |      AND p._deleted = false
+              |);
+              |""".stripMargin
+        )
 
     //clean notifications related to deleted usage plan
       val cleanPlanNotifications = dataStore.notificationRepo

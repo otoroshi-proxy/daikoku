@@ -29,6 +29,17 @@ class DeletionService(
   implicit val ec: ExecutionContext = env.defaultExecutionContext
   implicit val ev: Env = env
 
+  private val systemUser = User(
+    id = UserId("daikoku-system"),
+    tenants = Set.empty,
+    origins = Set.empty,
+    name = "Daikoku",
+    email = "system@daikoku.io",
+    personalToken = None,
+    lastTenant = None,
+    defaultLanguage = None
+  )
+
   /** Delete logically a team Add an operation in deletion queue to process
     * complete deletion (delete user notifications & messages)
     */
@@ -197,7 +208,6 @@ class DeletionService(
       subscriptions: Seq[ApiSubscription],
       api: Api,
       tenant: Tenant,
-      user: User,
       electedChildId: Option[ApiSubscriptionId] = None
   ): EitherT[Future, AppError, Boolean] = {
     implicit val m: Materializer = env.defaultMaterializer
@@ -270,7 +280,7 @@ class DeletionService(
       // Phase 3 — save notifs + payment ops
       _ <- EitherT(
         Source(subscriptions)
-          .mapAsync(1)(subscription => prepareSubscriptionContext(subscription, tenant, user))
+          .mapAsync(1)(subscription => prepareSubscriptionContext(subscription, tenant, systemUser))
           .mapConcat {
             case Right(ctx) => List(ctx)
             case Left(err) =>
@@ -312,8 +322,7 @@ class DeletionService(
     */
   private def deleteApis(
       apis: Seq[Api],
-      tenant: Tenant,
-      user: User
+      tenant: Tenant
   ): EitherT[Future, AppError, Unit] = {
     val operations = apis.distinct
       .map(s =>
@@ -345,7 +354,7 @@ class DeletionService(
             Seq(plan),
             api,
             tenant,
-            user
+            systemUser
           )
           _ <- plan.paymentSettings match {
             case Some(paymentSettings) =>
@@ -392,8 +401,7 @@ class DeletionService(
     */
   def deleteUserByQueue(
       userId: String,
-      tenant: Tenant,
-      user: User
+      tenant: Tenant
   ): EitherT[Future, AppError, Unit] = {
     for {
       user <- EitherT.fromOptionF(
@@ -421,7 +429,7 @@ class DeletionService(
             )
           )
       )
-      _ <- deleteTeamByQueue(personalTeam.id, tenant.id, user)
+      _ <- deleteTeamByQueue(personalTeam.id, tenant.id)
       _ <-
         if (otherTenantPersonalTeam.length > 1) EitherT.rightT[Future, AppError](())
         else deleteUser(user, tenant)
@@ -444,8 +452,7 @@ class DeletionService(
     */
   def deleteCompleteUserByQueue(
       userId: String,
-      tenant: Tenant,
-      user: User
+      tenant: Tenant
   ): EitherT[Future, AppError, Unit] = {
     for {
       user <- EitherT.fromOptionF(
@@ -464,7 +471,7 @@ class DeletionService(
       )
       _ <- EitherT.right[AppError](
         Future.sequence(
-          teams.map(team => deleteTeamByQueue(team.id, team.tenant, user).value)
+          teams.map(team => deleteTeamByQueue(team.id, team.tenant).value)
         )
       )
       _ <- deleteUser(user, tenant)
@@ -589,8 +596,7 @@ class DeletionService(
     */
   def deleteTeamByQueue(
       id: TeamId,
-      tenant: TenantId,
-      user: User
+      tenant: TenantId
   ): EitherT[Future, AppError, Unit] = {
     for {
       tenant <- EitherT.fromOptionF(
@@ -626,8 +632,7 @@ class DeletionService(
             deleteSubscriptions(
               allSubscriptions.filter(_.api == api.id),
               api,
-              tenant,
-              user
+              tenant
             ).value
           )
           .runWith(Sink.ignore)(using env.defaultMaterializer)
@@ -648,13 +653,12 @@ class DeletionService(
             deleteSubscriptions(
               consumerSubsByApi.getOrElse(api.id, Seq.empty),
               api,
-              tenant,
-              user
+              tenant
             ).value
           )
           .runWith(Sink.ignore)(using env.defaultMaterializer)
       )
-      _ <- deleteApis(apis, tenant, user)
+      _ <- deleteApis(apis, tenant)
       _ <- deleteTeam(team, tenant)
     } yield ()
   }
@@ -665,8 +669,7 @@ class DeletionService(
   def deleteUsagePlanByQueue(
       planId: UsagePlanId,
       apiId: ApiId,
-      tenantId: TenantId,
-      user: User
+      tenantId: TenantId
   ): EitherT[Future, AppError, Unit] = {
     for {
       tenant <- EitherT.fromOptionF(
@@ -686,7 +689,7 @@ class DeletionService(
           .forTenant(tenant)
           .findNotDeleted(Json.obj("api" -> api.id.asJson, "plan" -> plan.id.asJson))
       )
-      _ <- deleteSubscriptions(subscriptions, api, tenant, user)
+      _ <- deleteSubscriptions(subscriptions, api, tenant)
       _ <- EitherT.right[AppError](
         env.dataStore.apiRepo
           .forTenant(tenant)
@@ -732,8 +735,7 @@ class DeletionService(
     */
   def deleteApiByQueue(
       id: ApiId,
-      tenant: TenantId,
-      user: User
+      tenant: TenantId
   ): EitherT[Future, AppError, Unit] = {
     for {
       tenant <- EitherT.fromOptionF(
@@ -749,8 +751,29 @@ class DeletionService(
           .forTenant(tenant)
           .findNotDeleted(Json.obj("api" -> api.id.asJson))
       )
-      _ <- deleteSubscriptions(subscriptions, api, tenant, user)
-      _ <- deleteApis(Seq(api), tenant, user)
+      _ <- deleteSubscriptions(subscriptions, api, tenant)
+      _ <- deleteApis(Seq(api), tenant)
+    } yield ()
+  }
+
+  def cancelSubscriptionDemand(
+      demandId: String,
+      tenant: Tenant
+  ): EitherT[Future, AppError, Unit] = {
+    for {
+      demand <- EitherT.fromOptionF(
+        env.dataStore.subscriptionDemandRepo.forTenant(tenant).findByIdNotDeleted(demandId),
+        AppError.EntityNotFound("Subscription demand")
+      )
+      _ <- EitherT.right[AppError](
+        env.dataStore.subscriptionDemandRepo.forTenant(tenant).deleteById(demand.id)
+      )
+      _ <- EitherT.right[AppError](
+        env.dataStore.stepValidatorRepo.forTenant(tenant).delete(Json.obj("subscriptionDemand" -> demand.id.asJson))
+      )
+      _ <- EitherT.right[AppError](
+        env.dataStore.notificationRepo.forTenant(tenant).delete(Json.obj("action.demand" -> demand.id.asJson))
+      )
     } yield ()
   }
 }

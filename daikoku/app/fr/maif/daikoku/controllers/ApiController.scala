@@ -2342,7 +2342,7 @@ class ApiController(
                 case Nil =>
                   // standalone or child: delegate entirely to DeletionService
                   for {
-                    _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant, ctx.user)
+                    _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant)
                     _ <- if (subscription.parent.isEmpty) cleanupPrivatePlan else EitherT.pure[Future, AppError](())
                   } yield done
 
@@ -2350,7 +2350,7 @@ class ApiController(
                   case Some("delete") =>
                     // delete all children + parent in one shot
                     for {
-                      _ <- deletionService.deleteSubscriptions(childs ++ Seq(subscription), api, ctx.tenant, ctx.user)
+                      _ <- deletionService.deleteSubscriptions(childs ++ Seq(subscription), api, ctx.tenant)
                       _ <- cleanupPrivatePlan
                     } yield done
 
@@ -2358,7 +2358,7 @@ class ApiController(
                     // extract each child to a standalone key, then delete parent
                     for {
                       _ <- apiService.condenseEitherT(childs.map(s => EitherT(_makeUnique(ctx.tenant, plan, s, ctx.user))))
-                      _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant, ctx.user)
+                      _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant)
                       _ <- cleanupPrivatePlan
                     } yield done
 
@@ -2366,7 +2366,7 @@ class ApiController(
                     // promote a specific child (or oldest) then delete parent
                     val electedId = childId.flatMap(id => childs.find(_.id.value == id)).map(_.id)
                     for {
-                      _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant, ctx.user, electedChildId = electedId)
+                      _ <- deletionService.deleteSubscriptions(Seq(subscription), api, ctx.tenant, electedChildId = electedId)
                     } yield done
                 }
               }.value
@@ -2935,7 +2935,7 @@ class ApiController(
               Json.obj("_id" -> apiId, "team" -> team.id.asJson)
             ), AppError.ApiNotFound)
           _ <- EitherT.cond[Future][AppError, Unit](api.visibility != ApiVisibility.AdminOnly, (), AppError.ForbiddenAction)
-          _ <- deletionService.deleteApiByQueue(id = api.id, tenant = ctx.tenant.id, user = ctx.user)
+          _ <- deletionService.deleteApiByQueue(id = api.id, tenant = ctx.tenant.id)
           _ <- processNextCurrentVersion(api, nextCurrentVersion)
         } yield Ok(Json.obj("done" -> true)))
           .recover(d => {
@@ -5006,8 +5006,7 @@ class ApiController(
           _ <- deletionService.deleteUsagePlanByQueue(
             planId = plan.id,
             apiId = api.id,
-            tenantId = ctx.tenant.id,
-            user = ctx.user
+            tenantId = ctx.tenant.id
           )
         } yield Ok(Json.obj("done" -> true))
 
