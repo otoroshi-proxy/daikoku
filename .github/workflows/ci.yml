@@ -177,12 +177,6 @@ jobs:
           done
           echo "daikoku is ready!"
 
-      - name: Install Playwright
-        run: |
-          cd ./daikoku/javascript/tests
-          npm ci
-          npx playwright install --with-deps chromium
-
       - name: Seed perf data
         if: matrix.suite.name == 'perf'
         run: |
@@ -197,16 +191,19 @@ jobs:
 
       - name: Run Playwright tests (${{ matrix.suite.name }})
         run: |
-          cd ./daikoku/javascript/tests
           if [[ "${{ matrix.suite.name }}" == "perf" ]]; then
-            npx playwright test --config ${{ matrix.suite.playwright-config }}
+            PLAYWRIGHT_CMD="npx playwright test --config ${{ matrix.suite.playwright-config }}"
           else
-            npx playwright test --config ${{ matrix.suite.playwright-config }} --project chromium
+            PLAYWRIGHT_CMD="npx playwright test --config ${{ matrix.suite.playwright-config }} --project chromium"
           fi
-        env:
-          CI: true
-          EXPOSED_PORT: 13200
-          DAIKOKU_URL: http://localhost:13200
+          docker run --rm --network host \
+            -v $(pwd)/daikoku/javascript/tests:/tests \
+            -w /tests \
+            -e CI=true \
+            -e EXPOSED_PORT=13200 \
+            -e DAIKOKU_URL=http://localhost:13200 \
+            mcr.microsoft.com/playwright:v1.56.1-noble \
+            bash -c "npm ci && $PLAYWRIGHT_CMD"
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5442
           POSTGRES_DB: daikoku_demo_komainu
