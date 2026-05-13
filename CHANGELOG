@@ -924,3 +924,15 @@ We'd like to thank all the contributors who worked on this release!
 
 - Empty password is not allowed anymore [#1047](https://github.com/MAIF/daikoku/issues/1047)
 
+## [v18.9.0] - 2026-05-13
+
+## :beetle: Bug Fixes
+
+- clean up orphaned references on user, API and plan deletion [#1049](https://github.com/MAIF/daikoku/issues/1049)
+
+## :heart: Contributors
+
+We'd like to thank all the contributors who worked on this release!
+
+- [@quentinovega](https://github.com/quentinovega)
+
