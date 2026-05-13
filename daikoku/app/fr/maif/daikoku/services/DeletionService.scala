@@ -276,7 +276,14 @@ class DeletionService(
             .map(s => otoroshiSynchronizerJob.runForDeletion(s.id, tenant))
         )
       )
-      // Phase 3 — save notifs + payment ops
+      // Phase 3b — delete stale pending notifications referencing the deleted subscriptions
+      _ <- EitherT.right[AppError](
+        env.dataStore.notificationRepo.forTenant(tenant)
+          .delete(Json.obj("action.subscription" -> Json.obj(
+            "$in" -> JsArray(subscriptions.map(s => JsString(s.id.value)))
+          )))
+      )
+      // Phase 3 — save deletion notifs + payment ops
       _ <- EitherT(
         Source(subscriptions)
           .mapAsync(1)(subscription => prepareSubscriptionContext(subscription, tenant, systemUser))
@@ -292,13 +299,6 @@ class DeletionService(
               Right[AppError, Unit](())
             )((_, either) => either)
           )
-      )
-      // Phase 3b — delete notifications related to the subscriptions being removed
-      _ <- EitherT.right[AppError](
-        env.dataStore.notificationRepo.forTenant(tenant)
-          .delete(Json.obj("action.subscription" -> Json.obj(
-            "$in" -> JsArray(subscriptions.map(s => JsString(s.id.value)))
-          )))
       )
       // Phase 4 — mark as deleted in DB
       result <- EitherT.right[AppError](
