@@ -793,7 +793,8 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription)
         )(using tenant)
 
-        verif.status mustBe 404
+        verif.status mustBe 200
+        (verif.json \ "_deleted").as[Boolean] mustBe true
       }
     }
 
@@ -1094,7 +1095,8 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription)
         )(using tenant)
 
-        verif.status mustBe 404
+        verif.status mustBe 200
+        (verif.json \ "_deleted").as[Boolean] mustBe true
       }
 
       "Conflict :: Name already exists" in {
@@ -2785,8 +2787,10 @@ class AdminApiControllerSpec
           teams = Seq(defaultAdminTeam),
           subscriptions = Seq(adminApiSubscription)
         )
+
+        val session = loginWithBlocking(user, tenant)
         val resp = httpJsonCallWithoutSessionBlocking(
-          path = s"/admin-api/users/${user.id.value}",
+          path = s"/admin-api/sessions/${session.id.value}",
           method = "DELETE",
           headers = getAdminApiHeader(adminApiSubscription)
         )(using tenant)
@@ -2794,7 +2798,7 @@ class AdminApiControllerSpec
         resp.status mustBe 200
 
         val verif = httpJsonCallWithoutSessionBlocking(
-          path = s"/admin-api/users/${user.id.value}",
+          path = s"/admin-api/sessions/${session.id.value}",
           headers = getAdminApiHeader(adminApiSubscription)
         )(using tenant)
 
@@ -5720,7 +5724,8 @@ class AdminApiControllerSpec
           headers = getAdminApiHeader(adminApiSubscription)
         )(using tenant)
 
-        verif.status mustBe 404
+        verif.status mustBe 200
+        (verif.json \ "_deleted").as[Boolean] mustBe true
       }
     }
 
@@ -6504,7 +6509,8 @@ class AdminApiControllerSpec
           path = s"/admin-api/users/${userTeamUserId.value}",
           headers = getAdminApiHeader(adminApiSubscription)
         )(using tenant)
-        verifUser.status mustBe 404
+        verifUser.status mustBe 200
+        (verifUser.json \ "_deleted").as[Boolean] mustBe true
 
         val _maybeSubscription = Await.result(
           daikokuComponents.env.dataStore.apiSubscriptionRepo.forAllTenant().findById(personalSubscription.id),
@@ -6652,6 +6658,14 @@ class AdminApiControllerSpec
         org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().nonEmpty }
         org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().isEmpty }
 
+        val verifApi = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/apis/${defaultApi.api.id.value}",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        
+        verifApi.status mustBe 200
+        (verifApi.json \ "_deleted").as[Boolean] mustBe true
+
         val _maybeSubscription = Await.result(
           daikokuComponents.env.dataStore.apiSubscriptionRepo.forTenant(tenant).findById(personalSubscription.id),
           5.seconds
@@ -6784,6 +6798,13 @@ class AdminApiControllerSpec
         )(using tenant)
         resp.status mustBe 200
         (resp.json \ "done").as[Boolean] mustBe true
+
+        val verifPlan = httpJsonCallWithoutSessionBlocking(
+          path = s"/admin-api/usage-plans/${subscribedPlan.id.value}",
+          headers = getAdminApiHeader(adminApiSubscription)
+        )(using tenant)
+        verifPlan.status mustBe 200
+        (verifPlan.json \ "_deleted").as[Boolean] mustBe true
 
         org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().nonEmpty }
         org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().isEmpty }

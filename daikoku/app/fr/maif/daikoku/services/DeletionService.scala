@@ -8,13 +8,12 @@ import fr.maif.daikoku.env.Env
 import fr.maif.daikoku.jobs.{ApiKeyStatsJob, OtoroshiSynchronizerJob}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.services.ApiService
-import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
 import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient}
 import org.apache.pekko.http.scaladsl.util.FastFuture
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Sink, Source}
 import org.joda.time.DateTime
-import play.api.libs.json.{JsArray, JsNull, JsString, JsValue, Json}
+import play.api.libs.json.*
 
 import scala.concurrent.{ExecutionContext, Future}
 
