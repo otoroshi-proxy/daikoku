@@ -1879,6 +1879,7 @@ export const graphql = {
             }
             ... on ApiKeyDeletionInformationV2 {
             __typename
+              clientId
               api {
                 _id
                 _humanReadableId

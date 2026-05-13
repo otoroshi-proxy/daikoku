@@ -30,12 +30,12 @@ class QueueJob(
   private val ref = new AtomicReference[Cancellable]()
 
   def start(): Unit = {
-    if (!env.config.deletionByCron && ref.get() == null) {
+    if (ref.get() == null) {
       logger.info("Start deletion job")
       logger.info(s"deletion by cron ==> every ${env.config.deletionInterval}")
       ref.set(
         env.defaultActorSystem.scheduler
-          .scheduleAtFixedRate(10.seconds, env.config.deletionInterval) { () =>
+          .scheduleAtFixedRate(1.seconds, env.config.deletionInterval) { () =>
             deleteFirstOperation()
           }
       )
@@ -59,27 +59,71 @@ class QueueJob(
       .forTenant(api.tenant)
       .deleteLogically(
         Json.obj(
-          "action.type" ->
-            Json.obj(
-              "$in" -> JsArray(
-                Seq(
-                  "ApiAccess",
-                  "ApiSubscription",
-                  "ApiSubscriptionAccept",
-                  "ApiSubscriptionReject",
-                  "NewPostPublished",
-                  "NewIssueOpen",
-                  "NewCommentOnIssue",
-                  "TransferApiOwnership"
-                ).map(JsString.apply)
-              )
-            ),
           "$or" -> Json.arr(
             Json.obj("action.api" -> api.id.asJson),
             Json.obj("action.apiName" -> JsString(api.name))
           )
         )
       )
+  }
+
+  private def deleteUsagePlan(o: Operation): Future[Unit] = {
+    (for {
+      _ <- OptionT.liftF(
+        env.dataStore.operationRepo
+          .forTenant(o.tenant)
+          .save(o.copy(status = OperationStatus.InProgress))
+      )
+      plan <- OptionT(
+        env.dataStore.usagePlanRepo
+          .forTenant(o.tenant)
+          .findById(o.itemId)
+      )
+      _ <- OptionT.liftF(
+        plan.documentation match {
+          case Some(doc) =>
+            env.dataStore.apiDocumentationPageRepo
+              .forTenant(o.tenant)
+              .deleteLogically(
+                Json.obj("_id" -> Json.obj("$in" -> JsArray(doc.docIds().map(JsString.apply))))
+              )
+          case None => FastFuture.successful(false)
+        }
+      )
+      _ <- OptionT.liftF(
+        env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .execute(
+            s"""
+               |WITH deleted_demands AS (
+               |  DELETE FROM subscription_demands
+               |  WHERE content->>'_tenant' = $$1
+               |    AND content->>'plan' = $$2
+               |    AND content->>'state' IN ('${SubscriptionDemandState.Waiting.name}', '${SubscriptionDemandState.InProgress.name}')
+               |  RETURNING _id AS demand_id
+               |)
+               |DELETE FROM step_validators
+               |WHERE content->>'subscriptionDemand' IN (SELECT demand_id FROM deleted_demands);
+               |""".stripMargin,
+            Seq(o.tenant.value, o.itemId)
+          )
+      )
+      _ <- OptionT.liftF(
+        env.dataStore.notificationRepo
+          .forTenant(o.tenant)
+          .deleteLogically(Json.obj("action.plan" -> JsString(o.itemId)))
+      )
+      _ <- OptionT.liftF(
+        env.dataStore.operationRepo.forTenant(o.tenant).deleteById(o.id)
+      )
+    } yield ()).value
+      .map(_ => logger.debug(s"[deletion job] :: usage plan ${o.itemId} successfully deleted"))
+      .recover(e => {
+        logger.error(s"[deletion job] :: [id ${o.id.value}] :: error during deletion of plan ${o.itemId}: $e")
+        env.dataStore.operationRepo
+          .forTenant(o.tenant)
+          .save(o.copy(status = OperationStatus.Error))
+      })
   }
 
   private def deleteSubscriptionNotifications(
@@ -191,15 +235,15 @@ class QueueJob(
 
     {
       (for {
-        api <- OptionT(
-          env.dataStore.apiRepo
-            .forTenant(o.tenant)
-            .findById(o.itemId)
-        )
         _ <- OptionT.liftF(
           env.dataStore.operationRepo
             .forTenant(o.tenant)
             .save(o.copy(status = OperationStatus.InProgress))
+        )
+        api <- OptionT(
+          env.dataStore.apiRepo
+            .forTenant(o.tenant)
+            .findById(o.itemId)
         )
         _ <- OptionT.liftF(
           env.dataStore.apiPostRepo
@@ -232,7 +276,38 @@ class QueueJob(
               )
             )
         )
+        _ <- OptionT.liftF(env.dataStore.usagePlanRepo
+          .forTenant(o.tenant)
+          .deleteLogically(
+            Json.obj(
+              "_id" -> Json.obj(
+                "$in" -> JsArray(
+                  api.possibleUsagePlans.map(_.asJson)
+                )
+              )
+            )
+          )
+        )
         _ <- OptionT.liftF(deleteApiNotifications(api))
+        _ <- OptionT.liftF(env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .execute(
+            s"""
+               |WITH deleted_demands AS (
+               |  DELETE FROM subscription_demands
+               |  WHERE content->>'_tenant' = $$1
+               |    AND content->>'api' = $$2
+               |    AND content->>'state' IN ('${SubscriptionDemandState.Waiting.name}', '${SubscriptionDemandState.InProgress.name}')
+               |  RETURNING _id AS demand_id
+               |)
+               |DELETE FROM step_validators
+               |WHERE content->>'subscriptionDemand' IN (SELECT demand_id FROM deleted_demands);
+               |""".stripMargin,
+            Seq(
+              api.tenant.value,
+              api.id.value
+            )
+          ))
         _ <- OptionT.liftF(
           env.dataStore.operationRepo.forTenant(o.tenant).deleteById(o.id)
         )
@@ -287,7 +362,7 @@ class QueueJob(
         apiKeyStatsJob
           .syncForSubscription(subscription, tenant, completed = true)
       )
-      - <- paymentClient.deleteThirdPartySubscription(
+      _ <- paymentClient.deleteThirdPartySubscription(
         subscription,
         plan.paymentSettings,
         subscription.thirdPartySubscriptionInformations
@@ -553,6 +628,8 @@ class QueueJob(
             deleteSubscription(firstOperation)
           case (ItemType.Api, OperationAction.Delete) =>
             deleteApi(firstOperation)
+          case (ItemType.UsagePlan, OperationAction.Delete) =>
+            deleteUsagePlan(firstOperation)
           case (ItemType.Team, OperationAction.Delete) =>
             deleteTeam(firstOperation)
           case (ItemType.User, OperationAction.Delete) =>

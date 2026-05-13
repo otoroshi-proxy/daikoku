@@ -4,7 +4,7 @@ import cats.data.EitherT
 import com.auth0.jwt.JWT
 import com.google.common.base.Charsets
 import fr.maif.daikoku.controllers.AppError
-import fr.maif.daikoku.domain.{Tenant, ValueType}
+import fr.maif.daikoku.domain.{TeamType, Tenant, User, ValueType}
 import fr.maif.daikoku.env.{Env, LocalAdminApiConfig, OtoroshiAdminApiConfig}
 import fr.maif.daikoku.login.TenantHelper
 import fr.maif.daikoku.utils.Errors

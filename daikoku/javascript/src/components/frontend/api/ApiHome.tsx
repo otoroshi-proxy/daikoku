@@ -1,22 +1,20 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { GraphQLClient } from 'graphql-request';
 import { useContext, useEffect } from 'react';
 import { useMatch, useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 import { ApiDocumentation, ApiIssue, ApiPost, ApiPricing, ApiRedoc, ApiTest, EnvironmentsDocumentation, EnvironmentsRedoc, EnvironmentsTest } from '.';
-import { ApiGroupApis, TeamApiConsumption, TeamApiSubscriptions, TeamPlanConsumption, read } from '../..';
+import { ApiGroupApis, TeamApiSubscriptions, read } from '../..';
 import { I18nContext, ModalContext, useApiFrontOffice } from '../../../contexts';
 import { GlobalContext } from '../../../contexts/globalContext';
+import { NavContext } from '../../../contexts/navUtils';
 import * as Services from '../../../services';
 import { Display, IApi, ISubscription, ITeamFullGql, ITeamSimple, IUsagePlan, isError } from '../../../types';
 import { SimpleApiKeyCard } from '../../backoffice/apikeys/TeamApiKeysForApi';
 import { Can, Option, Spinner, apikey, teamGQLToSimple } from '../../utils';
-import { CmsViewer } from '../CmsViewer';
 import { ApiDescription } from './ApiDescription';
 import { ApiHeader } from './ApiHeader';
 import { ApiSubscriptions } from './ApiSubscriptions';
-import { NavContext } from '../../../contexts/navUtils';
 
 type ApiHomeProps = {
   groupView?: boolean
@@ -33,7 +31,6 @@ export const ApiHome = ({
   const defaultParams = useParams();
   const apiGroupMatch = useMatch('/:teamId/apigroups/:apiGroupId/apis/:apiId/:versionId/:tab*');
 
-  const consumptionMatch = useMatch('/:teamId/:apiId/:version/consumption/plan/:planId');
 
   const params = Option(apiGroupMatch)
     .map((match: any) => match.params)
@@ -67,15 +64,15 @@ export const ApiHome = ({
   const environmentsQuery = useQuery({
     queryKey: ['environments-apihome', params.apiId],
     queryFn: () => Services.getVisiblePlans(params.apiId, params.versionId)
-        .then(envs => {
-          if (isError(envs)) {
-            return []
-          } else {
-            return envs
-          }
-        }),
+      .then(envs => {
+        if (isError(envs)) {
+          return []
+        } else {
+          return envs
+        }
+      }),
     enabled: tenant.display === 'environment'
-    })
+  })
 
   const MY_TEAMS_QUERY = `
   query MyTeams {

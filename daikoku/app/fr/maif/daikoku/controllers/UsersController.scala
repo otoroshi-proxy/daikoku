@@ -213,7 +213,7 @@ class UsersController(
       )(ctx) {
         ctx.setCtxValue("u.id", id)
         deletionService
-          .deleteCompleteUserByQueue(id, ctx.tenant, ctx.user)
+          .deleteCompleteUserByQueue(id, ctx.tenant)
           .leftMap(_.render())
           .map(_ => Ok(Json.obj("done" -> true)))
           .merge
@@ -227,7 +227,7 @@ class UsersController(
         AuditTrailEvent("@{user.name} has deleted his own profile)")
       )(ctx) {
         deletionService
-          .deleteUserByQueue(ctx.user.id.value, ctx.tenant, ctx.user)
+          .deleteUserByQueue(ctx.user.id.value, ctx.tenant)
           .leftMap(_.render())
           .map(_ => Ok(Json.obj("done" -> true)))
           .value

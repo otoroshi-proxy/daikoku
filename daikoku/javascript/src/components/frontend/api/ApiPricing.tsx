@@ -546,7 +546,7 @@ const BillingForm = (props: { ownerTeam: ITeamSimple, plan: IUsagePlan, savePlan
             value: s._id,
           }),
           props: { isClearable: true },
-          onChange: ({ rawValues, setValue, value }) => {
+          onChange: ({ setValue, value }) => {
             const settings = tenant.thirdPartyPaymentSettings;
             setValue(
               'paymentSettings.type',
@@ -766,7 +766,7 @@ const ApiPricingCard = (props: ApiPricingCardProps) => {
             props.askForApikeys({ team, plan, apiKey, motivation }),
           actionLabel: translate('Send'),
           value: apiKey?.customMetadata,
-          description: formStep.info ? <div className='alert alert-info' dangerouslySetInnerHTML={{__html: formStep.info}} /> : <></>
+          description: formStep.info ? <div className='alert alert-info' dangerouslySetInnerHTML={{ __html: formStep.info }} /> : <></>
         });
       } else {
         props.askForApikeys({ team, plan: plan, apiKey }).then(() => close());

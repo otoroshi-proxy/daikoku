@@ -142,7 +142,7 @@ test('[ASOAPI-10163] - souscrire à une api avec refus', async ({ page, context 
   //todo: accepter la notification
 });
 
-test('[ASOAPI-10161] - Demander une extension d\apikey - process automatique', async ({ page, context }) => {
+test('[ASOAPI-10161] - Demander une extension d\'apikey - process automatique', async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
   await page.goto(ACCUEIL);
@@ -190,7 +190,7 @@ test('[ASOAPI-10161] - Demander une extension d\apikey - process automatique', a
   await expect(otoroshiKey.clientSecret).toBe(clientSecret)
 });
 
-test('[ASOAPI-10161] - Demander une extension d\apikey - process manuel', async ({ page, context }) => {
+test('[ASOAPI-10161] - Demander une extension d\'apikey - process manuel', async ({ page, context }) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
   await page.goto(ACCUEIL);
@@ -305,7 +305,7 @@ test('[ASOAPI-10161] - Demander une extension d\apikey - process manuel', async 
 //   await expect(otoroshiKey.clientSecret).toBe(clientSecret)
 // });
 
-test('[ASOAPI-10164] - Demander une extension d\apikey - process manuel - refus', async ({ page, context }) => {
+test('[ASOAPI-10164] - Demander une extension d\'apikey - process manuel - refus', async ({ page, context }) => {
   test.setTimeout(90_000);
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
 
@@ -821,7 +821,7 @@ test('[] - [Consommateur] - supprimer une clé avec extension avec extraction de
   await page.getByRole('row', { name: 'API Commande' }).getByLabel('Voir les clés d\'API').click();
   await page.getByRole('button', { name: 'Copier le clientId' }).click();
   const apikey = await page.evaluate(() => navigator.clipboard.readText());
-  const [clientId, clientSecret] = apikey.split(":", 2);
+  const [clientId] = apikey.split(":", 2);
 
   const maybeNewKey = await fetch(`http://otoroshi-api.oto.tools:8080/api/apikeys/${clientId}`, {
     method: 'GET',
@@ -840,7 +840,7 @@ test('[] - [Consommateur] - supprimer une clé avec extension avec extraction de
   );
   await page.getByLabel('Accès aux notifications').click();
   await expect(page.getByLabel('Notifications', { exact: true })).toContainText('1');
-  await expect(page.getByRole('article')).toContainText(`Votre clé d\'API a été supprimée`);
+  await expect(page.getByRole('article')).toContainText(`Votre clé d'API a été supprimée`);
   await page.getByRole('article', { name: 'Suppression de clé d\'API' })
     .getByRole('button', { name: 'marquer comme lu' }).click();
   await expect(page.getByLabel('Notifications', { exact: true })).toContainText('0');

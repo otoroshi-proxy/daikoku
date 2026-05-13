@@ -10,7 +10,7 @@ import fr.maif.daikoku.domain.*
 import fr.maif.daikoku.domain.json.*
 import fr.maif.daikoku.env.{DaikokuMode, Env}
 import fr.maif.daikoku.logger.AppLogger
-import fr.maif.daikoku.services.CmsPage
+import fr.maif.daikoku.services.{CmsPage, DeletionService}
 import fr.maif.daikoku.storage.drivers.postgres.PostgresDataStore
 import fr.maif.daikoku.storage.{DataStore, Repo}
 import fr.maif.daikoku.utils.*
@@ -331,7 +331,8 @@ class TenantAdminApiController(
 class UserAdminApiController(
     daa: DaikokuApiAction,
     env: Env,
-    cc: ControllerComponents
+    cc: ControllerComponents,
+    deletionService: DeletionService
 ) extends AdminApiController[User, UserId](daa, env, cc) {
   override def entityClass = classOf[User]
   override def entityName: String = "user"
@@ -365,12 +366,21 @@ class UserAdminApiController(
     )
 
   override def getId(entity: User): UserId = entity.id
+
+  override def deleteEntity(id: String): Action[AnyContent] =
+    daa.async { ctx =>
+      deletionService.deleteCompleteUserByQueue(id, ctx.tenant)
+        .map(_ => Ok(Json.obj("done" -> true)))
+        .leftMap(_.render())
+        .merge
+    }
 }
 
 class TeamAdminApiController(
     daa: DaikokuApiAction,
     env: Env,
-    cc: ControllerComponents
+    cc: ControllerComponents,
+    deletionService: DeletionService
 ) extends AdminApiController[Team, TeamId](daa, env, cc) {
   override def entityClass = classOf[Team]
 
@@ -413,12 +423,21 @@ class TeamAdminApiController(
   }
 
   override def getId(entity: Team): TeamId = entity.id
+
+  override def deleteEntity(id: String): Action[AnyContent] =
+    daa.async { ctx =>
+      deletionService.deleteTeamByQueue(TeamId(id), ctx.tenant.id)
+        .map(_ => Ok(Json.obj("done" -> true)))
+        .leftMap(_.render())
+        .merge
+    }
 }
 
 class ApiAdminApiController(
     daa: DaikokuApiAction,
     env: Env,
-    cc: ControllerComponents
+    cc: ControllerComponents,
+    deletionService: DeletionService
 ) extends AdminApiController[Api, ApiId](daa, env, cc) {
   override def entityClass = classOf[Api]
   override def entityName: String = "api"
@@ -555,6 +574,14 @@ class ApiAdminApiController(
   }
 
   override def getId(entity: Api): ApiId = entity.id
+
+  override def deleteEntity(id: String): Action[AnyContent] =
+    daa.async { ctx =>
+      deletionService.deleteApiByQueue(ApiId(id), ctx.tenant.id)
+        .map(_ => Ok(Json.obj("done" -> true)))
+        .leftMap(_.render())
+        .merge
+    }
 }
 
 class ApiSubscriptionAdminApiController(
@@ -1050,7 +1077,8 @@ class TranslationsAdminApiController(
 class UsagePlansAdminApiController(
     daa: DaikokuApiAction,
     env: Env,
-    cc: ControllerComponents
+    cc: ControllerComponents,
+    deletionService: DeletionService
 ) extends AdminApiController[UsagePlan, UsagePlanId](daa, env, cc) {
   override def entityClass = classOf[UsagePlan]
   override def entityName: String = "usage-plan"
@@ -1099,12 +1127,28 @@ class UsagePlansAdminApiController(
     } yield entity
 
   override def getId(entity: UsagePlan): UsagePlanId = entity.id
+
+  override def deleteEntity(id: String): Action[AnyContent] =
+    daa.async { ctx =>
+      (for {
+        api <- EitherT.fromOptionF(
+          env.dataStore.apiRepo.forTenant(ctx.tenant).findOneNotDeleted(
+            Json.obj("possibleUsagePlans" -> Json.obj("$in" -> Json.arr(id)))
+          ),
+          AppError.ApiNotFound
+        )
+        _ <- deletionService.deleteUsagePlanByQueue(UsagePlanId(id), api.id, ctx.tenant.id)
+      } yield Ok(Json.obj("done" -> true)))
+        .leftMap(_.render())
+        .merge
+    }
 }
 
 class SubscriptionDemandsAdminApiController(
     daa: DaikokuApiAction,
     env: Env,
-    cc: ControllerComponents
+    cc: ControllerComponents,
+    deletionService: DeletionService
 ) extends AdminApiController[SubscriptionDemand, DemandId](
       daa,
       env,
@@ -1156,6 +1200,14 @@ class SubscriptionDemandsAdminApiController(
 
   override def getId(entity: SubscriptionDemand): DemandId =
     entity.id
+
+  override def deleteEntity(id: String): Action[AnyContent] =
+    daa.async { ctx =>
+      deletionService.cancelSubscriptionDemand(id, ctx.tenant)
+        .map(_ => Ok(Json.obj("done" -> true)))
+        .leftMap(_.render())
+        .merge
+    }
 }
 
 class AdminApiSwaggerController(

@@ -1,12 +1,15 @@
 package fr.maif.daikoku.controllers
 
-import fr.maif.daikoku.domain.{Message, MessageType, DatastoreId, User, json}
+import fr.maif.daikoku.domain.{DatastoreId, Message, MessageType, User, json}
 import fr.maif.daikoku.testUtils.DaikokuSpecHelper
 import fr.maif.daikoku.utils.IdGenerator
 import org.joda.time.DateTime
 import org.scalatest.concurrent.IntegrationPatience
 import org.scalatestplus.play.PlaySpec
 import play.api.libs.json.{JsArray, Json}
+
+import scala.concurrent.Await
+import scala.concurrent.duration.DurationInt
 
 class MessagesControllerSpec()
     extends PlaySpec
@@ -35,6 +38,7 @@ class MessagesControllerSpec()
 
   "a tenant admin" can {
     "close a chat" in {
+      Await.result(waitForDaikokuSetup(), 5.second)
       setupEnvBlocking(
         tenants = Seq(tenant),
         users = Seq(tenantAdmin, user),
@@ -186,6 +190,71 @@ class MessagesControllerSpec()
       )(using tenant, session)
 
       resp.status mustBe 403
+    }
+  }
+
+  "a chat" must {
+    "be closed after user self deletion" in {
+      Await.result(waitForDaikokuSetup(), 5.second)
+      setupEnvBlocking(
+        tenants = Seq(tenant),
+        users = Seq(tenantAdmin, user),
+        teams = Seq(defaultAdminTeam),
+        messages = Seq(adminMessage(user, user, "not closed", None))
+      )
+      val userSession = loginWithBlocking(user, tenant)
+      val adminSession = loginWithBlocking(tenantAdmin, tenant)
+
+      val respBefore = httpJsonCallBlocking("/api/me/messages")(using tenant, adminSession)
+      respBefore.status mustBe 200
+      (respBefore.json \ "messages").as[JsArray].value.nonEmpty mustBe true
+
+
+      val respDelete =
+        httpJsonCallBlocking(path = s"/api/me", method = "DELETE")(using tenant, userSession)
+      respDelete.status mustBe 200
+
+      val resp =
+        httpJsonCallBlocking(
+          path = s"/api/me/messages",
+        )(using tenant, adminSession)
+
+      resp.status mustBe 200
+      (resp.json \ "messages").as[JsArray].value.isEmpty mustBe true
+    }
+
+    "be closed after user deletion" in {
+      Await.result(waitForDaikokuSetup(), 5.second)
+      setupEnvBlocking(
+        tenants = Seq(tenant),
+        users = Seq(daikokuAdmin, tenantAdmin, user),
+        teams = Seq(defaultAdminTeam),
+        messages = Seq(adminMessage(user, user, "not closed", None))
+      )
+      val userSession = loginWithBlocking(user, tenant)
+      val adminSession = loginWithBlocking(tenantAdmin, tenant)
+      val dkAdminSession = loginWithBlocking(daikokuAdmin, tenant)
+
+      val respBefore = httpJsonCallBlocking("/api/me/messages")(using tenant, adminSession)
+      respBefore.status mustBe 200
+      (respBefore.json \ "messages").as[JsArray].value.nonEmpty mustBe true
+      
+
+      val respDelete =
+        httpJsonCallBlocking(
+          path = s"/api/admin/users/${userTeamUserId.value}",
+          method = "DELETE"
+          )(using tenant, dkAdminSession)
+      logger.warn(Json.stringify(respDelete.json))
+      respDelete.status mustBe 200
+
+      val resp =
+        httpJsonCallBlocking(
+          path = s"/api/me/messages",
+        )(using tenant, adminSession)
+
+      resp.status mustBe 200
+      (resp.json \ "messages").as[JsArray].value.size mustBe 0
     }
   }
 

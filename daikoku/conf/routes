@@ -279,7 +279,6 @@ POST    /api/tenants/:tenantId/_dispatch-default-authorized-entities fr.maif.dai
 GET     /api/translations/_all                          fr.maif.daikoku.controllers.TranslationController.getAllTranslations()
 GET     /api/translations/_mail                         fr.maif.daikoku.controllers.TranslationController.getMailTranslations(domain: Option[String] ?= None)
 GET     /api/translations/_languages                    fr.maif.daikoku.controllers.TranslationController.getLanguages()
-GET     /api/translations/_languages                    fr.maif.daikoku.controllers.TranslationController.getLanguages()
 PUT     /api/translations                               fr.maif.daikoku.controllers.TranslationController.saveTranslation()
 POST    /api/translations/:translationId/_reset         fr.maif.daikoku.controllers.TranslationController.resetTranslation(translationId: String)
 DELETE  /api/translations                               fr.maif.daikoku.controllers.TranslationController.deleteTranslation()

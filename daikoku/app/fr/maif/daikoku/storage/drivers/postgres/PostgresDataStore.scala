@@ -853,6 +853,7 @@ class PostgresDataStore(configuration: Configuration, env: Env, pgPool: Pool)
       "CREATE INDEX IF NOT EXISTS idx_notification_team ON notifications ((content->>'team'));",
       "CREATE INDEX IF NOT EXISTS idx_notification_action_team ON notifications ((content-> 'action' ->> 'team'));",
       "CREATE INDEX IF NOT EXISTS idx_notification_action_api ON notifications ((content-> 'action' ->> 'api'));",
+      "CREATE INDEX IF NOT EXISTS idx_notification_action_plan ON notifications ((content-> 'action' ->> 'plan'));",
       "CREATE INDEX IF NOT EXISTS idx_notification_action_type ON notifications ((content-> 'action' ->> 'type'));",
       "CREATE INDEX IF NOT EXISTS idx_notification_status ON notifications ((content-> 'status' ->> 'status'));",
       "CREATE INDEX IF NOT EXISTS idx_team_id ON teams ((content->>'_id'));",
