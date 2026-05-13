@@ -1231,7 +1231,7 @@ class ApiControllerSpec()
         state = SubscriptionDemandState.InProgress,
         team = teamConsumerId,
         from = user.id,
-        motivation = None,
+        motivation = None
       )
 
       val subDemandNotif = Notification(
@@ -1281,43 +1281,55 @@ class ApiControllerSpec()
       )
 
       setupEnvBlocking(
-        tenants = Seq(tenant.copy(otoroshiSettings = Set(
-          OtoroshiSettings(
-            id = containerizedOtoroshi,
-            url =
-              s"http://otoroshi.oto.tools:${container.mappedPort(8080)}",
-            host = "otoroshi-api.oto.tools",
-            clientSecret = otoroshiAdminApiKey.clientSecret,
-            clientId = otoroshiAdminApiKey.clientId
-          )
-        ))),
-        users = Seq(userAdmin, user),
-        teams = Seq(teamOwner, teamConsumer, userPersonalTeam),
-        usagePlans = defaultApi.plans.map(_.copy(otoroshiTarget = Some(
-          OtoroshiTarget(
-            containerizedOtoroshi,
-            Some(
-              AuthorizedEntities(
-                routes = Set(OtoroshiRouteId(parentRouteId))
+        tenants = Seq(
+          tenant.copy(otoroshiSettings =
+            Set(
+              OtoroshiSettings(
+                id = containerizedOtoroshi,
+                url =
+                  s"http://otoroshi.oto.tools:${container.mappedPort(8080)}",
+                host = "otoroshi-api.oto.tools",
+                clientSecret = otoroshiAdminApiKey.clientSecret,
+                clientId = otoroshiAdminApiKey.clientId
               )
             )
           )
-        ))),
-        apis = Seq(defaultApi.api.copy(
-          posts = Seq(post.id),
-          issues = Seq(issue.id),
-          documentation = ApiDocumentation(
-            id = ApiDocumentationId(IdGenerator.token(10)),
-            tenant = tenant.id,
-            pages = Seq(ApiDocumentationDetailPage(page.id, page.title, Seq.empty)),
-            lastModificationAt = DateTime.now
-          ))),
+        ),
+        users = Seq(userAdmin, user),
+        teams = Seq(teamOwner, teamConsumer, userPersonalTeam),
+        usagePlans = defaultApi.plans.map(
+          _.copy(otoroshiTarget =
+            Some(
+              OtoroshiTarget(
+                containerizedOtoroshi,
+                Some(
+                  AuthorizedEntities(
+                    routes = Set(OtoroshiRouteId(parentRouteId))
+                  )
+                )
+              )
+            )
+          )
+        ),
+        apis = Seq(
+          defaultApi.api.copy(
+            posts = Seq(post.id),
+            issues = Seq(issue.id),
+            documentation = ApiDocumentation(
+              id = ApiDocumentationId(IdGenerator.token(10)),
+              tenant = tenant.id,
+              pages =
+                Seq(ApiDocumentationDetailPage(page.id, page.title, Seq.empty)),
+              lastModificationAt = DateTime.now
+            )
+          )
+        ),
         pages = Seq(page),
         posts = Seq(post),
         issues = Seq(issue),
         subscriptions = Seq(personalSubscription),
         subscriptionDemands = Seq(subscriptionDemand),
-        notifications = Seq(subDemandNotif),
+        notifications = Seq(subDemandNotif)
       )
       val session = loginWithBlocking(userAdmin, tenant)
       val resp = httpJsonCallBlocking(
@@ -1330,65 +1342,100 @@ class ApiControllerSpec()
       (resp.json \ "done").as[Boolean] mustBe true
 
       def operationsPending() = {
-        Await.result(daikokuComponents.env.dataStore.operationRepo
-          .forTenant(tenant)
-          .find(
-            Json.obj("status" ->
-              Json.obj("$in" ->
-                JsArray(Seq(
-                  JsString(OperationStatus.Idle.name),
-                  JsString(OperationStatus.InProgress.name)))))),
-          5.second)
+        Await.result(
+          daikokuComponents.env.dataStore.operationRepo
+            .forTenant(tenant)
+            .find(
+              Json.obj(
+                "status" ->
+                  Json.obj(
+                    "$in" ->
+                      JsArray(
+                        Seq(
+                          JsString(OperationStatus.Idle.name),
+                          JsString(OperationStatus.InProgress.name)
+                        )
+                      )
+                  )
+              )
+            ),
+          5.second
+        )
       }
 
-      //await until operation is run by queuejob
-      org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().nonEmpty }
-      org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () => operationsPending().isEmpty }
+      // await until operation is run by queuejob
+      org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () =>
+        operationsPending().nonEmpty
+      }
+      org.awaitility.Awaitility.await.atMost(10.seconds.toJava) until { () =>
+        operationsPending().isEmpty
+      }
 
-      //todo: verif if subscriptions, docs, plans, demands & stepValidatores are cleans
+      // todo: verif if subscriptions, docs, plans, demands & stepValidatores are cleans
 
-      //test if user subscriptions deleted
-      val _maybeSubscription = Await.result(daikokuComponents.env.dataStore.apiSubscriptionRepo
-        .forTenant(tenant)
-        .findById(personalSubscription.id), 5.second)
+      // test if user subscriptions deleted
+      val _maybeSubscription = Await.result(
+        daikokuComponents.env.dataStore.apiSubscriptionRepo
+          .forTenant(tenant)
+          .findById(personalSubscription.id),
+        5.second
+      )
       _maybeSubscription.isDefined mustBe true
       _maybeSubscription.forall(_.deleted) mustBe true
 
-      //test if plans are deleted
-      val _maybePlans = Await.result(daikokuComponents.env.dataStore.usagePlanRepo
-        .forTenant(tenant)
-        .findNotDeleted(Json.obj("api" -> defaultApi.api.id.asJson)), 5.second)
+      // test if plans are deleted
+      val _maybePlans = Await.result(
+        daikokuComponents.env.dataStore.usagePlanRepo
+          .forTenant(tenant)
+          .findNotDeleted(Json.obj("api" -> defaultApi.api.id.asJson)),
+        5.second
+      )
       _maybePlans.isEmpty mustBe true
 
-      //test if docs are deleted
-      val _maybeDocs = Await.result(daikokuComponents.env.dataStore.apiDocumentationPageRepo
-        .forTenant(tenant)
-        .findByIdNotDeleted(page.id), 5.second)
+      // test if docs are deleted
+      val _maybeDocs = Await.result(
+        daikokuComponents.env.dataStore.apiDocumentationPageRepo
+          .forTenant(tenant)
+          .findByIdNotDeleted(page.id),
+        5.second
+      )
       _maybeDocs.isEmpty mustBe true
 
-      //test if posts are deleted
-      val _maybePosts = Await.result(daikokuComponents.env.dataStore.apiPostRepo
-        .forTenant(tenant)
-        .findByIdNotDeleted(post.id), 5.second)
+      // test if posts are deleted
+      val _maybePosts = Await.result(
+        daikokuComponents.env.dataStore.apiPostRepo
+          .forTenant(tenant)
+          .findByIdNotDeleted(post.id),
+        5.second
+      )
       _maybePosts.isEmpty mustBe true
 
-      //test if issues are deleted
-      val _maybeIssue = Await.result(daikokuComponents.env.dataStore.apiIssueRepo
-        .forTenant(tenant)
-        .findByIdNotDeleted(issue.id), 5.second)
+      // test if issues are deleted
+      val _maybeIssue = Await.result(
+        daikokuComponents.env.dataStore.apiIssueRepo
+          .forTenant(tenant)
+          .findByIdNotDeleted(issue.id),
+        5.second
+      )
       _maybeIssue.isEmpty mustBe true
 
-      //test if api notification are cleaned
-      val notifDemand = Await.result(daikokuComponents.env.dataStore.notificationRepo
-        .forAllTenant()
-        .findByIdNotDeleted(subDemandNotif.id), 5.second)
+      // test if api notification are cleaned
+      val notifDemand = Await.result(
+        daikokuComponents.env.dataStore.notificationRepo
+          .forAllTenant()
+          .findByIdNotDeleted(subDemandNotif.id),
+        5.second
+      )
       notifDemand mustBe None
 
-      Await.result(daikokuComponents.env.dataStore.subscriptionDemandRepo
-        .forAllTenant()
-        .findById(subscriptionDemand.id), 5.second) mustBe None
+      Await.result(
+        daikokuComponents.env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .findById(subscriptionDemand.id),
+        5.second
+      ) mustBe None
 
-      //verif oto apikey
+      // verif oto apikey
       val respVerifOto = httpJsonCallBlocking(
         path =
           s"/apis/apim.otoroshi.io/v1/apikeys/${personalSubscription.apiKey.clientId}",
@@ -3666,7 +3713,7 @@ class ApiControllerSpec()
       val cancelDemand = httpJsonCallBlocking(
         path =
           s"/api/subscription/team/${teamConsumerId.value}/demands/${subscriptionDemand.id.value}/_cancel",
-        method = "DELETE",
+        method = "DELETE"
       )(using tenant, session)
 
       cancelDemand.status mustBe 200

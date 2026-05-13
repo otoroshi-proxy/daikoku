@@ -45,7 +45,7 @@ case class SyncAllSubscription()
 
 sealed trait SyncMode
 object SyncMode {
-  case object Sync   extends SyncMode
+  case object Sync extends SyncMode
   case object Delete extends SyncMode
 }
 
@@ -113,7 +113,8 @@ object UserForSync {
     id = UserId((json \ "_id").asOpt[String].getOrElse("unknown")),
     name = (json \ "name").asOpt[String].getOrElse("deleted user"),
     email = (json \ "email").asOpt[String].getOrElse(""),
-    metadata = (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
+    metadata =
+      (json \ "metadata").asOpt[Map[String, String]].getOrElse(Map.empty)
   )
 }
 
@@ -577,7 +578,7 @@ class OtoroshiSynchronizerJob(
       team: Team,
       tenant: Tenant
   ): Option[ActualOtoroshiApiKey] = {
-    //FIXME: c'est le shit si on veut supprimer une api avec la aprentSubscription
+    // FIXME: c'est le shit si on veut supprimer une api avec la aprentSubscription
     if (parent.subscription.enabled)
       children
         .foldLeft(parent.asOtoroshiApikey(team, tenant)) { case (acc, item) =>
@@ -763,9 +764,13 @@ class OtoroshiSynchronizerJob(
         (for {
           otoroshiSettings <- EitherT.fromOption[Future](
             getOtoroshiTarget(tenant, parent.plan),
-            AppError.EntityNotFound(s"otoroshi target not found for subscription ${parent.subscription.apiKey.clientId} (plan ${parent.plan.id.value})")
+            AppError.EntityNotFound(
+              s"otoroshi target not found for subscription ${parent.subscription.apiKey.clientId} (plan ${parent.plan.id.value})"
+            )
           )
-          _ = logger.info(s"[sync:$mode] processing apikey ${parent.subscription.apiKey.clientId}, enabled=${parent.subscription.enabled}, children=${children.size}")
+          _ = logger.info(
+            s"[sync:$mode] processing apikey ${parent.subscription.apiKey.clientId}, enabled=${parent.subscription.enabled}, children=${children.size}"
+          )
           apikey <- EitherT(
             client.getApikey(parent.subscription.apiKey.clientId)(using
               otoroshiSettings
@@ -775,7 +780,9 @@ class OtoroshiSynchronizerJob(
             case Some(apikeyFromSubscriptions) =>
               // Active subscriptions remain — recalculate merged key (Sync and Delete)
               val equals = isEqual(apikey, apikeyFromSubscriptions)
-              logger.info(s"[sync:$mode] apikey ${parent.subscription.apiKey.clientId} — mergeAggregation=Some, equals=$equals")
+              logger.info(
+                s"[sync:$mode] apikey ${parent.subscription.apiKey.clientId} — mergeAggregation=Some, equals=$equals"
+              )
               if (!equals) {
                 val cleanApikey = clearApikey(apikey)
                 val computedKey = mergeOtoroshiApikeys(
@@ -783,22 +790,35 @@ class OtoroshiSynchronizerJob(
                   apikeyFromSubscriptions,
                   forceNewValue = true
                 )
-                logger.info(s"[sync:$mode] updating apikey ${parent.subscription.apiKey.clientId} (${children.size} children)")
-                EitherT(client.updateApiKey(key = computedKey)(using otoroshiSettings))
+                logger.info(
+                  s"[sync:$mode] updating apikey ${parent.subscription.apiKey.clientId} (${children.size} children)"
+                )
+                EitherT(
+                  client.updateApiKey(key = computedKey)(using otoroshiSettings)
+                )
               } else {
                 EitherT.pure[Future, AppError](apikey)
               }
             case None =>
               mode match {
                 case SyncMode.Delete =>
-                  logger.info(s"[sync:Delete] DELETING apikey ${parent.subscription.apiKey.clientId} in Otoroshi")
-                  client.deleteApiKey(parent.subscription.apiKey.clientId)(using otoroshiSettings)
+                  logger.info(
+                    s"[sync:Delete] DELETING apikey ${parent.subscription.apiKey.clientId} in Otoroshi"
+                  )
+                  client
+                    .deleteApiKey(parent.subscription.apiKey.clientId)(using
+                      otoroshiSettings
+                    )
                     .map(_ => apikey)
                 case SyncMode.Sync =>
                   if (apikey.enabled) {
-                    logger.info(s"[sync:Sync] disabling apikey ${parent.subscription.apiKey.clientId} in Otoroshi")
+                    logger.info(
+                      s"[sync:Sync] disabling apikey ${parent.subscription.apiKey.clientId} in Otoroshi"
+                    )
                     EitherT(
-                      client.updateApiKey(key = apikey.copy(enabled = false))(using otoroshiSettings)
+                      client.updateApiKey(key = apikey.copy(enabled = false))(
+                        using otoroshiSettings
+                      )
                     )
                   } else {
                     EitherT.pure[Future, AppError](apikey)
@@ -963,7 +983,9 @@ class OtoroshiSynchronizerJob(
       tenant: Tenant,
       parallelism: Int = 25
   ): Future[Unit] = {
-    logger.info(s"run apikey deletion synchronisation with entry point as $entryPoint")
+    logger.info(
+      s"run apikey deletion synchronisation with entry point as $entryPoint"
+    )
 
     val jobRepo = env.dataStore.JobInformationRepo.forTenant(tenant)
     val jobId = DatastoreId(s"sync-del-${IdGenerator.token(16)}")
@@ -986,18 +1008,45 @@ class OtoroshiSynchronizerJob(
       jobInfo.copy(cursor = cursor, expiresAt = DateTime.now().plusMinutes(5))
     )
 
-    logger.info(s"[runForDeletion] starting for $entryPoint on tenant ${tenant.id.value}")
-    jobRepo.save(jobInfo)
+    logger.info(
+      s"[runForDeletion] starting for $entryPoint on tenant ${tenant.id.value}"
+    )
+    jobRepo
+      .save(jobInfo)
       .flatMap(_ =>
-        synchronizeApikeys(entryPoint, tenant, parallelism, saveCursor, None, SyncMode.Delete)
+        synchronizeApikeys(
+          entryPoint,
+          tenant,
+          parallelism,
+          saveCursor,
+          None,
+          SyncMode.Delete
+        )
       )
       .flatMap(_ =>
-        jobRepo.save(jobInfo.copy(status = JobStatus.Completed, lastBatchAt = DateTime.now())).map(_ => ())
+        jobRepo
+          .save(
+            jobInfo
+              .copy(status = JobStatus.Completed, lastBatchAt = DateTime.now())
+          )
+          .map(_ => ())
       )
-      .map(_ => logger.info(s"[runForDeletion] completed for $entryPoint on tenant ${tenant.id.value}"))
+      .map(_ =>
+        logger.info(
+          s"[runForDeletion] completed for $entryPoint on tenant ${tenant.id.value}"
+        )
+      )
       .recoverWith { case e =>
-        logger.error(s"[runForDeletion] failed for $entryPoint: ${e.getMessage}", e)
-        jobRepo.save(jobInfo.copy(status = JobStatus.Failed, lastBatchAt = DateTime.now())).map(_ => ())
+        logger.error(
+          s"[runForDeletion] failed for $entryPoint: ${e.getMessage}",
+          e
+        )
+        jobRepo
+          .save(
+            jobInfo
+              .copy(status = JobStatus.Failed, lastBatchAt = DateTime.now())
+          )
+          .map(_ => ())
       }
   }
 }

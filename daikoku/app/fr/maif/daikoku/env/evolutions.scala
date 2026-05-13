@@ -5,7 +5,17 @@ import cats.implicits.catsSyntaxOptionId
 import fr.maif.daikoku.domain.Tenant.getCustomizationCmsPage
 import fr.maif.daikoku.domain.UsagePlanVisibility.Admin
 import fr.maif.daikoku.domain.*
-import fr.maif.daikoku.domain.json.{ApiDocumentationPageFormat, ApiFormat, ApiSubscriptionFormat, SeqApiDocumentationDetailPageFormat, TeamFormat, TeamIdFormat, TenantFormat, TenantIdFormat, UserFormat}
+import fr.maif.daikoku.domain.json.{
+  ApiDocumentationPageFormat,
+  ApiFormat,
+  ApiSubscriptionFormat,
+  SeqApiDocumentationDetailPageFormat,
+  TeamFormat,
+  TeamIdFormat,
+  TenantFormat,
+  TenantIdFormat,
+  UserFormat
+}
 import fr.maif.daikoku.env.evolution_1860.{logger, version}
 import fr.maif.daikoku.logger.AppLogger
 import fr.maif.daikoku.utils.{IdGenerator, OtoroshiClient}
@@ -1740,32 +1750,32 @@ object evolution_1890 extends EvolutionScript {
   override def version: String = "18.9.0"
 
   override def script: (
-    Option[DatastoreId],
+      Option[DatastoreId],
       DataStore,
       Materializer,
       ExecutionContext,
       OtoroshiClient
-    ) => Future[Done] = {
+  ) => Future[Done] = {
 
     (
-      _: Option[DatastoreId],
-      dataStore: DataStore,
-      mat: Materializer,
-      ec: ExecutionContext,
-      _: OtoroshiClient
-    ) => {
-      logger.info(
-        s"Begin evolution $version - clean orphaned entities in database"
-      )
+        _: Option[DatastoreId],
+        dataStore: DataStore,
+        mat: Materializer,
+        ec: ExecutionContext,
+        _: OtoroshiClient
+    ) =>
+      {
+        logger.info(
+          s"Begin evolution $version - clean orphaned entities in database"
+        )
 
-      given ExecutionContext = ec
+        given ExecutionContext = ec
 
-      //clean teams with unknown or deleted users
-      val cleanTeamUsers = dataStore.teamRepo
-        .forAllTenant()
-        .execute(
-          query =
-            s"""
+        // clean teams with unknown or deleted users
+        val cleanTeamUsers = dataStore.teamRepo
+          .forAllTenant()
+          .execute(
+            query = s"""
                |UPDATE teams t
                |SET content = jsonb_set(
                |        t.content,
@@ -1796,14 +1806,13 @@ object evolution_1890 extends EvolutionScript {
                |    )
                |);
                |""".stripMargin
-        )
+          )
 
-    //clean usage plans not used by any API
-      val cleanUnusedPlans = dataStore.usagePlanRepo
-        .forAllTenant()
-        .execute(
-          query =
-            """
+        // clean usage plans not used by any API
+        val cleanUnusedPlans = dataStore.usagePlanRepo
+          .forAllTenant()
+          .execute(
+            query = """
               |UPDATE usage_plans p
               |SET _deleted = true, content = jsonb_set(content, '{_deleted}', 'true')
               |WHERE p._deleted = false
@@ -1815,13 +1824,12 @@ object evolution_1890 extends EvolutionScript {
               |      AND a._deleted = false
               |);
               |""".stripMargin
-        )
-    //clean notifications related to deleted API
-      val cleanApiNotifications = dataStore.notificationRepo
-        .forAllTenant()
-        .execute(
-          query =
-            """
+          )
+        // clean notifications related to deleted API
+        val cleanApiNotifications = dataStore.notificationRepo
+          .forAllTenant()
+          .execute(
+            query = """
               |DELETE FROM notifications n
               |WHERE n.content->'action'->>'api' IS NOT NULL
               |  AND n.content->'action'->>'type' <>  'OtoroshiSyncApiError'
@@ -1832,14 +1840,13 @@ object evolution_1890 extends EvolutionScript {
               |      AND p._deleted = false
               |);
               |""".stripMargin
-        )
+          )
 
-    //clean notifications related to deleted usage plan
-      val cleanPlanNotifications = dataStore.notificationRepo
-        .forAllTenant()
-        .execute(
-          query =
-            """
+        // clean notifications related to deleted usage plan
+        val cleanPlanNotifications = dataStore.notificationRepo
+          .forAllTenant()
+          .execute(
+            query = """
               |DELETE FROM notifications n
               |WHERE n.content->'action'->>'plan' IS NOT NULL
               |  AND n.content->'action'->>'type' <>  'OtoroshiSyncApiError'
@@ -1850,13 +1857,12 @@ object evolution_1890 extends EvolutionScript {
               |      AND p._deleted = false
               |);
               |""".stripMargin
-        )
-    //clean subscription related to deleted API or usage plan
-      val cleanOrphanedSubscription = dataStore.apiSubscriptionRepo
-        .forAllTenant()
-        .execute(
-          query =
-            """
+          )
+        // clean subscription related to deleted API or usage plan
+        val cleanOrphanedSubscription = dataStore.apiSubscriptionRepo
+          .forAllTenant()
+          .execute(
+            query = """
               |UPDATE api_subscriptions s
               |SET _deleted = true, content = jsonb_set(content, '{_deleted}', 'true')
               |WHERE s._deleted = false
@@ -1873,13 +1879,12 @@ object evolution_1890 extends EvolutionScript {
               |    )
               |    );
               |""".stripMargin
-        )
-    //clean notification related to deleted subscription demand
-      val cleanSubscriptionDemandNotification = dataStore.notificationRepo
-        .forAllTenant()
-        .execute(
-          query =
-            """
+          )
+        // clean notification related to deleted subscription demand
+        val cleanSubscriptionDemandNotification = dataStore.notificationRepo
+          .forAllTenant()
+          .execute(
+            query = """
               |DELETE FROM notifications n
               |WHERE n.content->'action'->>'demand' IS NOT NULL
               |  AND NOT EXISTS (
@@ -1888,13 +1893,12 @@ object evolution_1890 extends EvolutionScript {
               |    WHERE sd.content->>'_id' = n.content->'action'->>'demand'
               |);
               |""".stripMargin
-        )
+          )
 
-      val cleanStepValidators = dataStore.stepValidatorRepo
-        .forAllTenant()
-        .execute(
-          query =
-            """
+        val cleanStepValidators = dataStore.stepValidatorRepo
+          .forAllTenant()
+          .execute(
+            query = """
               |DELETE FROM step_validators sv
               |WHERE NOT EXISTS (
               |    SELECT 1
@@ -1902,14 +1906,13 @@ object evolution_1890 extends EvolutionScript {
               |    WHERE sd.content->>'_id' = sv.content->>'subscriptionDemand'
               |);
               |""".stripMargin
-        )
+          )
 
-    //clean legacy notifications
-      val cleanLegacyNotifs = dataStore.notificationRepo
-        .forAllTenant()
-        .execute(
-          query =
-            """
+        // clean legacy notifications
+        val cleanLegacyNotifs = dataStore.notificationRepo
+          .forAllTenant()
+          .execute(
+            query = """
               |DELETE FROM notifications n
               |WHERE n.content->'action'->>'type' IN (
               |    'NewPostPublished',
@@ -1921,19 +1924,19 @@ object evolution_1890 extends EvolutionScript {
               |    'ApiKeyRefresh'
               |);
               |""".stripMargin
-        )
+          )
 
-      for {
-        _ <- cleanTeamUsers
-        _ <- cleanUnusedPlans
-        _ <- cleanApiNotifications
-        _ <- cleanPlanNotifications
-        _ <- cleanOrphanedSubscription
-        _ <- cleanSubscriptionDemandNotification
-        _ <- cleanStepValidators
-        _ <- cleanLegacyNotifs
-      } yield Done
-    }
+        for {
+          _ <- cleanTeamUsers
+          _ <- cleanUnusedPlans
+          _ <- cleanApiNotifications
+          _ <- cleanPlanNotifications
+          _ <- cleanOrphanedSubscription
+          _ <- cleanSubscriptionDemandNotification
+          _ <- cleanStepValidators
+          _ <- cleanLegacyNotifs
+        } yield Done
+      }
   }
 }
 

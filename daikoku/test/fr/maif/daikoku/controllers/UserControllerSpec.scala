@@ -171,7 +171,7 @@ class UserControllerSpec()
         state = SubscriptionDemandState.InProgress,
         team = teamConsumerId,
         from = user.id,
-        motivation = None,
+        motivation = None
       )
 
       val subDemandNotif = Notification(
@@ -219,43 +219,60 @@ class UserControllerSpec()
       )(using tenant, session)
       resp.status mustBe 404
 
-      //test if user personal team deleted
+      // test if user personal team deleted
       val respTestTeam =
-        httpJsonCallBlocking(s"/api/teams/${userPersonalTeam.id.value}")(using tenant, session)
+        httpJsonCallBlocking(s"/api/teams/${userPersonalTeam.id.value}")(using
+          tenant,
+          session
+        )
       respTestTeam.status mustBe 404
 
-      //test if user teams cleaned
+      // test if user teams cleaned
       val respTestConsumerTeam =
-        httpJsonCallBlocking(s"/api/teams/${teamConsumerId.value}")(using tenant, session)
+        httpJsonCallBlocking(s"/api/teams/${teamConsumerId.value}")(using
+          tenant,
+          session
+        )
       respTestConsumerTeam.status mustBe 200
       val _consumerTeam = respTestConsumerTeam.json.as(using json.TeamFormat)
       _consumerTeam.users.exists(_.userId == user.id) mustBe false
 
-      //test if user subscriptions deleted
-      val _maybeSubscription = Await.result(daikokuComponents.env.dataStore.apiSubscriptionRepo
-        .forAllTenant()
-        .findById(personalSubscription.id), 5.second)
+      // test if user subscriptions deleted
+      val _maybeSubscription = Await.result(
+        daikokuComponents.env.dataStore.apiSubscriptionRepo
+          .forAllTenant()
+          .findById(personalSubscription.id),
+        5.second
+      )
 
       _maybeSubscription.isDefined mustBe true
       _maybeSubscription.forall(_.deleted) mustBe true
 
-      //test if notification by user, for user are cleaned
-      //1 - teamInvitation
-      val notifInvitation = Await.result(daikokuComponents.env.dataStore.notificationRepo
-        .forAllTenant()
-        .findById(teamInvitationNotif.id), 5.second)
+      // test if notification by user, for user are cleaned
+      // 1 - teamInvitation
+      val notifInvitation = Await.result(
+        daikokuComponents.env.dataStore.notificationRepo
+          .forAllTenant()
+          .findById(teamInvitationNotif.id),
+        5.second
+      )
       notifInvitation mustBe None
 
-      //2 - subDemand
-      val notifDemand = Await.result(daikokuComponents.env.dataStore.notificationRepo
-        .forAllTenant()
-        .findById(subDemandNotif.id), 5.second)
+      // 2 - subDemand
+      val notifDemand = Await.result(
+        daikokuComponents.env.dataStore.notificationRepo
+          .forAllTenant()
+          .findById(subDemandNotif.id),
+        5.second
+      )
       notifDemand mustBe None
 
-      Await.result(daikokuComponents.env.dataStore.subscriptionDemandRepo
-        .forAllTenant()
-        .findById(subscriptionDemand.id), 5.second) mustBe None
-
+      Await.result(
+        daikokuComponents.env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .findById(subscriptionDemand.id),
+        5.second
+      ) mustBe None
 
     }
 
@@ -438,7 +455,8 @@ class UserControllerSpec()
         name = s"$randomUser team personal",
         description = "",
         contact = randomUser.email,
-        users = Set(UserWithPermission(randomUser.id, TeamPermission.Administrator))
+        users =
+          Set(UserWithPermission(randomUser.id, TeamPermission.Administrator))
       )
 
       val personalSubscription = ApiSubscription(
@@ -485,7 +503,7 @@ class UserControllerSpec()
         state = SubscriptionDemandState.InProgress,
         team = teamConsumerId,
         from = randomUser.id,
-        motivation = None,
+        motivation = None
       )
 
       val subDemandNotif = Notification(
@@ -541,43 +559,60 @@ class UserControllerSpec()
       )(using tenant, sessionAdmin)
       resp.status mustBe 404
 
-
-      //test if user personal team deleted
+      // test if user personal team deleted
       val respTestTeam =
-        httpJsonCallBlocking(s"/api/teams/${userPersonalTeam.id.value}")(using tenant, sessionAdmin)
+        httpJsonCallBlocking(s"/api/teams/${userPersonalTeam.id.value}")(using
+          tenant,
+          sessionAdmin
+        )
       respTestTeam.status mustBe 404
 
-      //test if user teams cleaned
+      // test if user teams cleaned
       val respTestConsumerTeam =
-        httpJsonCallBlocking(s"/api/teams/${teamConsumerId.value}")(using tenant, sessionAdmin)
+        httpJsonCallBlocking(s"/api/teams/${teamConsumerId.value}")(using
+          tenant,
+          sessionAdmin
+        )
       respTestConsumerTeam.status mustBe 200
       val _consumerTeam = respTestConsumerTeam.json.as(using json.TeamFormat)
       _consumerTeam.users.exists(_.userId == randomUser.id) mustBe false
 
-      //test if user subscriptions deleted
-      val _maybeSubscription = Await.result(daikokuComponents.env.dataStore.apiSubscriptionRepo
-        .forAllTenant()
-        .findById(personalSubscription.id), 5.second)
+      // test if user subscriptions deleted
+      val _maybeSubscription = Await.result(
+        daikokuComponents.env.dataStore.apiSubscriptionRepo
+          .forAllTenant()
+          .findById(personalSubscription.id),
+        5.second
+      )
 
       _maybeSubscription.isDefined mustBe true
       _maybeSubscription.forall(_.deleted) mustBe true
 
-      //test if notification by user, for user are cleaned
-      //1 - teamInvitation
-      val notifInvitation = Await.result(daikokuComponents.env.dataStore.notificationRepo
-        .forAllTenant()
-        .findById(teamInvitationNotif.id), 5.second)
+      // test if notification by user, for user are cleaned
+      // 1 - teamInvitation
+      val notifInvitation = Await.result(
+        daikokuComponents.env.dataStore.notificationRepo
+          .forAllTenant()
+          .findById(teamInvitationNotif.id),
+        5.second
+      )
       notifInvitation mustBe None
 
-      //2 - subDemand
-      val notifDemand = Await.result(daikokuComponents.env.dataStore.notificationRepo
-        .forAllTenant()
-        .findById(subDemandNotif.id), 5.second)
+      // 2 - subDemand
+      val notifDemand = Await.result(
+        daikokuComponents.env.dataStore.notificationRepo
+          .forAllTenant()
+          .findById(subDemandNotif.id),
+        5.second
+      )
       notifDemand mustBe None
 
-      Await.result(daikokuComponents.env.dataStore.subscriptionDemandRepo
-        .forAllTenant()
-        .findById(subscriptionDemand.id), 5.second) mustBe None
+      Await.result(
+        daikokuComponents.env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .findById(subscriptionDemand.id),
+        5.second
+      ) mustBe None
     }
 
     "not create user" in {

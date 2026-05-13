@@ -205,18 +205,21 @@ class MessagesControllerSpec()
       val userSession = loginWithBlocking(user, tenant)
       val adminSession = loginWithBlocking(tenantAdmin, tenant)
 
-      val respBefore = httpJsonCallBlocking("/api/me/messages")(using tenant, adminSession)
+      val respBefore =
+        httpJsonCallBlocking("/api/me/messages")(using tenant, adminSession)
       respBefore.status mustBe 200
       (respBefore.json \ "messages").as[JsArray].value.nonEmpty mustBe true
 
-
       val respDelete =
-        httpJsonCallBlocking(path = s"/api/me", method = "DELETE")(using tenant, userSession)
+        httpJsonCallBlocking(path = s"/api/me", method = "DELETE")(using
+          tenant,
+          userSession
+        )
       respDelete.status mustBe 200
 
       val resp =
         httpJsonCallBlocking(
-          path = s"/api/me/messages",
+          path = s"/api/me/messages"
         )(using tenant, adminSession)
 
       resp.status mustBe 200
@@ -235,22 +238,22 @@ class MessagesControllerSpec()
       val adminSession = loginWithBlocking(tenantAdmin, tenant)
       val dkAdminSession = loginWithBlocking(daikokuAdmin, tenant)
 
-      val respBefore = httpJsonCallBlocking("/api/me/messages")(using tenant, adminSession)
+      val respBefore =
+        httpJsonCallBlocking("/api/me/messages")(using tenant, adminSession)
       respBefore.status mustBe 200
       (respBefore.json \ "messages").as[JsArray].value.nonEmpty mustBe true
-      
 
       val respDelete =
         httpJsonCallBlocking(
           path = s"/api/admin/users/${userTeamUserId.value}",
           method = "DELETE"
-          )(using tenant, dkAdminSession)
+        )(using tenant, dkAdminSession)
       logger.warn(Json.stringify(respDelete.json))
       respDelete.status mustBe 200
 
       val resp =
         httpJsonCallBlocking(
-          path = s"/api/me/messages",
+          path = s"/api/me/messages"
         )(using tenant, adminSession)
 
       resp.status mustBe 200

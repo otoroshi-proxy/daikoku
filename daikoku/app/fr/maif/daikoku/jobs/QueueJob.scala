@@ -85,7 +85,11 @@ class QueueJob(
             env.dataStore.apiDocumentationPageRepo
               .forTenant(o.tenant)
               .deleteLogically(
-                Json.obj("_id" -> Json.obj("$in" -> JsArray(doc.docIds().map(JsString.apply))))
+                Json.obj(
+                  "_id" -> Json.obj(
+                    "$in" -> JsArray(doc.docIds().map(JsString.apply))
+                  )
+                )
               )
           case None => FastFuture.successful(false)
         }
@@ -117,9 +121,15 @@ class QueueJob(
         env.dataStore.operationRepo.forTenant(o.tenant).deleteById(o.id)
       )
     } yield ()).value
-      .map(_ => logger.debug(s"[deletion job] :: usage plan ${o.itemId} successfully deleted"))
+      .map(_ =>
+        logger.debug(
+          s"[deletion job] :: usage plan ${o.itemId} successfully deleted"
+        )
+      )
       .recover(e => {
-        logger.error(s"[deletion job] :: [id ${o.id.value}] :: error during deletion of plan ${o.itemId}: $e")
+        logger.error(
+          s"[deletion job] :: [id ${o.id.value}] :: error during deletion of plan ${o.itemId}: $e"
+        )
         env.dataStore.operationRepo
           .forTenant(o.tenant)
           .save(o.copy(status = OperationStatus.Error))
@@ -276,23 +286,25 @@ class QueueJob(
               )
             )
         )
-        _ <- OptionT.liftF(env.dataStore.usagePlanRepo
-          .forTenant(o.tenant)
-          .deleteLogically(
-            Json.obj(
-              "_id" -> Json.obj(
-                "$in" -> JsArray(
-                  api.possibleUsagePlans.map(_.asJson)
+        _ <- OptionT.liftF(
+          env.dataStore.usagePlanRepo
+            .forTenant(o.tenant)
+            .deleteLogically(
+              Json.obj(
+                "_id" -> Json.obj(
+                  "$in" -> JsArray(
+                    api.possibleUsagePlans.map(_.asJson)
+                  )
                 )
               )
             )
-          )
         )
         _ <- OptionT.liftF(deleteApiNotifications(api))
-        _ <- OptionT.liftF(env.dataStore.subscriptionDemandRepo
-          .forAllTenant()
-          .execute(
-            s"""
+        _ <- OptionT.liftF(
+          env.dataStore.subscriptionDemandRepo
+            .forAllTenant()
+            .execute(
+              s"""
                |WITH deleted_demands AS (
                |  DELETE FROM subscription_demands
                |  WHERE content->>'_tenant' = $$1
@@ -303,11 +315,12 @@ class QueueJob(
                |DELETE FROM step_validators
                |WHERE content->>'subscriptionDemand' IN (SELECT demand_id FROM deleted_demands);
                |""".stripMargin,
-            Seq(
-              api.tenant.value,
-              api.id.value
+              Seq(
+                api.tenant.value,
+                api.id.value
+              )
             )
-          ))
+        )
         _ <- OptionT.liftF(
           env.dataStore.operationRepo.forTenant(o.tenant).deleteById(o.id)
         )

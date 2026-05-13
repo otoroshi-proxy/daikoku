@@ -369,7 +369,8 @@ class UserAdminApiController(
 
   override def deleteEntity(id: String): Action[AnyContent] =
     daa.async { ctx =>
-      deletionService.deleteCompleteUserByQueue(id, ctx.tenant)
+      deletionService
+        .deleteCompleteUserByQueue(id, ctx.tenant)
         .map(_ => Ok(Json.obj("done" -> true)))
         .leftMap(_.render())
         .merge
@@ -426,7 +427,8 @@ class TeamAdminApiController(
 
   override def deleteEntity(id: String): Action[AnyContent] =
     daa.async { ctx =>
-      deletionService.deleteTeamByQueue(TeamId(id), ctx.tenant.id)
+      deletionService
+        .deleteTeamByQueue(TeamId(id), ctx.tenant.id)
         .map(_ => Ok(Json.obj("done" -> true)))
         .leftMap(_.render())
         .merge
@@ -577,7 +579,8 @@ class ApiAdminApiController(
 
   override def deleteEntity(id: String): Action[AnyContent] =
     daa.async { ctx =>
-      deletionService.deleteApiByQueue(ApiId(id), ctx.tenant.id)
+      deletionService
+        .deleteApiByQueue(ApiId(id), ctx.tenant.id)
         .map(_ => Ok(Json.obj("done" -> true)))
         .leftMap(_.render())
         .merge
@@ -1132,12 +1135,18 @@ class UsagePlansAdminApiController(
     daa.async { ctx =>
       (for {
         api <- EitherT.fromOptionF(
-          env.dataStore.apiRepo.forTenant(ctx.tenant).findOneNotDeleted(
-            Json.obj("possibleUsagePlans" -> Json.obj("$in" -> Json.arr(id)))
-          ),
+          env.dataStore.apiRepo
+            .forTenant(ctx.tenant)
+            .findOneNotDeleted(
+              Json.obj("possibleUsagePlans" -> Json.obj("$in" -> Json.arr(id)))
+            ),
           AppError.ApiNotFound
         )
-        _ <- deletionService.deleteUsagePlanByQueue(UsagePlanId(id), api.id, ctx.tenant.id)
+        _ <- deletionService.deleteUsagePlanByQueue(
+          UsagePlanId(id),
+          api.id,
+          ctx.tenant.id
+        )
       } yield Ok(Json.obj("done" -> true)))
         .leftMap(_.render())
         .merge
@@ -1203,7 +1212,8 @@ class SubscriptionDemandsAdminApiController(
 
   override def deleteEntity(id: String): Action[AnyContent] =
     daa.async { ctx =>
-      deletionService.cancelSubscriptionDemand(id, ctx.tenant)
+      deletionService
+        .cancelSubscriptionDemand(id, ctx.tenant)
         .map(_ => Ok(Json.obj("done" -> true)))
         .leftMap(_.render())
         .merge

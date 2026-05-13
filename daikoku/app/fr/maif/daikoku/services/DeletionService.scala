@@ -56,7 +56,9 @@ class DeletionService(
 
     AppLogger.debug(s"add **user**[${user.name}] to deletion queue")
     for {
-      _ <- EitherT.right[AppError](env.dataStore.userRepo.deleteByIdLogically(user.id))
+      _ <- EitherT.right[AppError](
+        env.dataStore.userRepo.deleteByIdLogically(user.id)
+      )
       _ <- EitherT.right[AppError](
         env.dataStore.operationRepo.forTenant(tenant).save(operation)
       )
@@ -193,15 +195,15 @@ class DeletionService(
     } yield ()).value
 
   /** Delete subscriptions for a given API:
-    * 1. Promote orphan children if their parent is being deleted (Phase 0)
-    * 2. Disable subs in DB (signal for Otoroshi sync)
-    * 3. Delegate key deletion to OtoroshiSynchronizerJob (handles aggregation)
-    * 4. Finalize: save notifs + payment ops + cleanup action.subscription notifs
-    * 5. Mark subs as deleted in DB
+    *   1. Promote orphan children if their parent is being deleted (Phase 0) 2.
+    *      Disable subs in DB (signal for Otoroshi sync) 3. Delegate key
+    *      deletion to OtoroshiSynchronizerJob (handles aggregation) 4.
+    *      Finalize: save notifs + payment ops + cleanup action.subscription
+    *      notifs 5. Mark subs as deleted in DB
     *
-    * @param electedChildId when deleting a parent with children, override the
-    *                       automatic election (oldest by createdAt) with a
-    *                       specific child id chosen by the caller
+    * @param electedChildId
+    *   when deleting a parent with children, override the automatic election
+    *   (oldest by createdAt) with a specific child id chosen by the caller
     */
   def deleteSubscriptions(
       subscriptions: Seq[ApiSubscription],
@@ -221,9 +223,12 @@ class DeletionService(
       orphanChildren <- EitherT.right[AppError](
         env.dataStore.apiSubscriptionRepo
           .forTenant(tenant)
-          .findNotDeleted(Json.obj(
-            "parent" -> Json.obj("$in" -> JsArray(deletedIds.map(_.asJson).toSeq))
-          ))
+          .findNotDeleted(
+            Json.obj(
+              "parent" -> Json
+                .obj("$in" -> JsArray(deletedIds.map(_.asJson).toSeq))
+            )
+          )
       )
       // orphansByOldParent: old parent id → elected new parent + remaining children
       orphansByOldParent = orphanChildren.groupBy(_.parent.get)
@@ -231,9 +236,9 @@ class DeletionService(
         Future.sequence(
           orphansByOldParent.values.toSeq.map { group =>
             val elected = electedChildId
-            .flatMap(id => group.find(_.id == id))
-            .getOrElse(group.minBy(_.createdAt.getMillis))
-            val others  = group.filterNot(_.id == elected.id)
+              .flatMap(id => group.find(_.id == id))
+              .getOrElse(group.minBy(_.createdAt.getMillis))
+            val others = group.filterNot(_.id == elected.id)
             for {
               _ <- env.dataStore.apiSubscriptionRepo
                 .forTenant(tenant)
@@ -244,7 +249,9 @@ class DeletionService(
               _ <- env.dataStore.apiSubscriptionRepo
                 .forTenant(tenant)
                 .updateManyByQuery(
-                  Json.obj("_id" -> Json.obj("$in" -> JsArray(others.map(_.id.asJson)))),
+                  Json.obj(
+                    "_id" -> Json.obj("$in" -> JsArray(others.map(_.id.asJson)))
+                  ),
                   Json.obj("$set" -> Json.obj("parent" -> elected.id.asJson))
                 )
             } yield ()
@@ -256,7 +263,10 @@ class DeletionService(
         env.dataStore.apiSubscriptionRepo
           .forTenant(tenant)
           .updateManyByQuery(
-            Json.obj("_id" -> Json.obj("$in" -> JsArray(subscriptions.map(_.id.asJson).distinct))),
+            Json.obj(
+              "_id" -> Json
+                .obj("$in" -> JsArray(subscriptions.map(_.id.asJson).distinct))
+            ),
             Json.obj("$set" -> Json.obj("enabled" -> false))
           )
       )
@@ -265,9 +275,13 @@ class DeletionService(
       //     (recomputes the key without the deleted parent's routes — no deletion)
       //   - subs without surviving children: run deletion sync targeted per subscription
       subsWithPromotedChildren = orphansByOldParent.keySet
-      electeds = orphansByOldParent.values.map(_.minBy(_.createdAt.getMillis)).toSeq
+      electeds = orphansByOldParent.values
+        .map(_.minBy(_.createdAt.getMillis))
+        .toSeq
       _ <- EitherT.liftF(
-        Future.sequence(electeds.map(e => otoroshiSynchronizerJob.run(e.id, tenant)))
+        Future.sequence(
+          electeds.map(e => otoroshiSynchronizerJob.run(e.id, tenant))
+        )
       )
       _ <- EitherT.liftF(
         Future.sequence(
@@ -278,19 +292,28 @@ class DeletionService(
       )
       // Phase 3b — delete stale pending notifications referencing the deleted subscriptions
       _ <- EitherT.right[AppError](
-        env.dataStore.notificationRepo.forTenant(tenant)
-          .delete(Json.obj("action.subscription" -> Json.obj(
-            "$in" -> JsArray(subscriptions.map(s => JsString(s.id.value)))
-          )))
+        env.dataStore.notificationRepo
+          .forTenant(tenant)
+          .delete(
+            Json.obj(
+              "action.subscription" -> Json.obj(
+                "$in" -> JsArray(subscriptions.map(s => JsString(s.id.value)))
+              )
+            )
+          )
       )
       // Phase 3 — save deletion notifs + payment ops
       _ <- EitherT(
         Source(subscriptions)
-          .mapAsync(1)(subscription => prepareSubscriptionContext(subscription, tenant, systemUser))
+          .mapAsync(1)(subscription =>
+            prepareSubscriptionContext(subscription, tenant, systemUser)
+          )
           .mapConcat {
             case Right(ctx) => List(ctx)
             case Left(err) =>
-              AppLogger.warn(s"[deletion service] prepareSubscriptionContext failed: ${err.getErrorMessage()}")
+              AppLogger.warn(
+                s"[deletion service] prepareSubscriptionContext failed: ${err.getErrorMessage()}"
+              )
               List.empty
           }
           .mapAsync(1)(ctx => finalizeSubscriptionDeletion(ctx, tenant))
@@ -305,7 +328,10 @@ class DeletionService(
         env.dataStore.apiSubscriptionRepo
           .forTenant(tenant)
           .deleteLogically(
-            Json.obj("_id" -> Json.obj("$in" -> JsArray(subscriptions.map(_.id.asJson).distinct)))
+            Json.obj(
+              "_id" -> Json
+                .obj("$in" -> JsArray(subscriptions.map(_.id.asJson).distinct))
+            )
           )
       )
     } yield result
@@ -430,7 +456,8 @@ class DeletionService(
       )
       _ <- deleteTeamByQueue(personalTeam.id, tenant.id)
       _ <-
-        if (otherTenantPersonalTeam.length > 1) EitherT.rightT[Future, AppError](())
+        if (otherTenantPersonalTeam.length > 1)
+          EitherT.rightT[Future, AppError](())
         else deleteUser(user, tenant)
       _ <- deleteUserFromAllTeams(tenant.some, user)
       _ <- deleteUserNotifications(tenant.some, user)
@@ -477,7 +504,8 @@ class DeletionService(
       _ <- deleteUserFromAllTeams(None, user)
       _ <- deleteUserNotifications(None, user)
       _ <- closeChat(None, user)
-      _ <- EitherT.right[AppError](env.dataStore.userSessionRepo.delete(
+      _ <- EitherT.right[AppError](
+        env.dataStore.userSessionRepo.delete(
           Json.obj(
             "userId" -> userId
           )
@@ -486,19 +514,23 @@ class DeletionService(
     } yield ()
   }
 
-  private def deleteUserNotifications(tenant: Option[Tenant], user: User)(implicit
-                                                                 env: Env,
-                                                                          ec: ExecutionContext
+  private def deleteUserNotifications(tenant: Option[Tenant], user: User)(
+      implicit
+      env: Env,
+      ec: ExecutionContext
   ): EitherT[Future, AppError, Long] = {
-    val tenantFilter = tenant.map(_ => "content->>'_tenant' = $1 AND ").getOrElse("")
-    val tenantParams: Seq[AnyRef] = tenant.map(t => Seq(t.id.value)).getOrElse(Seq.empty)
+    val tenantFilter =
+      tenant.map(_ => "content->>'_tenant' = $1 AND ").getOrElse("")
+    val tenantParams: Seq[AnyRef] =
+      tenant.map(t => Seq(t.id.value)).getOrElse(Seq.empty)
     val userParam = "$" + (tenantParams.size + 1)
 
     for {
-      notifs <- EitherT.right[AppError](env.dataStore.notificationRepo
-        .forAllTenant()
-        .execute(
-          s"""
+      notifs <- EitherT.right[AppError](
+        env.dataStore.notificationRepo
+          .forAllTenant()
+          .execute(
+            s"""
            |DELETE FROM notifications
            |WHERE (
            |  $tenantFilter
@@ -508,13 +540,14 @@ class DeletionService(
            |  )
            |);
            |""".stripMargin,
-          tenantParams :+ user.id.value
-        )
+            tenantParams :+ user.id.value
+          )
       )
-      _ <- EitherT.right[AppError](env.dataStore.subscriptionDemandRepo
-        .forAllTenant()
-        .execute(
-          s"""
+      _ <- EitherT.right[AppError](
+        env.dataStore.subscriptionDemandRepo
+          .forAllTenant()
+          .execute(
+            s"""
              |WITH deleted_demands AS (
              |  DELETE FROM subscription_demands
              |  WHERE $tenantFilter
@@ -525,23 +558,25 @@ class DeletionService(
              |DELETE FROM step_validators
              |WHERE content->>'subscriptionDemand' IN (SELECT demand_id FROM deleted_demands);
              |""".stripMargin,
-          tenantParams :+ user.id.value
-        )
+            tenantParams :+ user.id.value
+          )
       )
     } yield notifs
   }
 
-  private def deleteUserFromAllTeams(tenant: Option[Tenant], user: User)(implicit
+  private def deleteUserFromAllTeams(tenant: Option[Tenant], user: User)(
+      implicit
       env: Env,
       ec: ExecutionContext
   ): EitherT[Future, AppError, Long] = {
-    val tenantFilter = tenant.map(_ => "content->>'_tenant' = $1 AND ").getOrElse("")
-    val tenantParams: Seq[AnyRef] = tenant.map(t => Seq(t.id.value)).getOrElse(Seq.empty)
+    val tenantFilter =
+      tenant.map(_ => "content->>'_tenant' = $1 AND ").getOrElse("")
+    val tenantParams: Seq[AnyRef] =
+      tenant.map(t => Seq(t.id.value)).getOrElse(Seq.empty)
     val userParam = "$" + (tenantParams.size + 1)
 
     EitherT.liftF(
-      env.dataStore
-        .teamRepo
+      env.dataStore.teamRepo
         .forAllTenant()
         .execute(
           s"""
@@ -561,33 +596,42 @@ class DeletionService(
     )
   }
 
-
-
   private def closeChat(tenant: Option[Tenant], user: User)(implicit
-    env: Env,
-    ec: ExecutionContext
-): EitherT[Future, AppError, Long] = {
-  val (tenantFilter, params) = tenant match {
-    case Some(t) => ("AND content->>'_tenant' = $3", Seq(user.id.value, java.lang.Long.valueOf(DateTime.now().getMillis), t.id.value))
-    case None    => ("", Seq(user.id.value, java.lang.Long.valueOf(DateTime.now().getMillis)))
-  }
+      env: Env,
+      ec: ExecutionContext
+  ): EitherT[Future, AppError, Long] = {
+    val (tenantFilter, params) = tenant match {
+      case Some(t) =>
+        (
+          "AND content->>'_tenant' = $3",
+          Seq(
+            user.id.value,
+            java.lang.Long.valueOf(DateTime.now().getMillis),
+            t.id.value
+          )
+        )
+      case None =>
+        (
+          "",
+          Seq(user.id.value, java.lang.Long.valueOf(DateTime.now().getMillis))
+        )
+    }
 
-  EitherT.right[AppError](
-    env.dataStore.messageRepo
-      .forAllTenant()
-      .execute(
-        s"""
+    EitherT.right[AppError](
+      env.dataStore.messageRepo
+        .forAllTenant()
+        .execute(
+          s"""
            |UPDATE messages
            |SET content = jsonb_set(content, '{closed}', $$2)
            |WHERE content->>'chat' = $$1
            |  AND content ->> 'closed' IS NULL
            |  $tenantFilter;
            |""".stripMargin,
-        params
-      )
-  )
-}
-
+          params
+        )
+    )
+  }
 
   /** Flag a team as deleted and delete his subscriptions, apis and those apis
     * subscriptions add team, subs and apis to deletion queue to process
@@ -644,7 +688,13 @@ class DeletionService(
       consumerApis <- EitherT.liftF(
         env.dataStore.apiRepo
           .forTenant(tenant)
-          .findNotDeleted(Json.obj("_id" -> Json.obj("$in" -> JsArray(consumerSubsByApi.keys.map(_.asJson).toSeq))))
+          .findNotDeleted(
+            Json.obj(
+              "_id" -> Json.obj(
+                "$in" -> JsArray(consumerSubsByApi.keys.map(_.asJson).toSeq)
+              )
+            )
+          )
       )
       _ <- EitherT.liftF(
         Source(consumerApis)
@@ -662,8 +712,9 @@ class DeletionService(
     } yield ()
   }
 
-  /** Flag a usage plan as deleted and delete its subscriptions.
-    * Adds an operation in the deletion queue to process cleanup of demands and notifications.
+  /** Flag a usage plan as deleted and delete its subscriptions. Adds an
+    * operation in the deletion queue to process cleanup of demands and
+    * notifications.
     */
   def deleteUsagePlanByQueue(
       planId: UsagePlanId,
@@ -680,51 +731,66 @@ class DeletionService(
         AppError.ApiNotFound
       )
       plan <- EitherT.fromOptionF[Future, AppError, UsagePlan](
-        env.dataStore.usagePlanRepo.forTenant(tenant).findByIdNotDeleted(planId),
+        env.dataStore.usagePlanRepo
+          .forTenant(tenant)
+          .findByIdNotDeleted(planId),
         AppError.PlanNotFound
       )
       subscriptions <- EitherT.right[AppError](
         env.dataStore.apiSubscriptionRepo
           .forTenant(tenant)
-          .findNotDeleted(Json.obj("api" -> api.id.asJson, "plan" -> plan.id.asJson))
+          .findNotDeleted(
+            Json.obj("api" -> api.id.asJson, "plan" -> plan.id.asJson)
+          )
       )
       _ <- deleteSubscriptions(subscriptions, api, tenant)
       _ <- EitherT.right[AppError](
         env.dataStore.apiRepo
           .forTenant(tenant)
-          .save(api.copy(possibleUsagePlans = api.possibleUsagePlans.filter(_ != plan.id)))
+          .save(
+            api.copy(possibleUsagePlans =
+              api.possibleUsagePlans.filter(_ != plan.id)
+            )
+          )
       )
       _ <- EitherT.right[AppError](
-        env.dataStore.usagePlanRepo.forTenant(tenant).deleteByIdLogically(plan.id)
+        env.dataStore.usagePlanRepo
+          .forTenant(tenant)
+          .deleteByIdLogically(plan.id)
       )
       _ <- plan.paymentSettings match {
         case Some(paymentSettings) =>
-          EitherT.right[AppError](
-            env.dataStore.operationRepo
-              .forTenant(tenant)
-              .save(
-                Operation(
-                  DatastoreId(IdGenerator.token(24)),
-                  tenant = tenant.id,
-                  itemId = plan.id.value,
-                  itemType = ItemType.ThirdPartyProduct,
-                  action = OperationAction.Delete,
-                  payload = Json.obj("paymentSettings" -> paymentSettings.asJson).some
+          EitherT
+            .right[AppError](
+              env.dataStore.operationRepo
+                .forTenant(tenant)
+                .save(
+                  Operation(
+                    DatastoreId(IdGenerator.token(24)),
+                    tenant = tenant.id,
+                    itemId = plan.id.value,
+                    itemType = ItemType.ThirdPartyProduct,
+                    action = OperationAction.Delete,
+                    payload =
+                      Json.obj("paymentSettings" -> paymentSettings.asJson).some
+                  )
                 )
-              )
-          ).map(_ => ())
+            )
+            .map(_ => ())
         case None => EitherT.pure[Future, AppError](())
       }
       _ <- EitherT.right[AppError](
-        env.dataStore.operationRepo.forTenant(tenant).save(
-          Operation(
-            DatastoreId(IdGenerator.token(32)),
-            tenant = tenant.id,
-            itemId = plan.id.value,
-            itemType = ItemType.UsagePlan,
-            action = OperationAction.Delete
+        env.dataStore.operationRepo
+          .forTenant(tenant)
+          .save(
+            Operation(
+              DatastoreId(IdGenerator.token(32)),
+              tenant = tenant.id,
+              itemId = plan.id.value,
+              itemType = ItemType.UsagePlan,
+              action = OperationAction.Delete
+            )
           )
-        )
       )
     } yield ()
   }
@@ -761,17 +827,25 @@ class DeletionService(
   ): EitherT[Future, AppError, Unit] = {
     for {
       demand <- EitherT.fromOptionF(
-        env.dataStore.subscriptionDemandRepo.forTenant(tenant).findByIdNotDeleted(demandId),
+        env.dataStore.subscriptionDemandRepo
+          .forTenant(tenant)
+          .findByIdNotDeleted(demandId),
         AppError.EntityNotFound("Subscription demand")
       )
       _ <- EitherT.right[AppError](
-        env.dataStore.subscriptionDemandRepo.forTenant(tenant).deleteById(demand.id)
+        env.dataStore.subscriptionDemandRepo
+          .forTenant(tenant)
+          .deleteById(demand.id)
       )
       _ <- EitherT.right[AppError](
-        env.dataStore.stepValidatorRepo.forTenant(tenant).delete(Json.obj("subscriptionDemand" -> demand.id.asJson))
+        env.dataStore.stepValidatorRepo
+          .forTenant(tenant)
+          .delete(Json.obj("subscriptionDemand" -> demand.id.asJson))
       )
       _ <- EitherT.right[AppError](
-        env.dataStore.notificationRepo.forTenant(tenant).delete(Json.obj("action.demand" -> demand.id.asJson))
+        env.dataStore.notificationRepo
+          .forTenant(tenant)
+          .delete(Json.obj("action.demand" -> demand.id.asJson))
       )
     } yield ()
   }
