@@ -74,9 +74,22 @@ sbt
 
 Inside the `sbt` console:
 
+### With some demo data
+
+If you want to start Daikoku with pre-defined tenant, teams, ... Use below command.
+
+```sbt
+~run -Dconfig.resource=local.conf -Ddaikoku.init.data.from=javascript/tests/config/daikoku/daikoku_state_very_local.ndjson
+```
+
+### Without demo data
+
+If you want to start Daikoku without any pre-defined data use below command.
+
 ```sbt
 ~run -Dconfig.resource=local.conf
 ```
+
 
 This will automatically reload the backend each time you change Scala or configuration files.
 
@@ -93,12 +106,18 @@ This will automatically reload the backend each time you change Scala or configu
 
 ## 6) Log in
 
-To log in with above setup, you'll have to use one of the following users:
+### With some demo data
 
-- admin@foo.bar / password
-- dwight.schrute@dundermifflin.com / password
-- jim.halpert@dundermifflin.com / password
-- michael.scott@dundermifflin.com / password
+If you did setup you Daikoku instance with pre-defined data, you'll have to use one of the following users:
+
+- admin@foo.bar / password (daikoku admin)
+- dwight.schrute@dundermifflin.com / password (User rights on "Vendeurs" team)
+- jim.halpert@dundermifflin.com / password (Admin rights on "Vendeurs" and "Logistique" teams)
+- michael.scott@dundermifflin.com / password (daikoku admin)
+
+### Without demo data
+
+If you started your Daikoku instance without demo data, a default password will be generated, and user / password will be visible in Daikoku logs.
 
 ---
 
